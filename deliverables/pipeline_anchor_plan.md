@@ -17,6 +17,13 @@ This file should be treated as the project roadmap for pipeline automation and o
 
 Build a repeatable pipeline that can take one user-provided source text and produce a final edited video with minimal manual intervention.
 
+The pipeline must support multiple execution profiles inside one shared project system.
+
+Current target profiles:
+
+- `veononstop`: images first, then selective animation, then mixed cut
+- `fastgen_only`: images first, then direct slideshow-style montage without animation
+
 Target future workflow:
 
 1. User sends source text.
@@ -26,9 +33,11 @@ Target future workflow:
 5. Codex derives a shot plan from real timing, splitting any overlong scene.
 6. Codex generates visual prompts for all shots.
 7. Codex sends prompts to FastGen and gathers ordered images.
-8. Codex selects which shots should be animated.
-9. Codex sends selected shots to VNonStop.
-10. Codex assembles a mixed cut from stills and videos.
+8. If the selected profile includes animation, Codex selects which shots should be animated.
+9. If the selected profile includes animation, Codex sends selected shots to VNonStop.
+10. Codex assembles the final cut:
+    `veononstop` profile: mixed cut from stills and videos.
+    `fastgen_only` profile: slideshow-style cut from stills and audio.
 11. Codex prepares publishing assets: title, description, and thumbnail concepts.
 12. Codex generates thumbnail candidates through FastGen.
 13. Codex validates the result and delivers the final mp4 and publishing package.
@@ -44,6 +53,7 @@ These are confirmed rules and should not be broken unless explicitly revised.
 - Character continuity must be preserved through selective reference usage.
 - Timeline and manifest files are the authoritative basis for automation.
 - Mixed cuts must use video when the shot is marked animated and the video exists; otherwise they must use the still image.
+- In `fastgen_only`, the pipeline must skip animation stages entirely and move directly from normalized images to montage.
 - Image normalization must happen before slideshow or mixed-cut assembly.
 - Append-only logs must be preferred over overwrite-prone run snapshots.
 
@@ -120,6 +130,8 @@ Need:
 - support for first-minute-heavy animation
 - support for every-third-shot fallback
 - support for content-priority animation tags
+
+This gap applies only to profiles with animation enabled.
 
 ### 6. Text Rewrite Stage Is Not Yet Productized
 
@@ -359,6 +371,9 @@ Definition of done:
 Goal:
 Replace ad hoc animation campaigns with a clear decision policy.
 
+Profile scope:
+This phase applies to `veononstop` and any future animation-enabled profiles, not to `fastgen_only`.
+
 Tasks:
 
 - formalize "animate first minute fully"
@@ -396,6 +411,11 @@ Definition of done:
 Goal:
 Render final video from the scene plan using videos when available and stills otherwise.
 
+Profile scope:
+
+- `veononstop`: mixed cut
+- `fastgen_only`: slideshow cut from stills only
+
 Tasks:
 
 - select render source per shot from canonical data
@@ -408,6 +428,23 @@ Definition of done:
 
 - final render matches the canonical scene order and timing
 - no manual asset picking is required
+
+## Phase 10.2 - FastGen-Only Slideshow Assembly
+
+Goal:
+Render the final cut directly from normalized still images and audio when animation is disabled.
+
+Tasks:
+
+- derive the slideshow timeline from the canonical `scene_plan.json`
+- ensure all stills are normalized before assembly
+- render one full audio-synced slideshow cut
+- support partial deliveries if needed
+
+Definition of done:
+
+- `fastgen_only` can render a complete final video without any animation stage
+- the output timing matches the scene plan and voiceover exactly
 
 ## Phase 10.5 - Publishing Asset Generation
 
@@ -466,6 +503,8 @@ Tasks:
 
 Suggested stage sequence:
 
+For `veononstop`:
+
 1. rewrite
 2. transcribe
 3. build_scene_plan
@@ -479,6 +518,20 @@ Suggested stage sequence:
 11. generate_thumbnails
 12. qc
 13. final_render
+
+For `fastgen_only`:
+
+1. rewrite
+2. transcribe
+3. build_scene_plan
+4. build_prompts
+5. generate_images
+6. normalize_images
+7. build_slideshow_cut
+8. generate_publishing_drafts
+9. generate_thumbnails
+10. qc
+11. final_render
 
 Definition of done:
 

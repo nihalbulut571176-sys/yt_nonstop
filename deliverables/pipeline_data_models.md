@@ -35,6 +35,7 @@ It answers:
 
 ```json
 {
+  "profile_id": "fastgen_only",
   "project_id": "telegram_darknet_001",
   "schema_version": "draft-1",
   "created_at": "2026-05-12T15:00:00Z",
@@ -69,6 +70,15 @@ Example:
 "project_id": "telegram_darknet_001"
 ```
 
+#### `profile_id`
+
+Execution profile for the project.
+
+Allowed draft values:
+
+- `veononstop`
+- `fastgen_only`
+
 #### `schema_version`
 
 Schema version for future migrations.
@@ -100,6 +110,7 @@ Allowed draft values:
 - `animation_selection`
 - `video_generation`
 - `mixed_cut`
+- `slideshow_cut`
 - `publishing_drafts`
 - `thumbnail_generation`
 - `qc`
@@ -256,12 +267,19 @@ Suggested fields:
 ```json
 {
   "status": "pending",
+  "render_strategy": "images_only",
   "mixed_manifest_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\renders\\mixed_manifest.json",
+  "slideshow_timeline_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\renders\\slideshow_timeline.json",
   "ffconcat_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\renders\\timeline.ffconcat",
   "partial_outputs": [],
   "final_video_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\renders\\final.mp4"
 }
 ```
+
+Notes:
+
+- `veononstop` should typically use `render_strategy = "video_if_available_else_image"`
+- `fastgen_only` should use `render_strategy = "images_only"`
 
 #### `publishing`
 
@@ -483,6 +501,8 @@ Recommended project-scoped publishing layout:
 
 Recommended order:
 
+For `veononstop`:
+
 1. rewrite
 2. transcribe
 3. build_scene_plan
@@ -496,6 +516,20 @@ Recommended order:
 11. generate_thumbnails
 12. qc
 13. final_render
+
+For `fastgen_only`:
+
+1. rewrite
+2. transcribe
+3. build_scene_plan
+4. build_prompts
+5. generate_images
+6. normalize_images
+7. build_slideshow_cut
+8. generate_publishing_drafts
+9. generate_thumbnails
+10. qc
+11. final_render
 
 Editorial recommendation:
 
@@ -511,9 +545,10 @@ To avoid overengineering the first pass:
 1. Define and adopt `project.json`.
 2. Define and adopt `scene_plan.json`.
 3. Add publishing state inside `project.json`.
-4. Write adapters from existing `timeline.json` and manifests into these formats.
-5. Keep existing generator scripts mostly unchanged at first.
-6. Build orchestration around the new structured data.
+4. Make the stage graph conditional on `profile_id`.
+5. Write adapters from existing `timeline.json` and manifests into these formats.
+6. Keep existing generator scripts mostly unchanged at first.
+7. Build orchestration around the new structured data.
 
 ## Open Decisions
 

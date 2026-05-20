@@ -1,4 +1,5 @@
 {
+  "profile_id": "fastgen_only",
   "project_id": "telegram_darknet_001",
   "schema_version": "draft-1",
   "created_at": "2026-05-12T15:00:00Z",
@@ -76,7 +77,9 @@
   },
   "render": {
     "status": "pending",
+    "render_strategy": "images_only",
     "mixed_manifest_path": null,
+    "slideshow_timeline_path": null,
     "ffconcat_path": null,
     "partial_outputs": [],
     "final_video_path": null
