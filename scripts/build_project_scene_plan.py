@@ -227,7 +227,7 @@ def main() -> None:
     project["scene_plan"]["scene_count"] = len(scenes)
     project["scene_plan"]["original_segment_count"] = len(sentence_blocks)
     project["prompts"]["status"] = "pending"
-    project["current_stage"] = "prompts"
+    project["current_stage"] = "prompt_package"
     project["updated_at"] = iso_now()
     project_json.write_text(json.dumps(project, ensure_ascii=False, indent=2), encoding="utf-8")
 

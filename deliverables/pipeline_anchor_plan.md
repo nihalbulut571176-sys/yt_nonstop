@@ -31,7 +31,7 @@ Target future workflow:
 3. User records or generates voiceover and places audio in the project.
 4. Codex transcribes real audio with Whisper and generates SRT.
 5. Codex derives a shot plan from real timing, splitting any overlong scene.
-6. Codex generates visual prompts for all shots.
+6. Codex creates a per-project prompt package for all shots.
 7. Codex sends prompts to FastGen and gathers ordered images.
 8. If the selected profile includes animation, Codex selects which shots should be animated.
 9. If the selected profile includes animation, Codex sends selected shots to VNonStop.
@@ -246,6 +246,7 @@ Suggested per-project structure:
 - `projects/<id>/audio/`
 - `projects/<id>/transcript/`
 - `projects/<id>/scene_plan/`
+- `projects/<id>/prompts/`
 - `projects/<id>/images/`
 - `projects/<id>/video_runs/`
 - `projects/<id>/renders/`
@@ -524,7 +525,7 @@ For `fastgen_only`:
 1. rewrite
 2. transcribe
 3. build_scene_plan
-4. build_prompts
+4. build_prompt_package
 5. generate_images
 6. normalize_images
 7. build_slideshow_cut

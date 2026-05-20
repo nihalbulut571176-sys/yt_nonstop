@@ -105,6 +105,7 @@ Allowed draft values:
 - `rewrite`
 - `transcribe`
 - `scene_plan`
+- `prompt_package`
 - `prompts`
 - `images`
 - `animation_selection`
@@ -215,7 +216,10 @@ Suggested fields:
   "prompt_language": "English",
   "style_preset": "cinematic-realistic-v1",
   "reference_mapping_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\deliverables\\fastgen_ref_paths.json",
-  "prompt_export_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\scene_plan\\scene_prompts.md"
+  "prompt_export_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\scene_plan\\scene_prompts.md",
+  "prompt_package_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\prompts\\prompt_package.json",
+  "generator_ready_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\prompts\\fastgen_prompts_generator_ready.md",
+  "prompt_review_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\prompts\\prompt_review.md"
 }
 ```
 
@@ -497,6 +501,22 @@ Recommended project-scoped publishing layout:
 - `projects/<id>/publishing/thumbnails/candidates/`
 - `projects/<id>/publishing/thumbnails/approved.png`
 
+## Recommended Project Structure
+
+Each new audio file should become a new isolated project under:
+
+- `projects/<id>/project.json`
+- `projects/<id>/input/`
+- `projects/<id>/audio/`
+- `projects/<id>/transcript/`
+- `projects/<id>/scene_plan/`
+- `projects/<id>/prompts/`
+- `projects/<id>/images/fastgen_run/images/`
+- `projects/<id>/images/normalized/`
+- `projects/<id>/renders/`
+- `projects/<id>/publishing/`
+- `projects/<id>/logs/`
+
 ## Recommended Placement In The Pipeline
 
 Recommended order:
@@ -522,7 +542,7 @@ For `fastgen_only`:
 1. rewrite
 2. transcribe
 3. build_scene_plan
-4. build_prompts
+4. build_prompt_package
 5. generate_images
 6. normalize_images
 7. build_slideshow_cut

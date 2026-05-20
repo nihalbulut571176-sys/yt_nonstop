@@ -63,6 +63,7 @@ The script creates:
 - `projects/<id>/audio/`
 - `projects/<id>/transcript/`
 - `projects/<id>/scene_plan/`
+- `projects/<id>/prompts/`
 - `projects/<id>/images/`
 - `projects/<id>/renders/`
 - `projects/<id>/publishing/`
@@ -84,8 +85,8 @@ Publishing files created automatically:
 Once audio intake and transcription are complete:
 
 1. build the scene plan from the real transcript timing
-2. prepare the publishing package for title, description, and thumbnail generation
-3. generate visual prompts for all shots
+2. build the prompt package for all scenes
+3. prepare the publishing package for title, description, and thumbnail generation
 4. run FastGen for still images
 5. normalize images
 6. build slideshow timeline
@@ -105,6 +106,20 @@ Prepare title/description/thumbnail package:
 
 ```powershell
 python scripts/prepare_project_publishing_package.py `
+  --project-json "C:\Users\MIKE\Documents\Codex\YT\projects\telegram_fastgen_001\project.json"
+```
+
+Build the prompt package:
+
+```powershell
+python scripts/build_project_prompt_package.py `
+  --project-json "C:\Users\MIKE\Documents\Codex\YT\projects\telegram_fastgen_001\project.json"
+```
+
+Export the prompt package into FastGen-ready blocks:
+
+```powershell
+python scripts/export_project_fastgen_prompts.py `
   --project-json "C:\Users\MIKE\Documents\Codex\YT\projects\telegram_fastgen_001\project.json"
 ```
 
@@ -132,6 +147,7 @@ This flow now covers:
 - optional raw-text intake
 - Whisper transcription
 - project-aware scene-plan generation
+- project-aware prompt-package generation
 - publishing package preparation
 
 FastGen prompt generation, still-image generation, normalization, and final slideshow rendering remain the next execution stages, but they now have a clean per-project home and a stable manifest to build on.

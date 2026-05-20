@@ -52,7 +52,10 @@
     "prompt_language": "English",
     "style_preset": "cinematic-realistic-v1",
     "reference_mapping_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\deliverables\\fastgen_ref_paths.json",
-    "prompt_export_path": null
+    "prompt_export_path": null,
+    "prompt_package_path": null,
+    "generator_ready_path": null,
+    "prompt_review_path": null
   },
   "images": {
     "status": "pending",

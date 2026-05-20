@@ -29,6 +29,7 @@ def ensure_dirs(project_root: Path) -> dict[str, Path]:
         "audio": project_root / "audio",
         "transcript": project_root / "transcript",
         "scene_plan": project_root / "scene_plan",
+        "prompts": project_root / "prompts",
         "images_root": project_root / "images",
         "images_fastgen": project_root / "images" / "fastgen_run",
         "images_fastgen_raw": project_root / "images" / "fastgen_run" / "images",
@@ -226,6 +227,9 @@ def create_project_manifest(
     manifest["scene_plan"]["scene_plan_path"] = str(dirs["scene_plan"] / "scene_plan.json")
 
     manifest["prompts"]["prompt_export_path"] = str(dirs["scene_plan"] / "scene_prompts.md")
+    manifest["prompts"]["prompt_package_path"] = str(dirs["prompts"] / "prompt_package.json")
+    manifest["prompts"]["generator_ready_path"] = str(dirs["prompts"] / "fastgen_prompts_generator_ready.md")
+    manifest["prompts"]["prompt_review_path"] = str(dirs["prompts"] / "prompt_review.md")
 
     manifest["images"]["run_manifest_path"] = str(dirs["images_fastgen"] / "run_manifest.json")
     manifest["images"]["raw_images_dir"] = str(dirs["images_fastgen_raw"])
