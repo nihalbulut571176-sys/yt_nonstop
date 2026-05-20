@@ -84,12 +84,29 @@ Publishing files created automatically:
 Once audio intake and transcription are complete:
 
 1. build the scene plan from the real transcript timing
-2. generate visual prompts for all shots
-3. run FastGen for still images
-4. normalize images
-5. build slideshow timeline
-6. render final slideshow video
-7. finalize title, description, and thumbnail
+2. prepare the publishing package for title, description, and thumbnail generation
+3. generate visual prompts for all shots
+4. run FastGen for still images
+5. normalize images
+6. build slideshow timeline
+7. render final slideshow video
+8. finalize title, description, and thumbnail
+
+## Post-Transcription Commands
+
+Build the project scene plan:
+
+```powershell
+python scripts/build_project_scene_plan.py `
+  --project-json "C:\Users\MIKE\Documents\Codex\YT\projects\telegram_fastgen_001\project.json"
+```
+
+Prepare title/description/thumbnail package:
+
+```powershell
+python scripts/prepare_project_publishing_package.py `
+  --project-json "C:\Users\MIKE\Documents\Codex\YT\projects\telegram_fastgen_001\project.json"
+```
 
 ## Slideshow Montage Commands
 
@@ -109,6 +126,12 @@ powershell -ExecutionPolicy Bypass -File scripts/render_project_slideshow_video.
 
 ## Current Scope
 
-This intake flow prepares the project and launches transcription.
+This flow now covers:
 
-Prompt generation, scene-plan generation, FastGen image generation, and publishing-text drafting are still subsequent stages, but they now have a clean per-project home and a stable manifest to build on.
+- project bootstrap from audio
+- optional raw-text intake
+- Whisper transcription
+- project-aware scene-plan generation
+- publishing package preparation
+
+FastGen prompt generation, still-image generation, normalization, and final slideshow rendering remain the next execution stages, but they now have a clean per-project home and a stable manifest to build on.
