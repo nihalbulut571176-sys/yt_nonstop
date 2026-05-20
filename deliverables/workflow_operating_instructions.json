@@ -1,0 +1,173 @@
+{
+  "meta": {
+    "name": "workflow_operating_instructions",
+    "project_root": "C:\\Users\\MIKE\\Documents\\Codex\\YT",
+    "purpose": "Full operating memory for SRT segmentation, image generation, video animation, mixed montage assembly, and known constraints."
+  },
+  "global_principles": {
+    "primary_rule": "Always derive the visual pipeline from the real audio timing, not from a rewritten literary script.",
+    "timing_rule": "First create SRT from the real audio. Only after that generate prompts and build the shot plan.",
+    "max_static_shot_duration_seconds": 5,
+    "consistency_rule": "Keep visual continuity by using stable character references and by preserving shot order from the timeline.",
+    "source_of_truth_rule": "For montage and automation, treat timeline/manifest files as the source of truth, not ad hoc folder inspection.",
+    "mixed_cut_rule": "If a video exists for a shot and the current cut strategy says that shot should be animated, use the video. Otherwise use the still image for that shot."
+  },
+  "lessons_learned": {
+    "critical_pipeline_error": {
+      "problem": "The pipeline previously used one sentence = one prompt = one frame.",
+      "why_it_failed": "Some SRT sentences were 10-18 seconds long, which produced overlong static holds in the montage.",
+      "correct_fix": "Detect all segments longer than 5 seconds, split them into multiple shots before image generation, then rebuild the timeline."
+    },
+    "render_error_learned": {
+      "problem": "Mixed source image resolutions caused render freezes that looked like repeated frames.",
+      "correct_fix": "Normalize images to a single target resolution before slideshow assembly."
+    },
+    "log_error_learned": {
+      "problem": "run_summary.json was treated like historical truth, but it is overwritten by each run.",
+      "correct_fix": "Use failed.jsonl and success.jsonl as authoritative append-only logs. Treat run_summary.json only as the latest single-run snapshot."
+    }
+  },
+  "srt_and_segmentation": {
+    "audio_file": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\assets\\audio\\message@elevenLabsVoicerBot.mp3",
+    "srt_file": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\transcript_fw\\message@elevenLabsVoicerBot.srt",
+    "policy": [
+      "Use the real audio/SRT text as the base for prompt timing.",
+      "Split long timed segments so no still frame is held longer than 5 seconds.",
+      "The shot plan must be computed before generating the final production set of images."
+    ],
+    "derived_files": {
+      "long_segment_report": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\edit\\long_segment_report.json",
+      "shot_plan_max5": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\edit\\shot_plan_max5.json",
+      "extra_prompts_max5": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\edit\\extra_prompts_max5.md"
+    }
+  },
+  "prompt_generation_rules": {
+    "base_language": "English",
+    "style": "Realistic, cinematic, suitable for video generation and still generation.",
+    "format_history": [
+      "Prompt lines were converted to generator-friendly format so each paragraph is one prompt block.",
+      "Reference directives were moved inline to avoid paragraph split issues in external generators."
+    ],
+    "reference_prefixes": {
+      "with_one_ref": "Use reference image: CHAR_xx_Name.",
+      "with_multiple_refs": "Use reference images: CHAR_xx_Name, CHAR_yy_Name.",
+      "without_ref": "No character reference."
+    },
+    "reference_ids": [
+      "CHAR_01_Journalist",
+      "CHAR_02_CrimeBoss",
+      "CHAR_03_TeenageRecruit",
+      "CHAR_04_FounderEngineer",
+      "CHAR_05_CryptophoneEntrepreneur",
+      "CHAR_06_IntelligenceAnalyst"
+    ],
+    "important_rules": [
+      "Do not attach all character references to every prompt.",
+      "Attach only the references actually needed for that shot.",
+      "If a shot has no recurring character, use no character reference.",
+      "If a prompt generator splits on blank lines, the reference directive must stay in the same paragraph as the prompt."
+    ]
+  },
+  "fastgen_image_pipeline": {
+    "provider": "Fast Gen API",
+    "route": "v4-openai-image",
+    "script": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\scripts\\fastgen_openai_v4_generate.py",
+    "env_key": "FAST_GEN_API_KEY",
+    "reference_mapping_file": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\deliverables\\fastgen_ref_paths.json",
+    "key_capabilities": [
+      "Supports API-based generation with resume.",
+      "Supports direct ordering of image outputs as 001.png ... NNN.png.",
+      "Supports multiple reference images in one API request.",
+      "In this workflow, assume up to 10 reference images can be used in one prompt when needed."
+    ],
+    "important_rules": [
+      "Prefer Fast Gen for production image generation rather than improvised local generation.",
+      "Generate the correct total number of shots after the max-5-second split logic is done.",
+      "Do not rely on later montage tricks to hide under-generated image counts."
+    ],
+    "output_dirs": {
+      "base_images": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\fastgen_run\\images",
+      "extra_images": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\fastgen_run_max5_extras\\images",
+      "normalized_base_images": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\edit\\normalized_images",
+      "normalized_extra_images": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\edit\\normalized_extra_images"
+    }
+  },
+  "veononstop_video_pipeline": {
+    "provider": "veononstop",
+    "script": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\scripts\\veononstop_image_to_video.py",
+    "env_key": "VEO_NONSTOP_API_KEY",
+    "output_dir": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\veononstop_run\\videos",
+    "authoritative_logs": {
+      "failed": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\veononstop_run\\failed.jsonl",
+      "success": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\veononstop_run\\success.jsonl",
+      "stop_reason": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\veononstop_run\\stop_reason.json"
+    },
+    "known_service_constraints": [
+      "All cookie slots full",
+      "reCAPTCHA evaluation failed",
+      "PUBLIC_ERROR_VIDEO_GENERATION_TIMED_OUT",
+      "INVALID_ARGUMENT"
+    ],
+    "important_rules": [
+      "Before each new submit, re-check whether the target mp4 already exists in veononstop_run/videos.",
+      "When the service returns cookie slot saturation, treat it as a capacity/backoff issue, not a content problem in the frame.",
+      "When the user explicitly asks to stop after 5 errors, count any 5 error events in a row and stop immediately.",
+      "Logs must be returned to the user after such a stop."
+    ],
+    "known_limitation": "The service may spend a long time without producing useful output because the bottleneck is remote capacity and anti-abuse controls, not the local machine."
+  },
+  "timeline_and_target_plan_rules": {
+    "base_timeline": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\edit\\timeline.json",
+    "target_manifest": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\edit\\animation_targets.json",
+    "target_timeline": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\edit\\animation_target_timeline.json",
+    "mixed_asset_manifest": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\edit\\mixed_asset_manifest.json",
+    "rules": [
+      "The timeline is the source of truth for shot order, start/end times, and asset linkage.",
+      "Build sub-timelines for special generation campaigns instead of manually guessing shot indices.",
+      "For custom stride campaigns, generate dedicated timeline files."
+    ],
+    "custom_stride_timelines": {
+      "from_127_every_3": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\edit\\timeline_from_127_every_3.json",
+      "from_133_every_3": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\edit\\timeline_from_133_every_3.json"
+    }
+  },
+  "montage_rules": {
+    "full_slideshow_render_script": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\scripts\\render_slideshow_video.ps1",
+    "partial_mixed_render_script": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\scripts\\render_partial_mixed_cut.py",
+    "rules": [
+      "Do not use zooms or reframing unless explicitly requested.",
+      "For mixed cuts, render each shot into a normalized short clip first, then concatenate clips and add audio.",
+      "Do not manually splice random files from the videos folder; always build from a manifest.",
+      "For partial deliveries, cut audio to the end time of the last included shot."
+    ],
+    "current_partial_delivery": {
+      "name": "part_001_130",
+      "video": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\deliverables\\partial_001_130\\part_001_130.mp4",
+      "summary": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\deliverables\\partial_001_130\\summary.json",
+      "manifest": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\deliverables\\partial_001_130\\mixed_manifest.json",
+      "logic": "Use available mp4s when present; otherwise use the still image for that shot."
+    },
+    "planned_future_partial": {
+      "description": "After enough videos exist, build part 131-247 as a separate mixed cut and then concatenate part_001_130 with part_131_247 into one continuous master."
+    }
+  },
+  "known_good_practical_preferences": {
+    "vps_note": "A VPS is useful later for unattended long renders and automation, but it does not solve veononstop service-side limits.",
+    "render_hardware_note": "CPU and NVMe matter for local ffmpeg montage. External AI video generation speed is mostly service-side.",
+    "execution_note": "For long unattended jobs, use append-only logs and stable manifests.",
+    "reliability_note": "When a service is unstable, prefer smaller, explicitly scoped sub-timelines over full brute-force sweeps."
+  },
+  "anti_patterns_to_avoid": [
+    "Do not derive final image counts from sentence counts alone.",
+    "Do not trust run_summary.json as historical memory.",
+    "Do not mix old generation campaigns and new target plans without a dedicated manifest.",
+    "Do not assume that a powerful local machine will materially improve veononstop throughput.",
+    "Do not attach all references to all prompts."
+  ],
+  "current_state_snapshot": {
+    "branch_memory_fingerprint": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\deliverables\\branch_memory_fingerprint.json",
+    "current_total_shots": 274,
+    "current_partial_cut_end_shot": 130,
+    "current_partial_cut_end_time_seconds": 469.0
+  }
+}

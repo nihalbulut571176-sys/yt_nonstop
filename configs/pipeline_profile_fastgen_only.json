@@ -1,0 +1,29 @@
+{
+  "profile_id": "fastgen_only",
+  "schema_version": "draft-1",
+  "description": "Still-image workflow with FastGen only, without VNonStop animation. Final video is assembled from stills plus audio.",
+  "pipeline_mode": "slideshow_only",
+  "image_generation": {
+    "enabled": true,
+    "provider": "fastgen",
+    "route": "v4-openai-image",
+    "normalize_before_render": true
+  },
+  "animation": {
+    "enabled": false,
+    "provider": null,
+    "policy": "disabled",
+    "backoff_on_capacity_errors": false,
+    "stop_after_consecutive_errors": 0
+  },
+  "render": {
+    "mode": "images_only",
+    "allow_partial_deliveries": true
+  },
+  "publishing": {
+    "generate_titles": true,
+    "generate_descriptions": true,
+    "generate_thumbnails": true,
+    "thumbnail_provider": "fastgen"
+  }
+}

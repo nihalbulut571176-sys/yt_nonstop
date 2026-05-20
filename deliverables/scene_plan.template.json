@@ -1,0 +1,63 @@
+{
+  "project_id": "telegram_darknet_001",
+  "schema_version": "draft-1",
+  "source_srt_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\transcript\\voiceover.srt",
+  "max_still_duration_seconds": 5,
+  "scene_count": 2,
+  "scenes": [
+    {
+      "scene_id": "scene_0001",
+      "shot_index": 1,
+      "source_segment_id": 1,
+      "source_index": 1,
+      "part_index": 1,
+      "parts_total": 1,
+      "start": 0.0,
+      "end": 5.0,
+      "duration": 5.0,
+      "voice_text": "Представьте себе холодную ночь, узкая улица, тусклый фонарь.",
+      "visual_goal": "Establish the tense night setting and investigative mood.",
+      "prompt": "Use reference image: CHAR_01_Journalist. cinematic realistic investigative thriller, a narrow wet night street with cracked pavement and a single weak streetlamp, cold blue-gray lighting, anxious and secretive mood, wide establishing shot, Eastern Europe or the Middle East atmosphere, no text",
+      "reference_ids": [
+        "CHAR_01_Journalist"
+      ],
+      "reference_mode": "single",
+      "source_kind": "original",
+      "generated_index": 1,
+      "still_image_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\images\\normalized\\001.png",
+      "should_animate": true,
+      "animation_policy_reason": "first_minute_full",
+      "animation_status": "pending",
+      "video_path": null,
+      "render_source": "image",
+      "render_asset_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\images\\normalized\\001.png",
+      "notes": []
+    },
+    {
+      "scene_id": "scene_0002",
+      "shot_index": 2,
+      "source_segment_id": 2,
+      "source_index": 2,
+      "part_index": 1,
+      "parts_total": 1,
+      "start": 5.0,
+      "end": 9.0,
+      "duration": 4.0,
+      "voice_text": "Где-то в Восточной Европе, а может на Ближнем Востоке.",
+      "visual_goal": "Continue the same setting from a wider contextual angle.",
+      "prompt": "No character reference. cinematic realistic investigative thriller, the same narrow night street framed between old concrete facades and distant minarets or Soviet blocks, mixed cold moonlight and amber streetlight, uneasy mood, low-angle wide shot, no text",
+      "reference_ids": [],
+      "reference_mode": "none",
+      "source_kind": "original",
+      "generated_index": 2,
+      "still_image_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\images\\normalized\\002.png",
+      "should_animate": true,
+      "animation_policy_reason": "first_minute_full",
+      "animation_status": "pending",
+      "video_path": null,
+      "render_source": "image",
+      "render_asset_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\images\\normalized\\002.png",
+      "notes": []
+    }
+  ]
+}

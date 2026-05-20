@@ -1,0 +1,29 @@
+{
+  "profile_id": "veononstop",
+  "schema_version": "draft-1",
+  "description": "Primary workflow with FastGen still generation plus selective VNonStop animation and mixed-cut rendering.",
+  "pipeline_mode": "mixed_cut",
+  "image_generation": {
+    "enabled": true,
+    "provider": "fastgen",
+    "route": "v4-openai-image",
+    "normalize_before_render": true
+  },
+  "animation": {
+    "enabled": true,
+    "provider": "veononstop",
+    "policy": "first_minute_then_every_third",
+    "backoff_on_capacity_errors": true,
+    "stop_after_consecutive_errors": 5
+  },
+  "render": {
+    "mode": "video_if_available_else_image",
+    "allow_partial_deliveries": true
+  },
+  "publishing": {
+    "generate_titles": true,
+    "generate_descriptions": true,
+    "generate_thumbnails": true,
+    "thumbnail_provider": "fastgen"
+  }
+}

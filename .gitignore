@@ -1,0 +1,46 @@
+.env
+__pycache__/
+tmp_fastgen_probe/
+tmp_frames/
+CH/
+assets/
+transcript/
+transcript_fw/
+fastgen_run/
+fastgen_run_max5_extras/
+fastgen_thumbnail_run/
+fastgen_thumbnail_run_v2/
+fastgen_thumbnail_variant_run/
+heygen_run/
+veononstop_run/
+veononstop_run_test2/
+temp_fastgen_docs.html
+edit/
+
+# Generated image/video runs
+fastgen_run/images/
+fastgen_run_max5_extras/images/
+veononstop_run/videos/
+
+# Normalized/generated media
+edit/normalized_images/
+edit/normalized_extra_images/
+
+# Rendered delivery assets
+deliverables/final_video/*.mp4
+deliverables/final_video/*.ffconcat
+deliverables/partial_*/
+deliverables/partial_*_avatar/
+deliverables/prompt_batches/
+deliverables/branch_memory_fingerprint.json
+deliverables/fastgen_ref_paths.json
+deliverables/sentence_*.md
+deliverables/sentence_*.txt
+deliverables/telegram_darknet_visual_prompts.md
+deliverables/partial_*/part_*.mp4
+deliverables/partial_*_avatar/part_*.mp4
+deliverables/partial_*/clips/
+deliverables/partial_*_avatar/clips/
+
+# Python cache
+scripts/__pycache__/

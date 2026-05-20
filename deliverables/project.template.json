@@ -1,0 +1,121 @@
+{
+  "project_id": "telegram_darknet_001",
+  "schema_version": "draft-1",
+  "created_at": "2026-05-12T15:00:00Z",
+  "updated_at": "2026-05-12T15:00:00Z",
+  "status": "draft",
+  "current_stage": "rewrite",
+  "meta": {
+    "title": "The new darknet in messengers",
+    "language": "ru",
+    "base_visual_language": "English",
+    "target_platform": "YouTube",
+    "owner": "MIKE",
+    "project_root": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001"
+  },
+  "inputs": {
+    "raw_text_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\input\\raw_text.md",
+    "raw_text_char_count": 3000,
+    "audio_path": null,
+    "audio_duration_seconds": null
+  },
+  "rewrite": {
+    "status": "pending",
+    "master_prompt_version": "voiceover-rewrite-v1",
+    "source_text_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\input\\raw_text.md",
+    "rewritten_script_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\input\\voice_script.md",
+    "approved_script_path": null,
+    "notes": null
+  },
+  "transcription": {
+    "status": "pending",
+    "engine": "faster-whisper",
+    "model": "large-v3",
+    "device": "auto",
+    "audio_path": null,
+    "srt_path": null,
+    "segments_json_path": null,
+    "meta_json_path": null
+  },
+  "scene_plan": {
+    "status": "pending",
+    "max_still_duration_seconds": 5,
+    "source_srt_path": null,
+    "long_segment_report_path": null,
+    "scene_plan_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\scene_plan\\scene_plan.json",
+    "scene_count": 0,
+    "original_segment_count": 0
+  },
+  "prompts": {
+    "status": "pending",
+    "prompt_language": "English",
+    "style_preset": "cinematic-realistic-v1",
+    "reference_mapping_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\deliverables\\fastgen_ref_paths.json",
+    "prompt_export_path": null
+  },
+  "images": {
+    "status": "pending",
+    "provider": "Fast Gen",
+    "route": "v4-openai-image",
+    "run_manifest_path": null,
+    "raw_images_dir": null,
+    "normalized_images_dir": null,
+    "generated_count": 0,
+    "failed_count": 0
+  },
+  "animation": {
+    "status": "pending",
+    "policy_name": "first_minute_then_every_third",
+    "campaign_manifest_path": null,
+    "timeline_subset_path": null,
+    "provider": "veononstop",
+    "run_manifest_path": null,
+    "videos_dir": null,
+    "success_log_path": null,
+    "failed_log_path": null
+  },
+  "render": {
+    "status": "pending",
+    "mixed_manifest_path": null,
+    "ffconcat_path": null,
+    "partial_outputs": [],
+    "final_video_path": null
+  },
+  "publishing": {
+    "status": "pending",
+    "editorial_angle": null,
+    "title_generation": {
+      "status": "pending",
+      "prompt_version": "youtube-title-v1",
+      "drafts_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\publishing\\title_drafts.json",
+      "approved_title_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\publishing\\title_approved.txt"
+    },
+    "description_generation": {
+      "status": "pending",
+      "prompt_version": "youtube-description-v1",
+      "drafts_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\publishing\\description_drafts.json",
+      "approved_description_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\publishing\\description_approved.md"
+    },
+    "thumbnail_generation": {
+      "status": "pending",
+      "provider": "Fast Gen",
+      "prompt_version": "youtube-thumbnail-v1",
+      "thumbnail_brief_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\publishing\\thumbnail_brief.md",
+      "prompt_candidates_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\publishing\\thumbnail_prompt_candidates.json",
+      "approved_prompt_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\publishing\\thumbnail_prompt_approved.txt",
+      "run_manifest_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\publishing\\thumbnails\\run_manifest.json",
+      "candidates_dir": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\publishing\\thumbnails\\candidates",
+      "approved_thumbnail_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\publishing\\thumbnails\\approved.png"
+    }
+  },
+  "qc": {
+    "status": "pending",
+    "qc_report_path": null,
+    "last_result": null
+  },
+  "logs": {
+    "pipeline_log_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\logs\\pipeline.log",
+    "events_jsonl_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\logs\\events.jsonl"
+  },
+  "notes": []
+}
