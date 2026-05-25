@@ -27,31 +27,48 @@ def main() -> None:
 
     ffconcat_lines = ["ffconcat version 1.0"]
     timeline = []
+    playback_cursor = 0.0
+    audio_duration = float(project.get("inputs", {}).get("audio_duration_seconds") or 0.0)
 
-    for scene in scenes:
+    project_root = Path(project["meta"]["project_root"])
+
+    for index, scene in enumerate(scenes):
         image_path_str = scene.get("render_asset_path") or scene.get("still_image_path")
-        if not image_path_str:
+        image_path = Path(image_path_str) if image_path_str else None
+        if image_path is None:
+            fallback_path = project_root / "images" / "normalized" / f"{int(scene['shot_index']):03d}.png"
+            if fallback_path.exists():
+                image_path = fallback_path
+        if image_path is None:
             raise FileNotFoundError(f"Scene {scene.get('scene_id')} has no still image path")
-        image_path = Path(image_path_str)
         if not image_path.exists():
             raise FileNotFoundError(f"Missing image for scene {scene.get('scene_id')}: {image_path}")
 
         duration = float(scene["duration"])
+        is_last_scene = index == len(scenes) - 1
+        if is_last_scene and audio_duration > playback_cursor + duration:
+            duration = round(audio_duration - playback_cursor, 6)
+        playback_start = round(playback_cursor, 6)
+        playback_end = round(playback_start + duration, 6)
+        playback_cursor = playback_end
         ffconcat_lines.append(f"file '{safe_ffconcat_path(image_path)}'")
         ffconcat_lines.append(f"duration {duration:.6f}")
         timeline.append(
             {
                 "scene_id": scene["scene_id"],
                 "shot_index": scene["shot_index"],
-                "start": scene["start"],
-                "end": scene["end"],
+                "start": playback_start,
+                "end": playback_end,
                 "duration": duration,
                 "image": str(image_path),
                 "voice_text": scene.get("voice_text", ""),
+                "source_start": scene["start"],
+                "source_end": scene["end"],
             }
         )
 
-    last_image = Path(scenes[-1].get("render_asset_path") or scenes[-1].get("still_image_path"))
+    last_image_str = scenes[-1].get("render_asset_path") or scenes[-1].get("still_image_path")
+    last_image = Path(last_image_str) if last_image_str else project_root / "images" / "normalized" / f"{int(scenes[-1]['shot_index']):03d}.png"
     ffconcat_lines.append(f"file '{safe_ffconcat_path(last_image)}'")
 
     ffconcat_path.write_text("\n".join(ffconcat_lines) + "\n", encoding="utf-8")

@@ -5,6 +5,8 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
+from prompt_continuity import build_beat_report, extract_scene_semantics, infer_theme, read_source_text
+
 
 SENTENCE_END_RE = re.compile(r"[.!?…]$|[.!?…][\"'»”)]$")
 
@@ -87,7 +89,9 @@ def split_duration(total: float, parts: int) -> list[float]:
     return durations
 
 
-def build_scene_plan(sentence_blocks: list[dict], max_duration: float) -> tuple[list[dict], list[dict]]:
+def build_scene_plan(
+    sentence_blocks: list[dict], max_duration: float, theme_hint: str
+) -> tuple[list[dict], list[dict]]:
     scenes = []
     long_segments = []
 
@@ -114,37 +118,47 @@ def build_scene_plan(sentence_blocks: list[dict], max_duration: float) -> tuple[
             part_end = round(cursor + part_duration, 6)
             cursor = part_end
 
-            scenes.append(
-                {
-                    "scene_id": f"scene_{len(scenes) + 1:04d}",
-                    "shot_index": len(scenes) + 1,
-                    "source_segment_id": block["segment_id"],
-                    "source_index": block["segment_id"],
-                    "part_index": idx,
-                    "parts_total": parts,
-                    "start": part_start,
-                    "end": part_end,
-                    "duration": round(part_duration, 6),
-                    "voice_text": block["text"],
-                    "visual_goal": "",
-                    "prompt": "",
-                    "reference_ids": [],
-                    "reference_mode": "none",
-                    "source_kind": "original" if idx == 1 else "extra",
-                    "generated_index": None,
-                    "still_image_path": None,
-                    "should_animate": False,
-                    "animation_policy_reason": "fastgen_only_no_animation",
-                    "animation_status": "skipped",
-                    "video_path": None,
-                    "render_source": "missing",
-                    "render_asset_path": None,
-                    "notes": [
-                        "Prompt pending",
-                        "Still image pending",
-                    ],
-                }
-            )
+            scene = {
+                "scene_id": f"scene_{len(scenes) + 1:04d}",
+                "shot_index": len(scenes) + 1,
+                "source_segment_id": block["segment_id"],
+                "source_index": block["segment_id"],
+                "part_index": idx,
+                "parts_total": parts,
+                "start": part_start,
+                "end": part_end,
+                "duration": round(part_duration, 6),
+                "voice_text": block["text"],
+                "visual_goal": "",
+                "prompt": "",
+                "shot_role": "",
+                "primary_subject": "",
+                "environment": "",
+                "composition": "",
+                "angle": "",
+                "lighting": "",
+                "atmosphere": "",
+                "active_entity_ids": [],
+                "continuity_cast": [],
+                "continuity_focus": "",
+                "reference_ids": [],
+                "reference_mode": "none",
+                "source_kind": "original" if idx == 1 else "extra",
+                "generated_index": None,
+                "still_image_path": None,
+                "should_animate": False,
+                "animation_policy_reason": "fastgen_only_no_animation",
+                "animation_status": "skipped",
+                "video_path": None,
+                "render_source": "missing",
+                "render_asset_path": None,
+                "notes": [
+                    "Prompt pending",
+                    "Still image pending",
+                ],
+            }
+            scene.update(extract_scene_semantics(scene, theme_hint))
+            scenes.append(scene)
 
     return scenes, long_segments
 
@@ -177,7 +191,7 @@ def main() -> None:
 
     project_json = Path(args.project_json).resolve()
     project = json.loads(project_json.read_text(encoding="utf-8"))
-    srt_path = Path(project["transcription"]["srt_path"])
+    srt_path = Path(project["scene_plan"].get("source_srt_path") or project["transcription"]["srt_path"])
     if not srt_path.exists():
         raise FileNotFoundError(f"SRT not found: {srt_path}")
 
@@ -188,12 +202,17 @@ def main() -> None:
     max_duration = float(project["scene_plan"]["max_still_duration_seconds"])
     segments = parse_srt(srt_path.read_text(encoding="utf-8"))
     sentence_blocks = merge_into_sentence_blocks(segments)
-    scenes, long_segments = build_scene_plan(sentence_blocks, max_duration)
+    source_text = read_source_text(project)
+    theme_hint = infer_theme(project, source_text, [{"voice_text": item["text"]} for item in sentence_blocks])
+    scenes, long_segments = build_scene_plan(sentence_blocks, max_duration, theme_hint)
 
     sentence_blocks_json_path = scene_plan_dir / "sentence_blocks.json"
     sentence_blocks_txt_path = scene_plan_dir / "sentence_blocks.txt"
     long_segment_report_path = Path(project["scene_plan"]["long_segment_report_path"])
     scene_prompts_seed_path = Path(project["prompts"]["prompt_export_path"])
+    logs_dir = Path(project["meta"]["project_root"]) / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    beat_report_path = logs_dir / "beat_extraction_report.md"
 
     sentence_blocks_json_path.write_text(json.dumps(sentence_blocks, ensure_ascii=False, indent=2), encoding="utf-8")
     write_sentence_block_text(sentence_blocks_txt_path, sentence_blocks)
@@ -216,17 +235,20 @@ def main() -> None:
         "project_id": project["project_id"],
         "schema_version": project["schema_version"],
         "source_srt_path": str(srt_path),
+        "theme_hint": theme_hint,
         "max_still_duration_seconds": max_duration,
         "scene_count": len(scenes),
         "scenes": scenes,
     }
     scene_plan_path.write_text(json.dumps(scene_plan, ensure_ascii=False, indent=2), encoding="utf-8")
     write_scene_prompt_seed(scene_prompts_seed_path, scenes)
+    beat_report_path.write_text(build_beat_report(scenes), encoding="utf-8")
 
     project["scene_plan"]["status"] = "completed"
     project["scene_plan"]["scene_count"] = len(scenes)
     project["scene_plan"]["original_segment_count"] = len(sentence_blocks)
     project["prompts"]["status"] = "pending"
+    project.setdefault("logs", {})["beat_extraction_report_path"] = str(beat_report_path)
     project["current_stage"] = "prompt_package"
     project["updated_at"] = iso_now()
     project_json.write_text(json.dumps(project, ensure_ascii=False, indent=2), encoding="utf-8")

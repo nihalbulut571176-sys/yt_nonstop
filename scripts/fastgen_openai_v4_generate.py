@@ -20,6 +20,11 @@ DEFAULT_REFS = Path(r"C:\Users\MIKE\Documents\Codex\YT\deliverables\fastgen_ref_
 DEFAULT_WORKDIR = Path(r"C:\Users\MIKE\Documents\Codex\YT\fastgen_run")
 
 
+def stable_hash(payload: object) -> str:
+    data = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return __import__("hashlib").sha256(data.encode("utf-8")).hexdigest()
+
+
 def load_env_key() -> str:
     if "FAST_GEN_API_KEY" in os.environ and os.environ["FAST_GEN_API_KEY"].strip():
         return os.environ["FAST_GEN_API_KEY"].strip()
@@ -76,6 +81,27 @@ def parse_prompt_blocks(path: Path):
 
         raise ValueError(f"Unrecognized prompt format at block {index}")
     return parsed
+
+
+def validate_prompt_export(path: Path, parsed_blocks: list[dict]) -> None:
+    meta_path = path.with_suffix(path.suffix + ".meta.json")
+    if not meta_path.exists():
+        return
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    prompt_count = len(parsed_blocks)
+    export_text = path.read_text(encoding="utf-8")
+    computed_signature = stable_hash(
+        {
+            "package_path": meta.get("package_path"),
+            "package_signature": meta.get("package_signature"),
+            "prompt_count": prompt_count,
+            "content": export_text,
+        }
+    )
+    if prompt_count != meta.get("prompt_count"):
+        raise RuntimeError(f"Prompt export count mismatch for {path}: meta={meta.get('prompt_count')} actual={prompt_count}")
+    if computed_signature != meta.get("export_signature"):
+        raise RuntimeError(f"Prompt export signature mismatch for {path}; rebuild export before generation")
 
 
 def load_reference_map(path: Path):
@@ -242,6 +268,7 @@ def main() -> None:
 
     api_key = load_env_key()
     prompt_items = parse_prompt_blocks(prompts_path)
+    validate_prompt_export(prompts_path, prompt_items)
     end = args.end if args.end > 0 else len(prompt_items)
     prompt_items = [item for item in prompt_items if args.start <= item["index"] <= end]
 
