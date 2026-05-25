@@ -5,10 +5,10 @@
   "created_at": "2026-05-12T15:00:00Z",
   "updated_at": "2026-05-12T15:00:00Z",
   "status": "draft",
-  "current_stage": "rewrite",
+  "current_stage": "transcription",
   "meta": {
     "title": "The new darknet in messengers",
-    "language": "ru",
+    "language": "auto",
     "base_visual_language": "English",
     "target_platform": "YouTube",
     "owner": "MIKE",
@@ -32,11 +32,22 @@
     "status": "pending",
     "engine": "faster-whisper",
     "model": "large-v3",
+    "compute_type": "int8",
     "device": "auto",
     "audio_path": null,
+    "raw_srt_path": null,
     "srt_path": null,
     "segments_json_path": null,
     "meta_json_path": null
+  },
+  "transcript_cleanup": {
+    "status": "pending",
+    "source_text_path": null,
+    "used_source_path": null,
+    "cleaned_srt_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\transcript\\cleaned.srt",
+    "cleaned_segments_json_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\transcript\\cleaned_segments.json",
+    "cleaned_timed_transcript_md_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\transcript\\cleaned_timed_transcript.md",
+    "cleanup_report_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\transcript\\cleanup_report.json"
   },
   "scene_plan": {
     "status": "pending",
@@ -50,12 +61,32 @@
   "prompts": {
     "status": "pending",
     "prompt_language": "English",
+    "authoring_mode": "llm_authored",
+    "authoring_model": "codex-gpt-5",
     "style_preset": "cinematic-realistic-v1",
+    "style_guide_path": null,
+    "visual_bible_path": null,
+    "visual_bible_review_path": null,
+    "global_style_summary": null,
+    "quality_mode": "standard",
     "reference_mapping_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\deliverables\\fastgen_ref_paths.json",
+    "scene_context_pack_path": null,
+    "visual_shot_plan_path": null,
+    "visual_shot_plan_status": "pending",
+    "shot_prompt_package_path": null,
+    "shot_prompt_review_path": null,
+    "llm_prompt_drafts_path": null,
     "prompt_export_path": null,
     "prompt_package_path": null,
+    "final_scene_plan_path": null,
+    "fastgen_export_path": null,
     "generator_ready_path": null,
     "prompt_review_path": null
+  },
+  "motion": {
+    "status": "pending",
+    "motion_plan_json_path": null,
+    "motion_plan_csv_path": null
   },
   "images": {
     "status": "pending",
@@ -121,7 +152,20 @@
   },
   "logs": {
     "pipeline_log_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\logs\\pipeline.log",
-    "events_jsonl_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\logs\\events.jsonl"
+    "events_jsonl_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\logs\\events.jsonl",
+    "input_validation_report_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\logs\\input_validation_report.md",
+    "timing_cleanup_report_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\logs\\timing_cleanup_report.md",
+    "scene_qa_report_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\logs\\scene_qa_report.md",
+    "scene_qa_json_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\logs\\scene_qa.json",
+    "narrative_editor_report_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\logs\\narrative_editor_report.md",
+    "visual_direction_report_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\logs\\visual_direction_report.md",
+    "brand_realism_report_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\logs\\brand_realism_report.md",
+    "prompt_qa_report_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\logs\\prompt_qa_report.md",
+    "prompt_qa_json_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\logs\\prompt_qa.json",
+    "export_report_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\logs\\export_report.md",
+    "generation_report_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\logs\\generation_report.md",
+    "render_report_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\logs\\render_report.md",
+    "final_review_report_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\logs\\final_review_report.md"
   },
   "notes": []
 }
