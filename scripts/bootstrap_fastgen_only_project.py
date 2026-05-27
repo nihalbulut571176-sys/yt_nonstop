@@ -36,6 +36,8 @@ def ensure_dirs(project_root: Path) -> dict[str, Path]:
         "images_normalized": project_root / "images" / "normalized",
         "video_runs": project_root / "video_runs",
         "renders": project_root / "renders",
+        "motion": project_root / "motion",
+        "qc": project_root / "qc",
         "publishing": project_root / "publishing",
         "publishing_thumbs": project_root / "publishing" / "thumbnails",
         "publishing_thumb_candidates": project_root / "publishing" / "thumbnails" / "candidates",
@@ -232,6 +234,7 @@ def create_project_manifest(
     manifest["prompts"]["prompt_review_path"] = str(dirs["prompts"] / "prompt_review.md")
 
     manifest["images"]["run_manifest_path"] = str(dirs["images_fastgen"] / "run_manifest.json")
+    manifest["images"]["selection_manifest_path"] = str(project_root / "qc" / "selection_manifest.json")
     manifest["images"]["raw_images_dir"] = str(dirs["images_fastgen_raw"])
     manifest["images"]["normalized_images_dir"] = str(dirs["images_normalized"])
 
@@ -247,6 +250,7 @@ def create_project_manifest(
 
     manifest["render"]["render_strategy"] = "images_only"
     manifest["render"]["mixed_manifest_path"] = str(dirs["renders"] / "mixed_manifest.json")
+    manifest["render"]["motion_plan_path"] = str(project_root / "motion" / "motion_plan.json")
     manifest["render"]["slideshow_timeline_path"] = str(dirs["renders"] / "slideshow_timeline.json")
     manifest["render"]["ffconcat_path"] = str(dirs["renders"] / "timeline.ffconcat")
     manifest["render"]["final_video_path"] = str(dirs["renders"] / f"{project_id}.mp4")
@@ -263,7 +267,8 @@ def create_project_manifest(
     manifest["publishing"]["thumbnail_generation"]["candidates_dir"] = str(dirs["publishing_thumb_candidates"])
     manifest["publishing"]["thumbnail_generation"]["approved_thumbnail_path"] = str(publishing_files["approved_thumbnail"])
 
-    manifest["qc"]["qc_report_path"] = str(dirs["renders"] / "qc_report.json")
+    manifest["qc"]["qc_report_path"] = str(dirs["logs"] / "qc_report.md")
+    manifest["qc"]["results_json_path"] = str(project_root / "qc" / "qc_results.json")
     manifest["logs"]["pipeline_log_path"] = str(dirs["logs"] / "pipeline.log")
     manifest["logs"]["events_jsonl_path"] = str(dirs["logs"] / "events.jsonl")
 

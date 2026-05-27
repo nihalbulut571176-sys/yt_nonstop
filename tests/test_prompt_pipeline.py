@@ -53,8 +53,8 @@ class PromptPipelineTests(unittest.TestCase):
 
     def test_reaction_escape_does_not_fall_into_bridge(self):
         scenes = [
-            self.make_scene(15, "И пока люди вокруг ещё пытаются понять, что случилось, преступники уже уходят. Это не сцена из фильма.", 2, 1),
-            self.make_scene(16, "И пока люди вокруг ещё пытаются понять, что случилось, преступники уже уходят. Это не сцена из фильма.", 2, 2),
+            self.make_scene(15, "И пока люди вокруг еще пытаются понять, что случилось, преступники уже уходят. Это не сцена из фильма.", 2, 1),
+            self.make_scene(16, "И пока люди вокруг еще пытаются понять, что случилось, преступники уже уходят. Это не сцена из фильма.", 2, 2),
         ]
         bundle = build_continuity_bundle(self.make_project(), scenes, "Pink Panthers")
         roles = [bundle["shot_role_map"][scene["scene_id"]] for scene in scenes]
@@ -83,9 +83,18 @@ class PromptPipelineTests(unittest.TestCase):
                 "shot_role": "investigative_bridge",
                 "primary_subject": "the recurring documentary subject",
                 "environment": "same",
+                "scale": "medium",
+                "angle": "medium",
+                "lighting_family": "neutral",
+                "density": "clean",
+                "visual_function": "transition",
+                "key_beat": False,
+                "variant_count": 1,
+                "active_entity_ids": [],
+                "continuity_cast": [],
+                "prompt": "Scene meaning: x",
                 "semantic_descriptor": {
                     "event_clarity_required": False,
-                    "semantic_action": "a",
                 },
             }
         ]
@@ -98,6 +107,8 @@ class PromptPipelineTests(unittest.TestCase):
         authored = build_scene_prompt(scene, bundle)
         self.assertNotEqual(authored["primary_subject"], "the recurring documentary subject")
         self.assertEqual(authored["shot_role"], "identity_reveal")
+        self.assertEqual(authored["prompt_sections"][0], "Scene meaning:")
+        self.assertEqual(authored["beat_priority"], "hero")
 
     def test_prompt_export_validation_detects_stale_meta(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -115,6 +126,71 @@ class PromptPipelineTests(unittest.TestCase):
             meta_path.write_text(json.dumps(bad_meta), encoding="utf-8")
             with self.assertRaises(RuntimeError):
                 validate_prompt_export(prompt_path, blocks)
+
+    def test_opening_security_beat_becomes_key_beat(self):
+        scene = self.make_scene(1, "Бутик, камеры и охрана делают пространство почти стерильным.")
+        descriptor = extract_scene_semantics(scene, "luxury_jewel_heist_documentary")
+        self.assertTrue(descriptor["key_beat"])
+        self.assertIn(descriptor["beat_priority"], {"hero", "priority"})
+
+    def test_prompt_qa_requires_diversity_and_sections(self):
+        items = [
+            {
+                "scene_id": "scene_0001",
+                "shot_role": "luxury_establishing",
+                "primary_subject": "protected boutique interior",
+                "environment": "tokyo boutique",
+                "scale": "wide",
+                "angle": "wide architectural documentary angle",
+                "lighting_family": "warm",
+                "density": "layered",
+                "visual_function": "hook",
+                "key_beat": False,
+                "variant_count": 1,
+                "active_entity_ids": [],
+                "continuity_cast": [],
+                "prompt": "\n".join(
+                    [
+                        "Scene meaning: x",
+                        "Visual intent: x",
+                        "Main subject: x",
+                        "Environment storytelling: x",
+                        "Composition: x",
+                        "Camera: x",
+                        "Lighting: x",
+                        "Mood: x",
+                        "Important details:",
+                        "Restrictions: x",
+                    ]
+                ),
+                "semantic_descriptor": {
+                    "event_clarity_required": False,
+                },
+            },
+            {
+                "scene_id": "scene_0002",
+                "shot_role": "luxury_establishing",
+                "primary_subject": "protected boutique interior",
+                "environment": "tokyo boutique",
+                "scale": "wide",
+                "angle": "wide architectural documentary angle",
+                "lighting_family": "warm",
+                "density": "layered",
+                "visual_function": "hook",
+                "key_beat": False,
+                "variant_count": 1,
+                "active_entity_ids": [],
+                "continuity_cast": [],
+                "prompt": "Scene meaning: incomplete",
+                "semantic_descriptor": {
+                    "event_clarity_required": False,
+                },
+            },
+        ]
+        qa = run_prompt_package_qa(items, "luxury_jewel_heist_documentary")
+        self.assertEqual(qa["status"], "failed")
+        self.assertTrue(any("adjacent-shot diversity too low" in issue for issue in qa["issues"]))
+        self.assertTrue(any("prompt missing section" in issue for issue in qa["issues"]))
 
 
 if __name__ == "__main__":

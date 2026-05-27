@@ -256,6 +256,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--timeline", default=str(DEFAULT_TIMELINE))
     parser.add_argument("--workdir", default=str(DEFAULT_WORKDIR))
+    parser.add_argument("--videos-dir", default="")
     parser.add_argument("--start", type=int, default=1)
     parser.add_argument("--end", type=int, default=0)
     parser.add_argument("--aspect-ratio", default="16:9")
@@ -279,7 +280,7 @@ def main() -> None:
     shots = [shot for shot in timeline if args.start <= int(shot["shot_index"]) <= end_index]
 
     workdir = Path(args.workdir)
-    videos_dir = workdir / "videos"
+    videos_dir = Path(args.videos_dir) if args.videos_dir else workdir / "videos"
     meta_dir = workdir / "meta"
     videos_dir.mkdir(parents=True, exist_ok=True)
     meta_dir.mkdir(parents=True, exist_ok=True)

@@ -1,0 +1,46 @@
+[
+  [
+    "field",
+    "value"
+  ],
+  [
+    "scope",
+    "Unified all-frames generation workbook with premium overrides merged into the full master timeline"
+  ],
+  [
+    "how_to_use",
+    "For batch generation, use generation_prompt_final as the default prompt column for every row"
+  ],
+  [
+    "premium_logic",
+    "If is_premium_shortlist = yes, generation_prompt_final uses the premium upgraded prompt; otherwise it falls back to the base prompt"
+  ],
+  [
+    "base_prompt_column",
+    "image_prompt_base preserves the original master prompt for every frame"
+  ],
+  [
+    "premium_prompt_column",
+    "image_prompt_premium is filled only for shortlisted frames and left blank for all others"
+  ],
+  [
+    "preferred_prompt_tier",
+    "premium for shortlisted frames, base for the rest"
+  ],
+  [
+    "reference_workflow",
+    "Use reference_assets_needed plus continuity_anchor to decide which references to attach; do not force character references into non-character shots"
+  ],
+  [
+    "consistency_workflow",
+    "Keep recurring worlds, lighting families, object silhouettes, and wardrobe logic stable across adjacent beats"
+  ],
+  [
+    "premium_count",
+    "182"
+  ],
+  [
+    "total_count",
+    "645"
+  ]
+]

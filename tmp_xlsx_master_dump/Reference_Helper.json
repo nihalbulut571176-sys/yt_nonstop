@@ -1,0 +1,4524 @@
+[
+  [
+    "id",
+    "section",
+    "recurring_world",
+    "reference_assets_needed",
+    "preferred_prompt_tier"
+  ],
+  [
+    "DC01",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "premium"
+  ],
+  [
+    "DC02",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "premium"
+  ],
+  [
+    "DC03",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "base"
+  ],
+  [
+    "DC04",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "premium"
+  ],
+  [
+    "DC05",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "premium"
+  ],
+  [
+    "DC06",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "premium"
+  ],
+  [
+    "DC07",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "premium"
+  ],
+  [
+    "DC08",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "premium"
+  ],
+  [
+    "DC09",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "premium"
+  ],
+  [
+    "DC10",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "premium"
+  ],
+  [
+    "DC11",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "premium"
+  ],
+  [
+    "DC12",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "premium"
+  ],
+  [
+    "DC13",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "premium"
+  ],
+  [
+    "DC14",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "premium"
+  ],
+  [
+    "DC15",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "premium"
+  ],
+  [
+    "DC16",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "premium"
+  ],
+  [
+    "DC17",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "base"
+  ],
+  [
+    "DC18",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "premium"
+  ],
+  [
+    "DC19",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "premium"
+  ],
+  [
+    "DC20",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "base"
+  ],
+  [
+    "DC21",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "base"
+  ],
+  [
+    "DC22",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "base"
+  ],
+  [
+    "DC23",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "premium"
+  ],
+  [
+    "DC24",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "base"
+  ],
+  [
+    "DC25",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "base"
+  ],
+  [
+    "DC26",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "premium"
+  ],
+  [
+    "DC27",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "premium"
+  ],
+  [
+    "DC28",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "premium"
+  ],
+  [
+    "DC29",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "base"
+  ],
+  [
+    "DC30",
+    "Opening Director's Cut",
+    "TOKYO_OPENING_WORLD",
+    "TOKYO_BOUTIQUE_MAIN; TOKYO_NECKLACE_HERO; TOKYO_INTRUDER_A when same man returns; TOKYO_INTRUDER_B when pair frame returns; TOKYO_ASSOCIATE_A for employee shots; TOKYO_GUARD_A for guard shots",
+    "premium"
+  ],
+  [
+    "B0031",
+    "Nickname And Method",
+    "FORENSIC_AND_BALKAN_METHOD",
+    "FORENSIC_LAB_MAIN for evidence shots; BALKAN_SAFEHOUSE_MAIN for prep-room shots; BALKAN_NETWORK_CORE only when recurring men are visible",
+    "premium"
+  ],
+  [
+    "B0032",
+    "Nickname And Method",
+    "FORENSIC_AND_BALKAN_METHOD",
+    "FORENSIC_LAB_MAIN for evidence shots; BALKAN_SAFEHOUSE_MAIN for prep-room shots; BALKAN_NETWORK_CORE only when recurring men are visible",
+    "premium"
+  ],
+  [
+    "B0033",
+    "Nickname And Method",
+    "FORENSIC_AND_BALKAN_METHOD",
+    "FORENSIC_LAB_MAIN for evidence shots; BALKAN_SAFEHOUSE_MAIN for prep-room shots; BALKAN_NETWORK_CORE only when recurring men are visible",
+    "premium"
+  ],
+  [
+    "B0034",
+    "Nickname And Method",
+    "FORENSIC_AND_BALKAN_METHOD",
+    "FORENSIC_LAB_MAIN for evidence shots; BALKAN_SAFEHOUSE_MAIN for prep-room shots; BALKAN_NETWORK_CORE only when recurring men are visible",
+    "base"
+  ],
+  [
+    "B0035",
+    "Nickname And Method",
+    "FORENSIC_AND_BALKAN_METHOD",
+    "FORENSIC_LAB_MAIN for evidence shots; BALKAN_SAFEHOUSE_MAIN for prep-room shots; BALKAN_NETWORK_CORE only when recurring men are visible",
+    "base"
+  ],
+  [
+    "B0036",
+    "Nickname And Method",
+    "FORENSIC_AND_BALKAN_METHOD",
+    "FORENSIC_LAB_MAIN for evidence shots; BALKAN_SAFEHOUSE_MAIN for prep-room shots; BALKAN_NETWORK_CORE only when recurring men are visible",
+    "premium"
+  ],
+  [
+    "B0037",
+    "Nickname And Method",
+    "FORENSIC_AND_BALKAN_METHOD",
+    "FORENSIC_LAB_MAIN for evidence shots; BALKAN_SAFEHOUSE_MAIN for prep-room shots; BALKAN_NETWORK_CORE only when recurring men are visible",
+    "premium"
+  ],
+  [
+    "B0038",
+    "Nickname And Method",
+    "FORENSIC_AND_BALKAN_METHOD",
+    "FORENSIC_LAB_MAIN for evidence shots; BALKAN_SAFEHOUSE_MAIN for prep-room shots; BALKAN_NETWORK_CORE only when recurring men are visible",
+    "base"
+  ],
+  [
+    "B0039",
+    "Nickname And Method",
+    "FORENSIC_AND_BALKAN_METHOD",
+    "FORENSIC_LAB_MAIN for evidence shots; BALKAN_SAFEHOUSE_MAIN for prep-room shots; BALKAN_NETWORK_CORE only when recurring men are visible",
+    "base"
+  ],
+  [
+    "B0040",
+    "Nickname And Method",
+    "FORENSIC_AND_BALKAN_METHOD",
+    "FORENSIC_LAB_MAIN for evidence shots; BALKAN_SAFEHOUSE_MAIN for prep-room shots; BALKAN_NETWORK_CORE only when recurring men are visible",
+    "base"
+  ],
+  [
+    "B0041",
+    "Nickname And Method",
+    "FORENSIC_AND_BALKAN_METHOD",
+    "FORENSIC_LAB_MAIN for evidence shots; BALKAN_SAFEHOUSE_MAIN for prep-room shots; BALKAN_NETWORK_CORE only when recurring men are visible",
+    "base"
+  ],
+  [
+    "B0042",
+    "Nickname And Method",
+    "FORENSIC_AND_BALKAN_METHOD",
+    "FORENSIC_LAB_MAIN for evidence shots; BALKAN_SAFEHOUSE_MAIN for prep-room shots; BALKAN_NETWORK_CORE only when recurring men are visible",
+    "base"
+  ],
+  [
+    "B0043",
+    "Nickname And Method",
+    "FORENSIC_AND_BALKAN_METHOD",
+    "FORENSIC_LAB_MAIN for evidence shots; BALKAN_SAFEHOUSE_MAIN for prep-room shots; BALKAN_NETWORK_CORE only when recurring men are visible",
+    "base"
+  ],
+  [
+    "B0044",
+    "Nickname And Method",
+    "FORENSIC_AND_BALKAN_METHOD",
+    "FORENSIC_LAB_MAIN for evidence shots; BALKAN_SAFEHOUSE_MAIN for prep-room shots; BALKAN_NETWORK_CORE only when recurring men are visible",
+    "base"
+  ],
+  [
+    "B0045",
+    "Nickname And Method",
+    "FORENSIC_AND_BALKAN_METHOD",
+    "FORENSIC_LAB_MAIN for evidence shots; BALKAN_SAFEHOUSE_MAIN for prep-room shots; BALKAN_NETWORK_CORE only when recurring men are visible",
+    "base"
+  ],
+  [
+    "B0046",
+    "Nickname And Method",
+    "FORENSIC_AND_BALKAN_METHOD",
+    "FORENSIC_LAB_MAIN for evidence shots; BALKAN_SAFEHOUSE_MAIN for prep-room shots; BALKAN_NETWORK_CORE only when recurring men are visible",
+    "base"
+  ],
+  [
+    "B0047",
+    "Nickname And Method",
+    "FORENSIC_AND_BALKAN_METHOD",
+    "FORENSIC_LAB_MAIN for evidence shots; BALKAN_SAFEHOUSE_MAIN for prep-room shots; BALKAN_NETWORK_CORE only when recurring men are visible",
+    "base"
+  ],
+  [
+    "B0048",
+    "Nickname And Method",
+    "FORENSIC_AND_BALKAN_METHOD",
+    "FORENSIC_LAB_MAIN for evidence shots; BALKAN_SAFEHOUSE_MAIN for prep-room shots; BALKAN_NETWORK_CORE only when recurring men are visible",
+    "base"
+  ],
+  [
+    "B0049",
+    "Nickname And Method",
+    "FORENSIC_AND_BALKAN_METHOD",
+    "FORENSIC_LAB_MAIN for evidence shots; BALKAN_SAFEHOUSE_MAIN for prep-room shots; BALKAN_NETWORK_CORE only when recurring men are visible",
+    "base"
+  ],
+  [
+    "B0050",
+    "Nickname And Method",
+    "FORENSIC_AND_BALKAN_METHOD",
+    "FORENSIC_LAB_MAIN for evidence shots; BALKAN_SAFEHOUSE_MAIN for prep-room shots; BALKAN_NETWORK_CORE only when recurring men are visible",
+    "premium"
+  ],
+  [
+    "B0051",
+    "Nickname And Method",
+    "FORENSIC_AND_BALKAN_METHOD",
+    "FORENSIC_LAB_MAIN for evidence shots; BALKAN_SAFEHOUSE_MAIN for prep-room shots; BALKAN_NETWORK_CORE only when recurring men are visible",
+    "premium"
+  ],
+  [
+    "B0052",
+    "Nickname And Method",
+    "FORENSIC_AND_BALKAN_METHOD",
+    "FORENSIC_LAB_MAIN for evidence shots; BALKAN_SAFEHOUSE_MAIN for prep-room shots; BALKAN_NETWORK_CORE only when recurring men are visible",
+    "premium"
+  ],
+  [
+    "B0053",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "premium"
+  ],
+  [
+    "B0054",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "premium"
+  ],
+  [
+    "B0055",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "premium"
+  ],
+  [
+    "B0056",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "premium"
+  ],
+  [
+    "B0057",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0058",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "premium"
+  ],
+  [
+    "B0059",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "premium"
+  ],
+  [
+    "B0060",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "premium"
+  ],
+  [
+    "B0061",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0062",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0063",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0064",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0065",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0066",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0067",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0068",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0069",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0070",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0071",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0072",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0073",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0074",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0075",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0076",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0077",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0078",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0079",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0080",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0081",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0082",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0083",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0084",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0085",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0086",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0087",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "base"
+  ],
+  [
+    "B0088",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "premium"
+  ],
+  [
+    "B0089",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "premium"
+  ],
+  [
+    "B0090",
+    "Why The Network Confused Police",
+    "NETWORK_VS_POLICE",
+    "GLOBAL_ANALYSIS_ROOM; BORDER_TRANSIT_WORLD; NETWORK_FRAGMENT_SET; GLOBAL_ANALYST_A only when an analyst recurs in-frame",
+    "premium"
+  ],
+  [
+    "B0091",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "premium"
+  ],
+  [
+    "B0092",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "premium"
+  ],
+  [
+    "B0093",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "premium"
+  ],
+  [
+    "B0094",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0095",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0096",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0097",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0098",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0099",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0100",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0101",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "premium"
+  ],
+  [
+    "B0102",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "premium"
+  ],
+  [
+    "B0103",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "premium"
+  ],
+  [
+    "B0104",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "premium"
+  ],
+  [
+    "B0105",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "premium"
+  ],
+  [
+    "B0106",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "premium"
+  ],
+  [
+    "B0107",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0108",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0109",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0110",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0111",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0112",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0113",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0114",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0115",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0116",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0117",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0118",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0119",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0120",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0121",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0122",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0123",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0124",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "base"
+  ],
+  [
+    "B0125",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "premium"
+  ],
+  [
+    "B0126",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "premium"
+  ],
+  [
+    "B0127",
+    "Security As Delay",
+    "SECURITY_DELAY_SYSTEM",
+    "LUXURY_BOUTIQUE_SYSTEM_MAIN; SECURITY_OPERATOR_A only for repeated control-desk beats",
+    "premium"
+  ],
+  [
+    "B0128",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "premium"
+  ],
+  [
+    "B0129",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "premium"
+  ],
+  [
+    "B0130",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "premium"
+  ],
+  [
+    "B0131",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0132",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "premium"
+  ],
+  [
+    "B0133",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "premium"
+  ],
+  [
+    "B0134",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "premium"
+  ],
+  [
+    "B0135",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "premium"
+  ],
+  [
+    "B0136",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0137",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0138",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0139",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0140",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0141",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0142",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0143",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0144",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0145",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0146",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0147",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0148",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0149",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0150",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0151",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0152",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0153",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0154",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0155",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0156",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0157",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0158",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0159",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0160",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0161",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0162",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0163",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0164",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0165",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0166",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "premium"
+  ],
+  [
+    "B0167",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "premium"
+  ],
+  [
+    "B0168",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "base"
+  ],
+  [
+    "B0169",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "premium"
+  ],
+  [
+    "B0170",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "premium"
+  ],
+  [
+    "B0171",
+    "Discipline Over Greed",
+    "DISCIPLINED_RAID_LOGIC",
+    "RAID_INTERIOR_GENERIC; TIMEKEEPER_A only if the same role repeats; TARGET_TRAY_SET",
+    "premium"
+  ],
+  [
+    "B0172",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "premium"
+  ],
+  [
+    "B0173",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "premium"
+  ],
+  [
+    "B0174",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "premium"
+  ],
+  [
+    "B0175",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0176",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0177",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "premium"
+  ],
+  [
+    "B0178",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0179",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0180",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0181",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "premium"
+  ],
+  [
+    "B0182",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0183",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0184",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0185",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0186",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "premium"
+  ],
+  [
+    "B0187",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0188",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "premium"
+  ],
+  [
+    "B0189",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0190",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "premium"
+  ],
+  [
+    "B0191",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0192",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0193",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "premium"
+  ],
+  [
+    "B0194",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0195",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0196",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0197",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0198",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0199",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0200",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0201",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0202",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0203",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0204",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "premium"
+  ],
+  [
+    "B0205",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0206",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0207",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0208",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0209",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0210",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0211",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0212",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0213",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0214",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0215",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0216",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0217",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "premium"
+  ],
+  [
+    "B0218",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0219",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0220",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0221",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0222",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0223",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0224",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "premium"
+  ],
+  [
+    "B0225",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0226",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "premium"
+  ],
+  [
+    "B0227",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "base"
+  ],
+  [
+    "B0228",
+    "Crime Geometry In Public Space",
+    "PUBLIC_SPACE_GEOMETRY",
+    "BIARRITZ_BENCH_MAIN; LUXURY_STREET_OCCLUSION_SET; ESCAPE_FLOW_WORLD",
+    "premium"
+  ],
+  [
+    "B0229",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "premium"
+  ],
+  [
+    "B0230",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "premium"
+  ],
+  [
+    "B0231",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "premium"
+  ],
+  [
+    "B0232",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0233",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "premium"
+  ],
+  [
+    "B0234",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0235",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "premium"
+  ],
+  [
+    "B0236",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0237",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "premium"
+  ],
+  [
+    "B0238",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0239",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0240",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0241",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "premium"
+  ],
+  [
+    "B0242",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0243",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0244",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0245",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "premium"
+  ],
+  [
+    "B0246",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0247",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0248",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0249",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "premium"
+  ],
+  [
+    "B0250",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0251",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "premium"
+  ],
+  [
+    "B0252",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0253",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "premium"
+  ],
+  [
+    "B0254",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0255",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "premium"
+  ],
+  [
+    "B0256",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0257",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0258",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0259",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0260",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0261",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0262",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0263",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0264",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0265",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "premium"
+  ],
+  [
+    "B0266",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0267",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "premium"
+  ],
+  [
+    "B0268",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0269",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0270",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0271",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0272",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0273",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0274",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0275",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0276",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0277",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0278",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0279",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0280",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0281",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0282",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0283",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0284",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0285",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0286",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0287",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0288",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0289",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "premium"
+  ],
+  [
+    "B0290",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0291",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0292",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0293",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0294",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0295",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0296",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0297",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "base"
+  ],
+  [
+    "B0298",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "premium"
+  ],
+  [
+    "B0299",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "premium"
+  ],
+  [
+    "B0300",
+    "Dubai Wafi Mall Raid",
+    "DUBAI_WAFI_RAID",
+    "WAFI_MALL_MAIN; DUBAI_RAID_CARS; GRAF_ZONE_MAIN",
+    "premium"
+  ],
+  [
+    "B0301",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "premium"
+  ],
+  [
+    "B0302",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "premium"
+  ],
+  [
+    "B0303",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "premium"
+  ],
+  [
+    "B0304",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "base"
+  ],
+  [
+    "B0305",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "base"
+  ],
+  [
+    "B0306",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "base"
+  ],
+  [
+    "B0307",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "base"
+  ],
+  [
+    "B0308",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "base"
+  ],
+  [
+    "B0309",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "base"
+  ],
+  [
+    "B0310",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "base"
+  ],
+  [
+    "B0311",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "base"
+  ],
+  [
+    "B0312",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "base"
+  ],
+  [
+    "B0313",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "base"
+  ],
+  [
+    "B0314",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "premium"
+  ],
+  [
+    "B0315",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "premium"
+  ],
+  [
+    "B0316",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "base"
+  ],
+  [
+    "B0317",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "base"
+  ],
+  [
+    "B0318",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "base"
+  ],
+  [
+    "B0319",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "base"
+  ],
+  [
+    "B0320",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "base"
+  ],
+  [
+    "B0321",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "base"
+  ],
+  [
+    "B0322",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "base"
+  ],
+  [
+    "B0323",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "base"
+  ],
+  [
+    "B0324",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "base"
+  ],
+  [
+    "B0325",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "base"
+  ],
+  [
+    "B0326",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "base"
+  ],
+  [
+    "B0327",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "premium"
+  ],
+  [
+    "B0328",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "premium"
+  ],
+  [
+    "B0329",
+    "Recon Before The Raid",
+    "RECON_WORLD",
+    "RECON_OPERATOR_A when the same scout returns; PREMIUM_STOREFRONT_RECON; ROUTE_STUDY_STREET",
+    "premium"
+  ],
+  [
+    "B0330",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "premium"
+  ],
+  [
+    "B0331",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "premium"
+  ],
+  [
+    "B0332",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "premium"
+  ],
+  [
+    "B0333",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0334",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "premium"
+  ],
+  [
+    "B0335",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0336",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0337",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0338",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0339",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0340",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0341",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0342",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0343",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "premium"
+  ],
+  [
+    "B0344",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "premium"
+  ],
+  [
+    "B0345",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0346",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0347",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0348",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0349",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0350",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0351",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "premium"
+  ],
+  [
+    "B0352",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0353",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0354",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0355",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0356",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0357",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0358",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "premium"
+  ],
+  [
+    "B0359",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0360",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0361",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "premium"
+  ],
+  [
+    "B0362",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0363",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0364",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0365",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0366",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "premium"
+  ],
+  [
+    "B0367",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0368",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0369",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "premium"
+  ],
+  [
+    "B0370",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0371",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0372",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0373",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "premium"
+  ],
+  [
+    "B0374",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0375",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "premium"
+  ],
+  [
+    "B0376",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0377",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0378",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0379",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0380",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0381",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0382",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0383",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "premium"
+  ],
+  [
+    "B0384",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0385",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0386",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0387",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0388",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0389",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0390",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0391",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0392",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0393",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0394",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0395",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0396",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0397",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0398",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0399",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "premium"
+  ],
+  [
+    "B0400",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0401",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0402",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "base"
+  ],
+  [
+    "B0403",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "premium"
+  ],
+  [
+    "B0404",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "premium"
+  ],
+  [
+    "B0405",
+    "Interpol Sees The Pattern",
+    "INTERPOL_PATTERN_RECOGNITION",
+    "GLOBAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A for recurring analyst; CASE_FRAGMENT_SET",
+    "premium"
+  ],
+  [
+    "B0406",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "premium"
+  ],
+  [
+    "B0407",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "premium"
+  ],
+  [
+    "B0408",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "premium"
+  ],
+  [
+    "B0409",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0410",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "premium"
+  ],
+  [
+    "B0411",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0412",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "premium"
+  ],
+  [
+    "B0413",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0414",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "premium"
+  ],
+  [
+    "B0415",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0416",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0417",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0418",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "premium"
+  ],
+  [
+    "B0419",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0420",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "premium"
+  ],
+  [
+    "B0421",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0422",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "premium"
+  ],
+  [
+    "B0423",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0424",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0425",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0426",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0427",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0428",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0429",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0430",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0431",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0432",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0433",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0434",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "premium"
+  ],
+  [
+    "B0435",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0436",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0437",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0438",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0439",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0440",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0441",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0442",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0443",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0444",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0445",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0446",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0447",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0448",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0449",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0450",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0451",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0452",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "premium"
+  ],
+  [
+    "B0453",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0454",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0455",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0456",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0457",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0458",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0459",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0460",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0461",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0462",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0463",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0464",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "premium"
+  ],
+  [
+    "B0465",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0466",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "premium"
+  ],
+  [
+    "B0467",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0468",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "premium"
+  ],
+  [
+    "B0469",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0470",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0471",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "premium"
+  ],
+  [
+    "B0472",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0473",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0474",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "base"
+  ],
+  [
+    "B0475",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "premium"
+  ],
+  [
+    "B0476",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "premium"
+  ],
+  [
+    "B0477",
+    "Westberga Helicopter Heist",
+    "WESTBERGA_WORLD",
+    "WESTBERGA_DEPOT_MAIN; WESTBERGA_HELICOPTER; POLICE_RESPONSE_SET",
+    "premium"
+  ],
+  [
+    "B0478",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "premium"
+  ],
+  [
+    "B0479",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "premium"
+  ],
+  [
+    "B0480",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0481",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "premium"
+  ],
+  [
+    "B0482",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0483",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0484",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0485",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "premium"
+  ],
+  [
+    "B0486",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0487",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "premium"
+  ],
+  [
+    "B0488",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0489",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "premium"
+  ],
+  [
+    "B0490",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0491",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0492",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0493",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "premium"
+  ],
+  [
+    "B0494",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0495",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0496",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0497",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "premium"
+  ],
+  [
+    "B0498",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0499",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0500",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0501",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "premium"
+  ],
+  [
+    "B0502",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0503",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0504",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0505",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0506",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0507",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0508",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0509",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0510",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0511",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0512",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "premium"
+  ],
+  [
+    "B0513",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0514",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0515",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0516",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0517",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0518",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0519",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0520",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0521",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0522",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0523",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "premium"
+  ],
+  [
+    "B0524",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0525",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "premium"
+  ],
+  [
+    "B0526",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0527",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0528",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0529",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0530",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0531",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0532",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "base"
+  ],
+  [
+    "B0533",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "premium"
+  ],
+  [
+    "B0534",
+    "Digital Memory Tightens",
+    "DIGITAL_MEMORY_WORLD",
+    "DIGITAL_ANALYSIS_ROOM; GLOBAL_ANALYST_A when same analyst returns; TRACE_FRAGMENT_SET; TRANSIT_SURVEILLANCE_WORLD",
+    "premium"
+  ],
+  [
+    "B0535",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "premium"
+  ],
+  [
+    "B0536",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "premium"
+  ],
+  [
+    "B0537",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "premium"
+  ],
+  [
+    "B0538",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0539",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0540",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "premium"
+  ],
+  [
+    "B0541",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0542",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0543",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "premium"
+  ],
+  [
+    "B0544",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0545",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0546",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0547",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0548",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0549",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0550",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0551",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "premium"
+  ],
+  [
+    "B0552",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0553",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "premium"
+  ],
+  [
+    "B0554",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0555",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "premium"
+  ],
+  [
+    "B0556",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0557",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0558",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0559",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0560",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0561",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0562",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0563",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0564",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0565",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0566",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0567",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0568",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0569",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0570",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0571",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0572",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0573",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "premium"
+  ],
+  [
+    "B0574",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "base"
+  ],
+  [
+    "B0575",
+    "Carbanak And The Shift To Invisible Theft",
+    "CARBANAK_SHIFT",
+    "BANK_BACKOFFICE_MAIN; BANK_EMPLOYEE_A when recurring; ATM_PAYOUT_WORLD",
+    "premium"
+  ],
+  [
+    "B0576",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "premium"
+  ],
+  [
+    "B0577",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "premium"
+  ],
+  [
+    "B0578",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0579",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "premium"
+  ],
+  [
+    "B0580",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0581",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0582",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0583",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0584",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0585",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0586",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0587",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0588",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0589",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0590",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0591",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "premium"
+  ],
+  [
+    "B0592",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0593",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "premium"
+  ],
+  [
+    "B0594",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0595",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0596",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0597",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0598",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0599",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0600",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0601",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0602",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0603",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0604",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0605",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0606",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "premium"
+  ],
+  [
+    "B0607",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0608",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "premium"
+  ],
+  [
+    "B0609",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "base"
+  ],
+  [
+    "B0610",
+    "Against Romanticizing The Myth",
+    "ANTI_ROMANTIC_AFTERMATH",
+    "TOKYO_ASSOCIATE_A when aftermath returns to the same employee; BOUTIQUE_AFTERMATH_MAIN; CONSEQUENCE_OFFICE_WORLD",
+    "premium"
+  ],
+  [
+    "B0611",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "premium"
+  ],
+  [
+    "B0612",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "base"
+  ],
+  [
+    "B0613",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "premium"
+  ],
+  [
+    "B0614",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "base"
+  ],
+  [
+    "B0615",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "premium"
+  ],
+  [
+    "B0616",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "base"
+  ],
+  [
+    "B0617",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "premium"
+  ],
+  [
+    "B0618",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "base"
+  ],
+  [
+    "B0619",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "base"
+  ],
+  [
+    "B0620",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "base"
+  ],
+  [
+    "B0621",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "base"
+  ],
+  [
+    "B0622",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "base"
+  ],
+  [
+    "B0623",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "base"
+  ],
+  [
+    "B0624",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "base"
+  ],
+  [
+    "B0625",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "base"
+  ],
+  [
+    "B0626",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "base"
+  ],
+  [
+    "B0627",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "base"
+  ],
+  [
+    "B0628",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "base"
+  ],
+  [
+    "B0629",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "base"
+  ],
+  [
+    "B0630",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "base"
+  ],
+  [
+    "B0631",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "base"
+  ],
+  [
+    "B0632",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "base"
+  ],
+  [
+    "B0633",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "base"
+  ],
+  [
+    "B0634",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "premium"
+  ],
+  [
+    "B0635",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "base"
+  ],
+  [
+    "B0636",
+    "Security Is Compromise",
+    "SYSTEMS_COMPROMISE_WORLD",
+    "THRESHOLD_ARCHITECTURE_SET; LARGE_SYSTEM_WORLD",
+    "premium"
+  ],
+  [
+    "B0637",
+    "Final Question And Outro",
+    "FINAL_ECHO_WORLD",
+    "TOKYO_NECKLACE_CASE; TOKYO_BOUTIQUE_AFTER_HOURS; TRACE_WORLD_ECHO",
+    "premium"
+  ],
+  [
+    "B0638",
+    "Final Question And Outro",
+    "FINAL_ECHO_WORLD",
+    "TOKYO_NECKLACE_CASE; TOKYO_BOUTIQUE_AFTER_HOURS; TRACE_WORLD_ECHO",
+    "premium"
+  ],
+  [
+    "B0639",
+    "Final Question And Outro",
+    "FINAL_ECHO_WORLD",
+    "TOKYO_NECKLACE_CASE; TOKYO_BOUTIQUE_AFTER_HOURS; TRACE_WORLD_ECHO",
+    "premium"
+  ],
+  [
+    "B0640",
+    "Final Question And Outro",
+    "FINAL_ECHO_WORLD",
+    "TOKYO_NECKLACE_CASE; TOKYO_BOUTIQUE_AFTER_HOURS; TRACE_WORLD_ECHO",
+    "base"
+  ],
+  [
+    "B0641",
+    "Final Question And Outro",
+    "FINAL_ECHO_WORLD",
+    "TOKYO_NECKLACE_CASE; TOKYO_BOUTIQUE_AFTER_HOURS; TRACE_WORLD_ECHO",
+    "base"
+  ],
+  [
+    "B0642",
+    "Final Question And Outro",
+    "FINAL_ECHO_WORLD",
+    "TOKYO_NECKLACE_CASE; TOKYO_BOUTIQUE_AFTER_HOURS; TRACE_WORLD_ECHO",
+    "base"
+  ],
+  [
+    "B0643",
+    "Final Question And Outro",
+    "FINAL_ECHO_WORLD",
+    "TOKYO_NECKLACE_CASE; TOKYO_BOUTIQUE_AFTER_HOURS; TRACE_WORLD_ECHO",
+    "base"
+  ],
+  [
+    "B0644",
+    "Final Question And Outro",
+    "FINAL_ECHO_WORLD",
+    "TOKYO_NECKLACE_CASE; TOKYO_BOUTIQUE_AFTER_HOURS; TRACE_WORLD_ECHO",
+    "premium"
+  ],
+  [
+    "B0645",
+    "Final Question And Outro",
+    "FINAL_ECHO_WORLD",
+    "TOKYO_NECKLACE_CASE; TOKYO_BOUTIQUE_AFTER_HOURS; TRACE_WORLD_ECHO",
+    "base"
+  ]
+]

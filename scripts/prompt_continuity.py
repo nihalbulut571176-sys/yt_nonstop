@@ -14,6 +14,19 @@ ABSTRACT_PRIMARY_SUBJECTS = {
     "the same recurring documentary subject inside the same environment",
 }
 
+REQUIRED_PROMPT_HEADERS = [
+    "Scene meaning:",
+    "Visual intent:",
+    "Main subject:",
+    "Environment storytelling:",
+    "Composition:",
+    "Camera:",
+    "Lighting:",
+    "Mood:",
+    "Important details:",
+    "Restrictions:",
+]
+
 
 def clean_text(text: str) -> str:
     return re.sub(r"\s+", " ", str(text or "").replace("\n", " ")).strip()
@@ -52,7 +65,6 @@ def infer_theme(project: dict, source_text: str, scenes: list[dict]) -> str:
         for marker in {
             "panter",
             "panther",
-            "розов",
             "pink",
             "jewel",
             "diamond",
@@ -79,9 +91,9 @@ def jewel_heist_bundle() -> dict:
         "continuity_rules": [
             "Repeat the same character and object descriptions verbatim whenever those entities return.",
             "Do not introduce random new faces if a recurring role already exists.",
-            "Every prompt must include style, atmosphere, lighting, and angle.",
+            "Every prompt must include style, atmosphere, lighting, angle, and a clear dramatic function.",
             "No visible text, logos, watermarks, or real-person names.",
-            "Event-specific scenes must prioritize readable action over safe continuity filler.",
+            "Event-specific scenes must prioritize readable action over continuity filler.",
         ],
         "recurring_motifs": [
             "glass reflections",
@@ -173,7 +185,7 @@ def generic_bundle(project: dict) -> dict:
         "continuity_rules": [
             "Repeat the same character and object descriptions verbatim whenever those entities return.",
             "Do not introduce random replacement people.",
-            "Every prompt must include style, atmosphere, lighting, and angle.",
+            "Every prompt must include style, atmosphere, lighting, angle, and a clear visual function.",
             "No visible text, logos, watermarks, or real-person names.",
         ],
         "recurring_motifs": [
@@ -201,35 +213,39 @@ def detect_semantic_flags(text: str) -> dict[str, bool]:
     lowered = clean_text(text).lower()
     flags = {
         "spray_attack": any(token in lowered for token in ["газ", "ослеп", "раздражающ", "spray", "blinded", "mist"]),
-        "open_case": any(token in lowered for token in ["витрина открыта", "открыта", "open case", "case open"]),
-        "missing_jewel": any(token in lowered for token in ["исчез", "пропал", "missing", "gone"]),
-        "attendant_action": any(token in lowered for token in ["сотруд", "attendant"]),
-        "access_opening": any(token in lowered for token in ["доступ", "открывает", "открыл", "unlock"]),
-        "operator_entry": any(token in lowered for token in ["входят", "двое", "клиент", "entered", "pair"]),
-        "delayed_reaction": any(token in lowered for token in ["пытаются понять", "что случилось", "не успевает", "too late", "trying to understand"]),
-        "operator_exit": any(token in lowered for token in ["уходят", "already leaving", "exit", "escape"]),
+        "open_case": any(token in lowered for token in ["витрина открыта", "открытая витрина", "open case", "case open"]),
+        "missing_jewel": any(token in lowered for token in ["исчез", "пропал", "украден", "missing", "gone", "stolen"]),
+        "attendant_action": any(token in lowered for token in ["сотрудниц", "сотрудник", "продавщиц", "attendant", "clerk", "staff"]),
+        "access_opening": any(token in lowered for token in ["доступ", "открывает", "открыл", "разблок", "unlock"]),
+        "operator_entry": any(token in lowered for token in ["входят", "вошли", "двое", "клиент", "entered", "pair"]),
+        "delayed_reaction": any(
+            token in lowered
+            for token in ["пытаются понять", "что случилось", "не успевает", "слишком поздно", "too late", "trying to understand"]
+        ),
+        "operator_exit": any(token in lowered for token in ["уходят", "выходят", "already leaving", "exit", "escape"]),
         "historical_context": any(token in lowered for token in ["токио", "2004", "japan", "tokyo"]),
         "institutional_response": any(token in lowered for token in ["полици", "система", "решение", "police", "system", "decision"]),
         "nickname_identity": any(token in lowered for token in ["розовыми пантерами", "розовую пантеру", "pink panther", "их прозвали"]),
         "object_evidence": any(token in lowered for token in ["баночке с кремом", "кремом", "cream jar", "баночк"]),
         "anti_myth": any(token in lowered for token in ["не потому", "романтический кодекс", "headquarters", "uniform"]),
         "network_scale": any(token in lowered for token in ["балкан", "сеть", "бывших военных", "логистик", "network", "balkan"]),
-        "mechanism_focus": any(token in lowered for token in ["механизм", "архитектур", "человеческую реакцию", "бюрократи", "human reaction", "bureaucracy"]),
+        "mechanism_focus": any(token in lowered for token in ["механизм", "архитектур", "человеческую реакци", "бюрократи", "human reaction", "bureaucracy"]),
         "security_system": any(token in lowered for token in ["охрана", "камеры", "магнитн", "security", "surveillance"]),
         "boutique_luxury": any(token in lowered for token in ["бутик", "витрин", "бриллиант", "колье", "display", "boutique", "diamond", "necklace"]),
-        "comedic_contrast": any(token in lowered for token in ["не комедия", "почти комедийным", "not comedy", "comic"]),
+        "comedic_contrast": any(token in lowered for token in ["не комедия", "почти комедийн", "not comedy", "comic"]),
     }
     flags["theft_reveal"] = flags["open_case"] or flags["missing_jewel"]
     flags["reaction_escape"] = flags["delayed_reaction"] or flags["operator_exit"]
-    flags["content_payload"] = any(
-        value
-        for key, value in flags.items()
-        if key not in {"boutique_luxury", "security_system"}
-    )
+    flags["content_payload"] = any(value for key, value in flags.items() if key not in {"boutique_luxury", "security_system"})
     return flags
 
 
 def infer_event_type(flags: dict[str, bool], shot_index: int) -> tuple[str, float, str]:
+    concrete_robbery_cues = any([flags["attendant_action"], flags["open_case"], flags["missing_jewel"], flags["access_opening"]])
+    if flags["network_scale"] and not concrete_robbery_cues:
+        return "network_scale", 0.95, ""
+    if flags["mechanism_focus"] and not concrete_robbery_cues:
+        return "mechanism_focus", 0.95, ""
     if flags["spray_attack"]:
         return "assault", 0.98, ""
     if flags["theft_reveal"]:
@@ -243,19 +259,15 @@ def infer_event_type(flags: dict[str, bool], shot_index: int) -> tuple[str, floa
     if flags["object_evidence"]:
         return "object_evidence", 0.97, ""
     if flags["anti_myth"]:
-        return "anti_myth", 0.9, ""
+        return "anti_myth", 0.90, ""
     if flags["comedic_contrast"]:
-        return "hidden_threat", 0.9, ""
-    if flags["network_scale"]:
-        return "network_scale", 0.93, ""
-    if flags["mechanism_focus"]:
-        return "mechanism_focus", 0.93, ""
+        return "hidden_threat", 0.90, ""
     if flags["institutional_response"]:
         return "system_delay", 0.88, ""
     if flags["access_opening"]:
         return "necklace_access", 0.95, ""
     if flags["operator_entry"]:
-        return "operator_entry", 0.9, ""
+        return "operator_entry", 0.90, ""
     if flags["security_system"] and shot_index <= 6:
         return "security_system", 0.85, ""
     if flags["boutique_luxury"] and shot_index <= 6:
@@ -297,31 +309,185 @@ def infer_part_semantic_role(event_type: str, part_index: int, parts_total: int)
     return "transition"
 
 
-def semantic_defaults(event_type: str, part_role: str) -> tuple[str, bool, str, str]:
+def semantic_defaults(event_type: str, part_role: str) -> dict:
     mapping = {
-        "assault": ("attendant blinded by irritant spray inside the boutique", True, "emotion", "tension_detail"),
-        "theft_reveal": ("open case and immediate absence of the necklace", True, "payoff", "before_after_contrast"),
-        "reaction_escape": (
-            "humans process too slowly while operators are already leaving the scene",
-            False,
-            "contrast" if part_role == "reaction" else "transition",
-            "human_consequence",
-        ),
-        "historical_context": ("place the heist in Tokyo 2004 with institutional scale", False, "explain", "scale_contrast"),
-        "identity_reveal": ("explain how the Pink Panthers identity emerges from evidence and consequence", False, "evidence", "evidence_wall"),
-        "object_evidence": ("show the cream-jar concealment as concrete criminal evidence", True, "evidence", "evidence_wall"),
-        "anti_myth": ("reject romantic mythology and strip the story down to criminal reality", False, "contrast", "before_after_contrast"),
-        "hidden_threat": ("show the darker criminal reality hiding behind the almost comic anecdote", False, "contrast", "before_after_contrast"),
-        "network_scale": ("expand from one robbery to a coordinated transnational network", False, "explain", "mechanism_view"),
-        "mechanism_focus": ("shift from legend to operational mechanism and system exploitation", False, "explain", "mechanism_view"),
-        "system_delay": ("show institutional delay and slower decision-making compared with the operators", False, "explain", "mechanism_view"),
-        "necklace_access": ("show the controlled access ritual at the display case", True, "explain", "evidence_wall"),
-        "operator_entry": ("introduce the operators as composed affluent customers under surveillance", False, "pattern_break", "human_consequence"),
-        "security_system": ("show security architecture as a silent controlling mechanism", False, "evidence", "mechanism_view"),
-        "luxury_establishing": ("establish the luxury-security world and the value at risk", False, "hook", "mechanism_view"),
-        "explicit_transition": ("use a controlled transition image without losing world continuity", False, "transition", "literal_premium"),
+        "assault": {
+            "semantic_action": "attendant blinded by irritant spray inside the boutique",
+            "event_clarity_required": True,
+            "visual_function": "emotion",
+            "visual_strategy": "tension_detail",
+            "viewer_emotion": "shock",
+            "scale": "close-up",
+            "lighting_family": "contrast",
+            "density": "focused",
+        },
+        "theft_reveal": {
+            "semantic_action": "open case and immediate absence of the necklace",
+            "event_clarity_required": True,
+            "visual_function": "payoff",
+            "visual_strategy": "before_after_contrast",
+            "viewer_emotion": "alarm",
+            "scale": "close-up",
+            "lighting_family": "screen_glow",
+            "density": "focused",
+        },
+        "reaction_escape": {
+            "semantic_action": "humans process too slowly while operators are already leaving the scene",
+            "event_clarity_required": False,
+            "visual_function": "contrast" if part_role == "reaction" else "transition",
+            "visual_strategy": "human_consequence",
+            "viewer_emotion": "unease",
+            "scale": "medium",
+            "lighting_family": "cold",
+            "density": "layered",
+        },
+        "historical_context": {
+            "semantic_action": "place the heist in Tokyo 2004 with institutional scale",
+            "event_clarity_required": False,
+            "visual_function": "explain",
+            "visual_strategy": "scale_contrast",
+            "viewer_emotion": "scale",
+            "scale": "wide",
+            "lighting_family": "night",
+            "density": "layered",
+        },
+        "identity_reveal": {
+            "semantic_action": "explain how the Pink Panthers identity emerges from evidence and consequence",
+            "event_clarity_required": False,
+            "visual_function": "evidence",
+            "visual_strategy": "evidence_wall",
+            "viewer_emotion": "discovery",
+            "scale": "medium",
+            "lighting_family": "cold",
+            "density": "layered",
+        },
+        "object_evidence": {
+            "semantic_action": "show the cream-jar concealment as concrete criminal evidence",
+            "event_clarity_required": True,
+            "visual_function": "evidence",
+            "visual_strategy": "evidence_wall",
+            "viewer_emotion": "curiosity",
+            "scale": "macro",
+            "lighting_family": "soft",
+            "density": "focused",
+        },
+        "anti_myth": {
+            "semantic_action": "reject romantic mythology and strip the story down to criminal reality",
+            "event_clarity_required": False,
+            "visual_function": "contrast",
+            "visual_strategy": "before_after_contrast",
+            "viewer_emotion": "sobriety",
+            "scale": "medium",
+            "lighting_family": "neutral",
+            "density": "clean",
+        },
+        "hidden_threat": {
+            "semantic_action": "show the darker criminal reality hiding behind the almost comic anecdote",
+            "event_clarity_required": False,
+            "visual_function": "contrast",
+            "visual_strategy": "before_after_contrast",
+            "viewer_emotion": "menace",
+            "scale": "medium",
+            "lighting_family": "contrast",
+            "density": "layered",
+        },
+        "network_scale": {
+            "semantic_action": "expand from one robbery to a coordinated transnational network",
+            "event_clarity_required": False,
+            "visual_function": "explain",
+            "visual_strategy": "mechanism_view",
+            "viewer_emotion": "scale",
+            "scale": "wide",
+            "lighting_family": "cold",
+            "density": "busy",
+        },
+        "mechanism_focus": {
+            "semantic_action": "shift from legend to operational mechanism and system exploitation",
+            "event_clarity_required": False,
+            "visual_function": "explain",
+            "visual_strategy": "mechanism_view",
+            "viewer_emotion": "curiosity",
+            "scale": "medium",
+            "lighting_family": "cold",
+            "density": "busy",
+        },
+        "system_delay": {
+            "semantic_action": "show institutional delay and slower decision-making compared with the operators",
+            "event_clarity_required": False,
+            "visual_function": "explain",
+            "visual_strategy": "mechanism_view",
+            "viewer_emotion": "pressure",
+            "scale": "medium",
+            "lighting_family": "cold",
+            "density": "busy",
+        },
+        "necklace_access": {
+            "semantic_action": "show the controlled access ritual at the display case",
+            "event_clarity_required": True,
+            "visual_function": "explain",
+            "visual_strategy": "evidence_wall",
+            "viewer_emotion": "tension",
+            "scale": "close-up",
+            "lighting_family": "warm",
+            "density": "focused",
+        },
+        "operator_entry": {
+            "semantic_action": "introduce the operators as composed affluent customers under surveillance",
+            "event_clarity_required": False,
+            "visual_function": "pattern_break",
+            "visual_strategy": "human_consequence",
+            "viewer_emotion": "suspicion",
+            "scale": "medium",
+            "lighting_family": "warm",
+            "density": "layered",
+        },
+        "security_system": {
+            "semantic_action": "show security architecture as a silent controlling mechanism",
+            "event_clarity_required": False,
+            "visual_function": "evidence",
+            "visual_strategy": "mechanism_view",
+            "viewer_emotion": "pressure",
+            "scale": "close-up",
+            "lighting_family": "cold",
+            "density": "focused",
+        },
+        "luxury_establishing": {
+            "semantic_action": "establish the luxury-security world and the value at risk",
+            "event_clarity_required": False,
+            "visual_function": "hook",
+            "visual_strategy": "mechanism_view",
+            "viewer_emotion": "mystery",
+            "scale": "wide",
+            "lighting_family": "warm",
+            "density": "layered",
+        },
+        "explicit_transition": {
+            "semantic_action": "use a controlled transition image without losing world continuity",
+            "event_clarity_required": False,
+            "visual_function": "transition",
+            "visual_strategy": "literal_premium",
+            "viewer_emotion": "restraint",
+            "scale": "medium",
+            "lighting_family": "neutral",
+            "density": "clean",
+        },
     }
     return mapping[event_type]
+
+
+def infer_beat_priority(scene: dict, descriptor: dict) -> tuple[str, bool]:
+    start = float(scene.get("start", 0.0) or 0.0)
+    visual_function = descriptor["visual_function"]
+    shot_index = int(scene.get("shot_index", 0) or 0)
+    if visual_function in {"hook", "payoff"}:
+        return "hero", True
+    if start < 30:
+        return "hero", True
+    if start < 60 and visual_function in {"emotion", "contrast", "evidence", "pattern_break"}:
+        return "priority", True
+    if descriptor["event_clarity_required"] or shot_index % 10 == 0:
+        return "priority", True
+    return "standard", False
 
 
 def extract_scene_semantics(scene: dict, theme_hint: str) -> dict:
@@ -330,18 +496,25 @@ def extract_scene_semantics(scene: dict, theme_hint: str) -> dict:
     flags = detect_semantic_flags(text)
     event_type, role_confidence, fallback_reason = infer_event_type(flags, shot_index)
     part_role = infer_part_semantic_role(event_type, int(scene.get("part_index", 1) or 1), int(scene.get("parts_total", 1) or 1))
-    semantic_action, event_clarity_required, visual_function, visual_strategy = semantic_defaults(event_type, part_role)
+    defaults = semantic_defaults(event_type, part_role)
+    beat_priority, key_beat = infer_beat_priority(scene, defaults)
     return {
-        "semantic_action": semantic_action,
+        "semantic_action": defaults["semantic_action"],
         "event_type": event_type,
-        "event_clarity_required": event_clarity_required,
-        "visual_function": visual_function,
-        "visual_strategy": visual_strategy,
+        "event_clarity_required": defaults["event_clarity_required"],
+        "visual_function": defaults["visual_function"],
+        "visual_strategy": defaults["visual_strategy"],
+        "viewer_emotion": defaults["viewer_emotion"],
+        "scale": defaults["scale"],
+        "lighting_family": defaults["lighting_family"],
+        "density": defaults["density"],
         "role_confidence": role_confidence,
         "fallback_reason": fallback_reason,
         "part_semantic_role": part_role,
         "semantic_flags": flags,
         "semantic_valid": not (theme_hint == "luxury_jewel_heist_documentary" and event_type == "explicit_transition" and flags["content_payload"]),
+        "beat_priority": beat_priority,
+        "key_beat": key_beat,
     }
 
 
@@ -355,7 +528,6 @@ def build_scene_entity_entry(scene: dict, descriptor: dict, theme: str) -> dict:
     event_type = descriptor["event_type"]
     active = ["surveillance_network"]
     focus = "preserve one coherent luxury-security world"
-
     if event_type in {"luxury_establishing", "security_system", "necklace_access", "assault", "theft_reveal"}:
         active.extend(["tokyo_boutique", "display_case"])
     if event_type in {"luxury_establishing", "necklace_access", "theft_reveal", "identity_reveal"}:
@@ -393,11 +565,7 @@ def build_scene_entity_entry(scene: dict, descriptor: dict, theme: str) -> dict:
     if event_type == "explicit_transition":
         active.extend(["tokyo_boutique", "display_case"])
         focus = "use a transition only because no stronger semantic action was detected"
-
-    return {
-        "active_entities": list(dict.fromkeys(active)),
-        "continuity_focus": focus,
-    }
+    return {"active_entities": list(dict.fromkeys(active)), "continuity_focus": focus}
 
 
 def profile_map(entities: list[dict]) -> dict[str, dict]:
@@ -407,7 +575,6 @@ def profile_map(entities: list[dict]) -> dict[str, dict]:
 def infer_shot_role(scene: dict, scene_entry: dict, descriptor: dict, theme: str) -> str:
     if theme != "luxury_jewel_heist_documentary":
         return "documentary_bridge"
-
     event_type = descriptor["event_type"]
     part_role = descriptor["part_semantic_role"]
     if event_type == "assault":
@@ -466,7 +633,6 @@ def build_blueprint(shot_role: str, shot_index: int, theme: str) -> dict:
             "atmosphere": "coherent, grounded, cinematic",
             "visual_goal": "Keep the visual world consistent across the sequence.",
         }
-
     mapping = {
         "luxury_establishing": {
             "scene_meaning": "Establish the boutique as a meticulously protected luxury environment with value and tension already baked into the space.",
@@ -654,10 +820,7 @@ def build_blueprint(shot_role: str, shot_index: int, theme: str) -> dict:
 
 def resolve_environment(active_ids: list[str], location_map: dict[str, dict], shot_role: str, theme: str) -> str:
     if theme != "luxury_jewel_heist_documentary":
-        return location_map.get("primary_location", {}).get(
-            "profile", "a grounded documentary environment tied to the narration"
-        )
-
+        return location_map.get("primary_location", {}).get("profile", "a grounded documentary environment tied to the narration")
     preferred_map = {
         "historical_context": "tokyo_night_city",
         "delayed_reaction": "tokyo_boutique",
@@ -698,27 +861,8 @@ def build_continuity_bundle(project: dict, scenes: list[dict], source_text: str)
     return bundle
 
 
-def build_scene_prompt(scene: dict, bundle: dict) -> dict:
-    scene_entry = bundle["scene_entity_map"][scene["scene_id"]]
-    descriptor = bundle["scene_semantics_map"][scene["scene_id"]]
-    shot_role = bundle["shot_role_map"][scene["scene_id"]]
-    blueprint = build_blueprint(shot_role, int(scene.get("shot_index", 0)), bundle["theme_hint"])
-
-    char_map = profile_map(bundle["character_profiles"])
-    object_map = profile_map(bundle["object_profiles"])
-    location_map = profile_map(bundle["location_profiles"])
-    active_ids = scene_entry["active_entities"]
-
-    profiles = []
-    for entity_id in active_ids:
-        if entity_id in char_map:
-            profiles.append(f"- {entity_id}: {char_map[entity_id]['profile']}")
-        elif entity_id in object_map:
-            profiles.append(f"- {entity_id}: {object_map[entity_id]['profile']}")
-        elif entity_id in location_map:
-            profiles.append(f"- {entity_id}: {location_map[entity_id]['profile']}")
-
-    primary_subject_map = {
+def _primary_subject_for_role(shot_role: str) -> str:
+    mapping = {
         "operator_entry": "the same two operators moving through the boutique under surveillance",
         "assault_moment": "the boutique attendant being blinded in the instant of the attack",
         "assault_aftermath": "the boutique attendant reeling in the immediate aftermath of the blinding spray",
@@ -739,22 +883,38 @@ def build_scene_prompt(scene: dict, bundle: dict) -> dict:
         "network_introduction": "a disciplined transnational organization expanding beyond a single robbery into a coordinated network",
         "investigative_mechanism": "the hidden operational mechanism behind the Pink Panthers network",
         "investigative_bridge": "a continuity-safe transition image with no primary narrative payload",
+        "documentary_bridge": "the recurring documentary subject inside the same environment",
     }
-    primary_subject = primary_subject_map.get(shot_role, "the recurring documentary subject")
+    return mapping.get(shot_role, "the recurring documentary subject")
+
+
+def build_scene_prompt(scene: dict, bundle: dict) -> dict:
+    scene_entry = bundle["scene_entity_map"][scene["scene_id"]]
+    descriptor = bundle["scene_semantics_map"][scene["scene_id"]]
+    shot_role = bundle["shot_role_map"][scene["scene_id"]]
+    blueprint = build_blueprint(shot_role, int(scene.get("shot_index", 0)), bundle["theme_hint"])
+    char_map = profile_map(bundle["character_profiles"])
+    object_map = profile_map(bundle["object_profiles"])
+    location_map = profile_map(bundle["location_profiles"])
+    active_ids = scene_entry["active_entities"]
+
+    profiles = []
+    for entity_id in active_ids:
+        if entity_id in char_map:
+            profiles.append(f"- {entity_id}: {char_map[entity_id]['profile']}")
+        elif entity_id in object_map:
+            profiles.append(f"- {entity_id}: {object_map[entity_id]['profile']}")
+        elif entity_id in location_map:
+            profiles.append(f"- {entity_id}: {location_map[entity_id]['profile']}")
+
+    primary_subject = _primary_subject_for_role(shot_role)
     if bundle["theme_hint"] == "luxury_jewel_heist_documentary" and primary_subject in ABSTRACT_PRIMARY_SUBJECTS:
         raise ValueError(f"Scene {scene['scene_id']} resolved to an abstract primary subject")
 
     environment = resolve_environment(active_ids, location_map, shot_role, bundle["theme_hint"])
-
     details = []
-    if "lead_operator" in active_ids:
-        details.append("Keep the lead operator visually identical in suit, posture, grooming, and silhouette.")
-    if "support_operator" in active_ids:
-        details.append("Keep the support operator visually identical in coat, hairstyle, jewelry, and silhouette.")
-    if "boutique_attendant" in active_ids:
-        details.append("Keep the boutique attendant visually identical in uniform, bun hairstyle, scarf, and professional posture.")
-    if "security_guard" in active_ids:
-        details.append("Keep the security guard visually identical in navy suit, shaved head, and earpiece.")
+    if bundle["recurring_motifs"]:
+        details.append("Recurring motifs: " + ", ".join(bundle["recurring_motifs"][:4]))
     if "display_case" in active_ids and "display_case" in object_map:
         details.append(object_map["display_case"]["profile"])
     if "signature_necklace" in active_ids and "signature_necklace" in object_map:
@@ -763,39 +923,44 @@ def build_scene_prompt(scene: dict, bundle: dict) -> dict:
         details.append(object_map["cream_jar_evidence"]["profile"])
     if "route_fragments" in active_ids and "route_fragments" in object_map:
         details.append(object_map["route_fragments"]["profile"])
-    if bundle["recurring_motifs"]:
-        details.append("Recurring motifs: " + ", ".join(bundle["recurring_motifs"][:4]))
+    if "lead_operator" in active_ids:
+        details.append("Keep the lead operator visually identical in suit, posture, grooming, and silhouette.")
+    if "support_operator" in active_ids:
+        details.append("Keep the support operator visually identical in coat, hairstyle, jewelry, and silhouette.")
+    if "boutique_attendant" in active_ids:
+        details.append("Keep the boutique attendant visually identical in uniform, bun hairstyle, scarf, and professional posture.")
+    if not details:
+        details.append("Maintain realistic physical detail and layered foreground/background storytelling.")
 
+    visual_intent = (
+        f"{descriptor['visual_function']} frame using {descriptor['visual_strategy']} to evoke {descriptor['viewer_emotion']} "
+        f"while preserving continuity and avoiding slideshow repetition."
+    )
     prompt_lines = [
         "Create a premium cinematic documentary still in 16:9.",
         "",
         f"Scene meaning: {blueprint['scene_meaning']}",
-        f"Visual: Show {primary_subject} in a way that reflects {blueprint['visual_goal'].lower()} and feels like one unified documentary film rather than a random standalone image.",
+        f"Visual intent: {visual_intent}",
         f"Main subject: {primary_subject}",
-        "Character continuity:",
+        f"Environment storytelling: {environment}",
+        f"Composition: {descriptor['scale']} scale, {blueprint['composition']}, density {descriptor['density']}",
+        "Camera: realistic documentary photography, natural lens perspective, cinematic framing, realistic depth of field",
+        f"Lighting: {blueprint['lighting']} with {descriptor['lighting_family']} family emphasis",
+        f"Mood: {descriptor['viewer_emotion']}, {blueprint['atmosphere']}",
+        "Important details:",
     ]
     prompt_lines.extend(profiles or ["- Reuse the same recurring subject and object design across the sequence."])
+    prompt_lines.extend(f"- {item}" for item in details[:7])
     prompt_lines.extend(
         [
-            f"Action without speech: {blueprint['action']}",
-            f"Environment: {environment}",
-            f"Composition: {blueprint['composition']}",
-            f"Angle: {blueprint['angle']}",
-            "Camera: realistic documentary photography, natural lens perspective, cinematic framing, realistic depth of field",
-            f"Lighting: {blueprint['lighting']}",
-            f"Atmosphere: {blueprint['atmosphere']}",
-            "Important details:",
-        ]
-    )
-    prompt_lines.extend(f"- {item}" for item in details[:7] or ["- Maintain realistic physical detail and layered depth."])
-    prompt_lines.extend(
-        [
-            f"Style: {STYLE_SUMMARY}",
+            f"- Action without speech: {blueprint['action']}",
+            f"- Angle: {blueprint['angle']}",
+            f"- Continuity focus: {scene_entry['continuity_focus']}",
+            f"- Style: {STYLE_SUMMARY}",
             "Restrictions: no real-person names, no text, no subtitles, no logos, no watermark, no fake UI, no distorted hands, no plastic skin, no generic stock photo aesthetic, no random replacement characters",
         ]
     )
     prompt = "\n".join(prompt_lines)
-
     return {
         "shot_role": shot_role,
         "primary_subject": primary_subject,
@@ -805,12 +970,36 @@ def build_scene_prompt(scene: dict, bundle: dict) -> dict:
         "lighting": blueprint["lighting"],
         "atmosphere": blueprint["atmosphere"],
         "visual_goal": blueprint["visual_goal"],
+        "visual_intent": visual_intent,
         "prompt": prompt,
         "active_entity_ids": active_ids,
         "continuity_cast": profiles,
         "continuity_focus": scene_entry["continuity_focus"],
         "semantic_descriptor": descriptor,
+        "scale": descriptor["scale"],
+        "lighting_family": descriptor["lighting_family"],
+        "density": descriptor["density"],
+        "beat_priority": descriptor["beat_priority"],
+        "key_beat": descriptor["key_beat"],
+        "prompt_sections": list(REQUIRED_PROMPT_HEADERS),
     }
+
+
+def _diversity_axes(prev_item: dict, current_item: dict) -> list[str]:
+    axes = []
+    if prev_item.get("scale") != current_item.get("scale"):
+        axes.append("scale")
+    if prev_item.get("angle") != current_item.get("angle"):
+        axes.append("angle")
+    if prev_item.get("lighting_family") != current_item.get("lighting_family"):
+        axes.append("lighting_family")
+    if prev_item.get("density") != current_item.get("density"):
+        axes.append("density")
+    if prev_item.get("visual_function") != current_item.get("visual_function"):
+        axes.append("visual_function")
+    if prev_item.get("environment") != current_item.get("environment"):
+        axes.append("environment")
+    return axes
 
 
 def build_beat_report(scenes: list[dict]) -> str:
@@ -825,6 +1014,9 @@ def build_beat_report(scenes: list[dict]) -> str:
                 f"Semantic action: {scene.get('semantic_action', '')}",
                 f"Visual function: {scene.get('visual_function', '')}",
                 f"Visual strategy: {scene.get('visual_strategy', '')}",
+                f"Viewer emotion: {scene.get('viewer_emotion', '')}",
+                f"Beat priority: {scene.get('beat_priority', '')}",
+                f"Pattern break score: {scene.get('pattern_break_score', 0)}",
                 f"Role confidence: {scene.get('role_confidence', 0):.2f}",
                 f"Fallback reason: {scene.get('fallback_reason', '') or 'none'}",
                 f"Voice text: {scene.get('voice_text', '')}",
@@ -837,21 +1029,34 @@ def build_beat_report(scenes: list[dict]) -> str:
 def run_prompt_package_qa(items: list[dict], theme_hint: str) -> dict:
     issues = []
     warnings = []
-    for item in items:
+    repeated_subject_environment_role = 0
+    last_signature = None
+    for idx, item in enumerate(items):
         if item["primary_subject"].strip().lower() in ABSTRACT_PRIMARY_SUBJECTS:
             issues.append(f"{item['scene_id']}: abstract primary_subject is not allowed")
         if item["semantic_descriptor"]["event_clarity_required"] and "bridge" in item["shot_role"]:
             issues.append(f"{item['scene_id']}: event_clarity_required scene cannot use bridge role")
-
-    for start in range(max(0, len(items) - 2)):
-        trio = items[start : start + 3]
-        same_environment = len({item["environment"] for item in trio}) == 1
-        same_subject = len({item["primary_subject"] for item in trio}) == 1
-        different_actions = len({item["semantic_descriptor"]["semantic_action"] for item in trio}) > 1
-        if same_environment and same_subject and different_actions:
-            issues.append(
-                f"{trio[0]['scene_id']}..{trio[-1]['scene_id']}: same environment and primary subject repeated across distinct semantic actions"
-            )
+        if item.get("active_entity_ids") and not item.get("continuity_cast"):
+            issues.append(f"{item['scene_id']}: recurring entities require continuity cast details")
+        if not item.get("prompt", "").strip():
+            issues.append(f"{item['scene_id']}: prompt is empty")
+        for header in REQUIRED_PROMPT_HEADERS:
+            if header not in item.get("prompt", ""):
+                issues.append(f"{item['scene_id']}: prompt missing section '{header}'")
+        signature = (item["primary_subject"], item["environment"], item["shot_role"])
+        if signature == last_signature:
+            repeated_subject_environment_role += 1
+        else:
+            repeated_subject_environment_role = 1
+            last_signature = signature
+        if repeated_subject_environment_role >= 3:
+            issues.append(f"{item['scene_id']}: repeated subject/environment/role streak reached {repeated_subject_environment_role}")
+        if idx > 0:
+            axes = item.get("diversity_axes_from_previous") or _diversity_axes(items[idx - 1], item)
+            if len(axes) < 2:
+                issues.append(f"{item['scene_id']}: adjacent-shot diversity too low ({', '.join(axes) or 'none'})")
+        if item.get("key_beat") and int(item.get("variant_count", 0) or 0) < 2:
+            issues.append(f"{item['scene_id']}: key beat requires at least 2 variants")
 
     streak_role = None
     streak_count = 0
@@ -861,7 +1066,7 @@ def run_prompt_package_qa(items: list[dict], theme_hint: str) -> dict:
         else:
             streak_role = item["shot_role"]
             streak_count = 1
-        if streak_count >= 4:
+        if streak_count >= 3:
             warnings.append(f"{item['scene_id']}: shot_role streak reached {streak_count} for {streak_role}")
 
     status = "passed" if not issues else "failed"

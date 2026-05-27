@@ -1,0 +1,17 @@
+[
+  {
+    "sheet": "Generation_Master",
+    "rows": 646,
+    "cols": 24
+  },
+  {
+    "sheet": "Generation_Rules",
+    "rows": 11,
+    "cols": 2
+  },
+  {
+    "sheet": "Reference_Helper",
+    "rows": 646,
+    "cols": 5
+  }
+]

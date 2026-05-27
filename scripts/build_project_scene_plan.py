@@ -89,6 +89,71 @@ def split_duration(total: float, parts: int) -> list[float]:
     return durations
 
 
+def choose_alternate(value: str, options: list[str]) -> str:
+    for option in options:
+        if option != value:
+            return option
+    return value
+
+
+def apply_retention_direction(scenes: list[dict]) -> None:
+    scale_cycle = ["wide", "medium", "close-up", "macro"]
+    angle_cycle = ["eye-level", "low angle", "high angle", "over-the-shoulder", "top-down"]
+    density_cycle = ["clean", "layered", "focused", "busy"]
+
+    for index, scene in enumerate(scenes):
+        scene["opening_window"] = scene["start"] < 60.0
+        if scene["opening_window"] and scene["shot_index"] <= 3 and scene["visual_function"] == "transition":
+            scene["visual_function"] = "hook"
+            scene["beat_priority"] = "hero"
+            scene["key_beat"] = True
+            scene["viewer_emotion"] = "mystery"
+            scene["notes"].append("Opening-minute escalation promoted this beat to a hook.")
+
+        if index == 0:
+            scene["pattern_break_score"] = 8.5 if scene["key_beat"] else 7.0
+            scene["diversity_axes_from_previous"] = []
+            continue
+
+        previous = scenes[index - 1]
+        diversity_axes = []
+        if previous["scale"] != scene["scale"]:
+            diversity_axes.append("scale")
+        if previous["angle"] != scene["angle"]:
+            diversity_axes.append("angle")
+        if previous["lighting_family"] != scene["lighting_family"]:
+            diversity_axes.append("lighting_family")
+        if previous["density"] != scene["density"]:
+            diversity_axes.append("density")
+        if previous["visual_function"] != scene["visual_function"]:
+            diversity_axes.append("visual_function")
+        if previous["environment"] != scene["environment"]:
+            diversity_axes.append("environment")
+
+        if len(diversity_axes) < 2:
+            original_scale = scene["scale"]
+            original_angle = scene["angle"]
+            original_density = scene["density"]
+            scene["scale"] = choose_alternate(original_scale, scale_cycle)
+            scene["angle"] = choose_alternate(original_angle, angle_cycle)
+            scene["density"] = choose_alternate(original_density, density_cycle)
+            diversity_axes = ["scale", "angle", "density"]
+            scene["notes"].append("Adjacent-shot diversity boost applied to avoid slideshow repetition.")
+
+        if (
+            index >= 2
+            and scene["visual_strategy"] == previous["visual_strategy"] == scenes[index - 2]["visual_strategy"] == "mechanism_view"
+        ):
+            scene["pattern_break_score"] = 9.0
+            scene["visual_function"] = "pattern_break"
+            scene["density"] = choose_alternate(scene["density"], density_cycle)
+            scene["notes"].append("Analytical streak detected; this beat was turned into a pattern-break frame.")
+        else:
+            scene["pattern_break_score"] = 8.5 if scene["key_beat"] else max(6.0, 5.5 + len(diversity_axes))
+
+        scene["diversity_axes_from_previous"] = diversity_axes
+
+
 def build_scene_plan(
     sentence_blocks: list[dict], max_duration: float, theme_hint: str
 ) -> tuple[list[dict], list[dict]]:
@@ -132,12 +197,20 @@ def build_scene_plan(
                 "visual_goal": "",
                 "prompt": "",
                 "shot_role": "",
+                "viewer_emotion": "",
+                "scale": "medium",
                 "primary_subject": "",
                 "environment": "",
                 "composition": "",
                 "angle": "",
                 "lighting": "",
+                "lighting_family": "neutral",
                 "atmosphere": "",
+                "density": "layered",
+                "pattern_break_score": 0.0,
+                "diversity_axes_from_previous": [],
+                "beat_priority": "standard",
+                "key_beat": False,
                 "active_entity_ids": [],
                 "continuity_cast": [],
                 "continuity_focus": "",
@@ -160,6 +233,7 @@ def build_scene_plan(
             scene.update(extract_scene_semantics(scene, theme_hint))
             scenes.append(scene)
 
+    apply_retention_direction(scenes)
     return scenes, long_segments
 
 
@@ -213,6 +287,7 @@ def main() -> None:
     logs_dir = Path(project["meta"]["project_root"]) / "logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
     beat_report_path = logs_dir / "beat_extraction_report.md"
+    script_analysis_report_path = logs_dir / "script_analysis_report.md"
 
     sentence_blocks_json_path.write_text(json.dumps(sentence_blocks, ensure_ascii=False, indent=2), encoding="utf-8")
     write_sentence_block_text(sentence_blocks_txt_path, sentence_blocks)
@@ -243,12 +318,14 @@ def main() -> None:
     scene_plan_path.write_text(json.dumps(scene_plan, ensure_ascii=False, indent=2), encoding="utf-8")
     write_scene_prompt_seed(scene_prompts_seed_path, scenes)
     beat_report_path.write_text(build_beat_report(scenes), encoding="utf-8")
+    script_analysis_report_path.write_text(build_beat_report(scenes), encoding="utf-8")
 
     project["scene_plan"]["status"] = "completed"
     project["scene_plan"]["scene_count"] = len(scenes)
     project["scene_plan"]["original_segment_count"] = len(sentence_blocks)
     project["prompts"]["status"] = "pending"
     project.setdefault("logs", {})["beat_extraction_report_path"] = str(beat_report_path)
+    project["logs"]["script_analysis_report_path"] = str(script_analysis_report_path)
     project["current_stage"] = "prompt_package"
     project["updated_at"] = iso_now()
     project_json.write_text(json.dumps(project, ensure_ascii=False, indent=2), encoding="utf-8")

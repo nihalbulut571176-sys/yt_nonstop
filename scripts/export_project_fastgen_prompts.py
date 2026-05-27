@@ -75,6 +75,17 @@ def main() -> None:
         "prompt_count": len(blocks),
         "export_signature": export_signature,
         "generator_ready_path": str(generator_ready_path),
+        "profile_id": project.get("profile_id"),
+        "package_items": [
+            {
+                "scene_id": item.get("scene_id"),
+                "beat_priority": item.get("beat_priority", "standard"),
+                "key_beat": bool(item.get("key_beat")),
+                "variant_count": int(item.get("variant_count", 1) or 1),
+                "reference_ids": item.get("reference_ids", []),
+            }
+            for item in package.get("items", [])
+        ],
     }
     export_meta_path.write_text(json.dumps(export_meta, ensure_ascii=False, indent=2), encoding="utf-8")
 

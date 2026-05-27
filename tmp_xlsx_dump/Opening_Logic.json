@@ -1,0 +1,30 @@
+[
+  [
+    "field",
+    "value"
+  ],
+  [
+    "scope",
+    "Director's cut for the first 90 seconds"
+  ],
+  [
+    "goal",
+    "Higher retention density, stronger visual questions, cleaner mechanism reveals, harsher pattern breaks"
+  ],
+  [
+    "cadence",
+    "Mostly 3 seconds per beat for maximum editorial control"
+  ],
+  [
+    "opening_requirements",
+    "strong opening image, visual question, scale shot, tension detail, hidden mechanism shot all included in first 30 seconds"
+  ],
+  [
+    "motifs",
+    "glass reflections; surveillance angles; luxury warmth versus cold control; absence after value; delayed reaction"
+  ],
+  [
+    "negative_prompt",
+    "subtitles, captions, readable text, speech bubbles, lip sync, talking head interview, plastic skin, distorted hands, deformed anatomy, fake UI, generic stock photo, cheap AI art, cartoon look, oversaturated color, glamorized criminals, comedy tone, meaningless interface graphics"
+  ]
+]

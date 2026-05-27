@@ -28,7 +28,13 @@ def build_review_blocks(items: list[dict]) -> str:
                     f"Voice text: {item['voice_text']}",
                     f"Reference IDs: {', '.join(item.get('reference_ids', [])) if item.get('reference_ids') else 'none'}",
                     f"Shot role: {item['shot_role']}",
+                    f"Beat priority: {item['beat_priority']}",
+                    f"Key beat: {item['key_beat']}",
                     f"Primary subject: {item['primary_subject']}",
+                    f"Viewer emotion: {item['semantic_descriptor']['viewer_emotion']}",
+                    f"Scale: {item['scale']}",
+                    f"Lighting family: {item['lighting_family']}",
+                    f"Density: {item['density']}",
                     "Visual goal:",
                     item["visual_goal"],
                     "Prompt:",
@@ -71,6 +77,11 @@ def build_prompt_diversity_report(items: list[dict]) -> str:
     lines.extend(f"- {item['scene_id']}: {item['shot_role']}" for item in items)
     lines.extend(["", "Environment sequence:"])
     lines.extend(f"- {item['scene_id']}: {item['environment']}" for item in items)
+    lines.extend(["", "Adjacent diversity:"])
+    lines.extend(
+        f"- {item['scene_id']}: {', '.join(item.get('diversity_axes_from_previous', [])) or 'opening frame'}"
+        for item in items
+    )
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -108,15 +119,23 @@ def build_final_scene_plan(package: dict) -> dict:
                 "event_clarity_required": item["semantic_descriptor"]["event_clarity_required"],
                 "visual_function": item["semantic_descriptor"]["visual_function"],
                 "visual_strategy": item["semantic_descriptor"]["visual_strategy"],
+                "viewer_emotion": item["semantic_descriptor"]["viewer_emotion"],
                 "role_confidence": item["semantic_descriptor"]["role_confidence"],
                 "fallback_reason": item["semantic_descriptor"]["fallback_reason"],
                 "shot_role": item["shot_role"],
+                "beat_priority": item["beat_priority"],
+                "key_beat": item["key_beat"],
+                "scale": item["scale"],
                 "primary_subject": item["primary_subject"],
                 "environment": item["environment"],
                 "composition": item["composition"],
                 "angle": item["angle"],
                 "lighting": item["lighting"],
+                "lighting_family": item["lighting_family"],
                 "atmosphere": item["atmosphere"],
+                "density": item["density"],
+                "pattern_break_score": item["pattern_break_score"],
+                "diversity_axes_from_previous": item["diversity_axes_from_previous"],
                 "prompt": item["prompt"],
             }
         )
@@ -174,6 +193,7 @@ def main() -> None:
             "duration": scene["duration"],
             "voice_text": scene["voice_text"],
             "visual_goal": authored["visual_goal"],
+            "visual_intent": authored["visual_intent"],
             "reference_ids": scene.get("reference_ids", []),
             "reference_mode": scene.get("reference_mode", "none"),
             "prompt": authored["prompt"],
@@ -184,15 +204,24 @@ def main() -> None:
             "recurring_motifs": continuity_bundle["recurring_motifs"],
             "theme_hint": continuity_bundle["theme_hint"],
             "shot_role": authored["shot_role"],
+            "beat_priority": scene["beat_priority"],
+            "key_beat": scene["key_beat"],
+            "variant_count": 4 if scene["beat_priority"] == "hero" else 2 if scene["key_beat"] else 1,
             "primary_subject": authored["primary_subject"],
             "environment": authored["environment"],
             "composition": authored["composition"],
             "angle": authored["angle"],
             "lighting": authored["lighting"],
+            "lighting_family": authored["lighting_family"],
             "atmosphere": authored["atmosphere"],
+            "scale": authored["scale"],
+            "density": authored["density"],
+            "pattern_break_score": scene["pattern_break_score"],
+            "diversity_axes_from_previous": scene.get("diversity_axes_from_previous", []),
             "active_entity_ids": authored["active_entity_ids"],
             "continuity_cast": authored["continuity_cast"],
             "continuity_focus": authored["continuity_focus"],
+            "prompt_sections": authored["prompt_sections"],
             "semantic_descriptor": descriptor,
             "status": "pending_prompt",
             "notes": [],
@@ -211,17 +240,19 @@ def main() -> None:
         scene["active_entity_ids"] = authored["active_entity_ids"]
         scene["continuity_cast"] = authored["continuity_cast"]
         scene["continuity_focus"] = authored["continuity_focus"]
+        scene["visual_intent"] = authored["visual_intent"]
         scene.update(descriptor)
 
     source_signature = stable_hash(
         [
-            {
-                "scene_id": item["scene_id"],
-                "voice_text": item["voice_text"],
-                "shot_role": item["shot_role"],
-                "primary_subject": item["primary_subject"],
-                "environment": item["environment"],
-                "prompt": item["prompt"],
+                {
+                    "scene_id": item["scene_id"],
+                    "voice_text": item["voice_text"],
+                    "shot_role": item["shot_role"],
+                    "beat_priority": item["beat_priority"],
+                    "primary_subject": item["primary_subject"],
+                    "environment": item["environment"],
+                    "prompt": item["prompt"],
                 "semantic_descriptor": item["semantic_descriptor"],
             }
             for item in items
@@ -260,11 +291,17 @@ def main() -> None:
                     "prompt_language": item["prompt_language"],
                     "theme_hint": item["theme_hint"],
                     "shot_role": item["shot_role"],
+                    "beat_priority": item["beat_priority"],
+                    "key_beat": item["key_beat"],
+                    "variant_count": item["variant_count"],
                     "primary_subject": item["primary_subject"],
                     "environment": item["environment"],
                     "semantic_descriptor": item["semantic_descriptor"],
                     "active_entity_ids": item["active_entity_ids"],
                     "continuity_focus": item["continuity_focus"],
+                    "scale": item["scale"],
+                    "lighting_family": item["lighting_family"],
+                    "density": item["density"],
                 }
                 for item in items
             ],

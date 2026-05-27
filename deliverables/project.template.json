@@ -62,6 +62,7 @@
     "provider": "Fast Gen",
     "route": "v4-openai-image",
     "run_manifest_path": null,
+    "selection_manifest_path": null,
     "raw_images_dir": null,
     "normalized_images_dir": null,
     "generated_count": 0,
@@ -82,6 +83,7 @@
     "status": "pending",
     "render_strategy": "images_only",
     "mixed_manifest_path": null,
+    "motion_plan_path": null,
     "slideshow_timeline_path": null,
     "ffconcat_path": null,
     "partial_outputs": [],
@@ -117,6 +119,7 @@
   "qc": {
     "status": "pending",
     "qc_report_path": null,
+    "results_json_path": null,
     "last_result": null
   },
   "logs": {
