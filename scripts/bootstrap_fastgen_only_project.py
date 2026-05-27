@@ -23,6 +23,29 @@ def load_template() -> dict:
     return json.loads(TEMPLATE_PATH.read_text(encoding="utf-8"))
 
 
+def normalize_text(text: str) -> str:
+    return " ".join(text.split())
+
+
+def infer_language_from_text(text: str) -> str:
+    sample = normalize_text(text).lower()
+    if not sample:
+        return "auto"
+
+    language_markers = {
+        "de": {" der ", " die ", " das ", " und ", " nicht ", " wolf ", " wölfe ", " rudel ", " familie ", " jahr "},
+        "ru": {" что ", " это ", " его ", " она ", " они ", " волк ", " волки ", " жизнь ", " если "},
+        "en": {" the ", " and ", " with ", " wolf ", " wolves ", " family ", " story ", " year "},
+    }
+    padded = f" {sample} "
+    scores = {
+        language: sum(1 for marker in markers if marker in padded)
+        for language, markers in language_markers.items()
+    }
+    best_language, best_score = max(scores.items(), key=lambda item: item[1])
+    return best_language if best_score > 0 else "auto"
+
+
 def ensure_dirs(project_root: Path) -> dict[str, Path]:
     paths = {
         "input": project_root / "input",
@@ -30,14 +53,17 @@ def ensure_dirs(project_root: Path) -> dict[str, Path]:
         "transcript": project_root / "transcript",
         "scene_plan": project_root / "scene_plan",
         "prompts": project_root / "prompts",
+        "config": project_root / "config",
+        "planning": project_root / "planning",
+        "motion": project_root / "motion",
+        "exports": project_root / "exports",
+        "research": project_root / "research",
         "images_root": project_root / "images",
         "images_fastgen": project_root / "images" / "fastgen_run",
         "images_fastgen_raw": project_root / "images" / "fastgen_run" / "images",
         "images_normalized": project_root / "images" / "normalized",
         "video_runs": project_root / "video_runs",
         "renders": project_root / "renders",
-        "motion": project_root / "motion",
-        "qc": project_root / "qc",
         "publishing": project_root / "publishing",
         "publishing_thumbs": project_root / "publishing" / "thumbnails",
         "publishing_thumb_candidates": project_root / "publishing" / "thumbnails" / "candidates",
@@ -77,7 +103,7 @@ def stage_audio(audio_source: str, audio_dir: Path) -> Path:
     source_path = Path(audio_source).expanduser().resolve()
     if not source_path.exists():
         raise FileNotFoundError(f"Audio source not found: {source_path}")
-    target = audio_dir / source_path.name
+    target = audio_dir / f"source_audio{source_path.suffix.lower() or '.mp3'}"
     if source_path != target:
         shutil.copy2(source_path, target)
     return target
@@ -190,6 +216,10 @@ def create_project_manifest(
     dirs: dict[str, Path],
     publishing_files: dict[str, Path],
     raw_text_path: Path | None,
+    whisper_model: str,
+    language: str,
+    compute_type: str,
+    device: str,
 ) -> dict:
     manifest = load_template()
     now = iso_now()
@@ -198,9 +228,10 @@ def create_project_manifest(
     manifest["created_at"] = now
     manifest["updated_at"] = now
     manifest["status"] = "in_progress"
-    manifest["current_stage"] = "transcribe"
+    manifest["current_stage"] = "transcription"
     manifest["meta"]["project_root"] = str(project_root)
     manifest["meta"]["title"] = project_id
+    manifest["meta"]["language"] = language
 
     raw_text_target = dirs["input"] / "raw_text.md"
     if raw_text_path:
@@ -219,22 +250,56 @@ def create_project_manifest(
     manifest["rewrite"]["approved_script_path"] = str(dirs["input"] / "voice_script_approved.md")
 
     manifest["inputs"]["audio_path"] = str(audio_path)
+    manifest["transcription"]["model"] = whisper_model
+    manifest["transcription"]["requested_language"] = language
+    manifest["transcription"]["compute_type"] = compute_type
+    manifest["transcription"]["device"] = device
     manifest["transcription"]["audio_path"] = str(audio_path)
+    manifest["transcription"]["raw_srt_path"] = str(dirs["transcript"] / f"{audio_path.stem}.srt")
     manifest["transcription"]["srt_path"] = str(dirs["transcript"] / f"{audio_path.stem}.srt")
     manifest["transcription"]["segments_json_path"] = str(dirs["transcript"] / f"{audio_path.stem}.segments.json")
     manifest["transcription"]["meta_json_path"] = str(dirs["transcript"] / f"{audio_path.stem}.meta.json")
 
+    manifest["transcript_cleanup"]["source_text_path"] = str(raw_text_target)
+    manifest["transcript_cleanup"]["used_source_path"] = None
+    manifest["transcript_cleanup"]["cleaned_srt_path"] = str(dirs["transcript"] / "cleaned.srt")
+    manifest["transcript_cleanup"]["cleaned_segments_json_path"] = str(dirs["transcript"] / "cleaned_segments.json")
+    manifest["transcript_cleanup"]["cleaned_timed_transcript_md_path"] = str(dirs["transcript"] / "cleaned_timed_transcript.md")
+    manifest["transcript_cleanup"]["cleanup_report_path"] = str(dirs["transcript"] / "cleanup_report.json")
+
     manifest["scene_plan"]["source_srt_path"] = manifest["transcription"]["srt_path"]
     manifest["scene_plan"]["long_segment_report_path"] = str(dirs["scene_plan"] / "long_segment_report.json")
-    manifest["scene_plan"]["scene_plan_path"] = str(dirs["scene_plan"] / "scene_plan.json")
+    manifest["scene_plan"]["scene_plan_path"] = str(dirs["planning"] / "scene_plan.json")
+    manifest["planning"]["scene_map_path"] = str(dirs["planning"] / "scene_map.json")
+    manifest["planning"]["storyboard_path"] = str(dirs["planning"] / "storyboard.json")
+    manifest["planning"]["frame_briefs_json_path"] = str(dirs["planning"] / "frame_briefs.json")
+    manifest["planning"]["frame_briefs_csv_path"] = str(dirs["planning"] / "frame_briefs.csv")
+    manifest["planning"]["continuity_map_json_path"] = str(dirs["config"] / "continuity_entities.json")
+    manifest["planning"]["continuity_bible_md_path"] = str(dirs["config"] / "continuity_bible.md")
+    manifest["planning"]["sentence_blocks_json_path"] = str(dirs["planning"] / "sentence_blocks.json")
+    manifest["planning"]["sentence_blocks_txt_path"] = str(dirs["planning"] / "sentence_blocks.txt")
 
-    manifest["prompts"]["prompt_export_path"] = str(dirs["scene_plan"] / "scene_prompts.md")
-    manifest["prompts"]["prompt_package_path"] = str(dirs["prompts"] / "prompt_package.json")
-    manifest["prompts"]["generator_ready_path"] = str(dirs["prompts"] / "fastgen_prompts_generator_ready.md")
+    manifest["prompts"]["prompt_export_path"] = str(dirs["planning"] / "scene_prompts.md")
+    manifest["prompts"]["style_guide_path"] = str(dirs["config"] / "style_guide.json")
+    manifest["prompts"]["visual_bible_path"] = str(dirs["config"] / "style_bible.md")
+    manifest["prompts"]["visual_bible_review_path"] = str(dirs["logs"] / "visual_bible_review.md")
+    manifest["prompts"]["visual_shot_plan_path"] = str(dirs["prompts"] / "visual_shot_plan.json")
+    manifest["prompts"]["shot_prompt_package_path"] = str(dirs["prompts"] / "shot_prompt_package.json")
+    manifest["prompts"]["shot_prompt_review_path"] = str(dirs["prompts"] / "shot_prompt_review.md")
+    manifest["prompts"]["prompt_package_path"] = str(dirs["planning"] / "prompt_package.json")
+    manifest["prompts"]["final_scene_plan_path"] = str(dirs["prompts"] / "final_scene_plan.json")
+    manifest["prompts"]["fastgen_export_path"] = str(dirs["exports"] / "fastgen_prompts.md")
+    manifest["prompts"]["generator_ready_path"] = str(dirs["exports"] / "fastgen_prompts.md")
     manifest["prompts"]["prompt_review_path"] = str(dirs["prompts"] / "prompt_review.md")
+    manifest["prompts"]["scene_context_pack_path"] = str(dirs["planning"] / "scene_context_pack.json")
+    manifest["prompts"]["llm_prompt_drafts_path"] = str(dirs["prompts"] / "llm_prompt_drafts.json")
+    manifest["prompts"]["generation_locked_json_path"] = str(dirs["prompts"] / "generation_locked_frames.json")
+    manifest["prompts"]["generation_locked_csv_path"] = str(dirs["prompts"] / "generation_locked_frames.csv")
+
+    manifest["motion"]["motion_plan_json_path"] = str(dirs["motion"] / "motion_plan.json")
+    manifest["motion"]["motion_plan_csv_path"] = str(dirs["motion"] / "motion_plan.csv")
 
     manifest["images"]["run_manifest_path"] = str(dirs["images_fastgen"] / "run_manifest.json")
-    manifest["images"]["selection_manifest_path"] = str(project_root / "qc" / "selection_manifest.json")
     manifest["images"]["raw_images_dir"] = str(dirs["images_fastgen_raw"])
     manifest["images"]["normalized_images_dir"] = str(dirs["images_normalized"])
 
@@ -250,10 +315,12 @@ def create_project_manifest(
 
     manifest["render"]["render_strategy"] = "images_only"
     manifest["render"]["mixed_manifest_path"] = str(dirs["renders"] / "mixed_manifest.json")
-    manifest["render"]["motion_plan_path"] = str(project_root / "motion" / "motion_plan.json")
     manifest["render"]["slideshow_timeline_path"] = str(dirs["renders"] / "slideshow_timeline.json")
     manifest["render"]["ffconcat_path"] = str(dirs["renders"] / "timeline.ffconcat")
     manifest["render"]["final_video_path"] = str(dirs["renders"] / f"{project_id}.mp4")
+    manifest["exports"]["montage_timing_map_json_path"] = str(dirs["exports"] / "montage_timing_map.json")
+    manifest["exports"]["montage_timing_map_csv_path"] = str(dirs["exports"] / "montage_timing_map.csv")
+    manifest["exports"]["montage_timing_map_xlsx_path"] = str(dirs["exports"] / "montage_timing_map.xlsx")
 
     manifest["publishing"]["status"] = "pending"
     manifest["publishing"]["title_generation"]["drafts_path"] = str(publishing_files["title_drafts"])
@@ -267,10 +334,26 @@ def create_project_manifest(
     manifest["publishing"]["thumbnail_generation"]["candidates_dir"] = str(dirs["publishing_thumb_candidates"])
     manifest["publishing"]["thumbnail_generation"]["approved_thumbnail_path"] = str(publishing_files["approved_thumbnail"])
 
-    manifest["qc"]["qc_report_path"] = str(dirs["logs"] / "qc_report.md")
-    manifest["qc"]["results_json_path"] = str(project_root / "qc" / "qc_results.json")
+    manifest["qc"]["qc_report_path"] = str(dirs["renders"] / "qc_report.json")
     manifest["logs"]["pipeline_log_path"] = str(dirs["logs"] / "pipeline.log")
     manifest["logs"]["events_jsonl_path"] = str(dirs["logs"] / "events.jsonl")
+    manifest["logs"]["input_validation_report_path"] = str(dirs["logs"] / "input_validation_report.md")
+    manifest["logs"]["timing_cleanup_report_path"] = str(dirs["logs"] / "timing_cleanup_report.md")
+    manifest["logs"]["scene_qa_report_path"] = str(dirs["logs"] / "scene_qa_report.md")
+    manifest["logs"]["scene_qa_json_path"] = str(dirs["logs"] / "scene_qa.json")
+    manifest["logs"]["narrative_editor_report_path"] = str(dirs["logs"] / "narrative_editor_report.md")
+    manifest["logs"]["visual_direction_report_path"] = str(dirs["logs"] / "visual_direction_report.md")
+    manifest["logs"]["brand_realism_report_path"] = str(dirs["logs"] / "brand_realism_report.md")
+    manifest["logs"]["prompt_qa_report_path"] = str(dirs["logs"] / "prompt_qa_report.md")
+    manifest["logs"]["prompt_qa_json_path"] = str(dirs["logs"] / "prompt_qa.json")
+    manifest["logs"]["generation_lock_report_path"] = str(dirs["logs"] / "generation_lock_report.md")
+    manifest["logs"]["qa_report_json_path"] = str(dirs["logs"] / "qa_report.json")
+    manifest["logs"]["workflow_report_path"] = str(dirs["logs"] / "workflow_report.md")
+    manifest["logs"]["workflow_report_json_path"] = str(dirs["logs"] / "workflow_report.json")
+    manifest["logs"]["export_report_path"] = str(dirs["logs"] / "export_report.md")
+    manifest["logs"]["generation_report_path"] = str(dirs["logs"] / "generation_report.md")
+    manifest["logs"]["render_report_path"] = str(dirs["logs"] / "render_report.md")
+    manifest["logs"]["final_review_report_path"] = str(dirs["logs"] / "final_review_report.md")
 
     return manifest
 
@@ -278,6 +361,7 @@ def create_project_manifest(
 def run_transcription(project_manifest_path: Path, manifest: dict, model: str, language: str, compute_type: str, device: str) -> None:
     audio_path = manifest["transcription"]["audio_path"]
     output_dir = Path(manifest["meta"]["project_root"]) / "transcript"
+    raw_text_path = Path(manifest["inputs"]["raw_text_path"]) if manifest["inputs"].get("raw_text_path") else None
     cmd = [
         sys.executable,
         str(ROOT / "scripts" / "transcribe_faster_whisper.py"),
@@ -293,13 +377,15 @@ def run_transcription(project_manifest_path: Path, manifest: dict, model: str, l
         "--output-dir",
         str(output_dir),
     ]
+    if raw_text_path and raw_text_path.exists() and raw_text_path.read_text(encoding="utf-8-sig").strip():
+        cmd.extend(["--initial-prompt-file", str(raw_text_path)])
     subprocess.run(cmd, check=True)
 
     meta_path = Path(manifest["transcription"]["meta_json_path"])
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
     manifest["inputs"]["audio_duration_seconds"] = float(meta["duration"])
     manifest["transcription"]["status"] = "completed"
-    manifest["current_stage"] = "scene_plan"
+    manifest["current_stage"] = "cleanup_transcript_from_source"
     manifest["updated_at"] = iso_now()
     project_manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
 
@@ -311,8 +397,8 @@ def main() -> None:
     parser.add_argument("--raw-text-path", help="Optional local path to the raw script text.")
     parser.add_argument("--projects-dir", default=str(DEFAULT_PROJECTS_DIR))
     parser.add_argument("--skip-transcribe", action="store_true")
-    parser.add_argument("--whisper-model", default="base")
-    parser.add_argument("--language", default="ru")
+    parser.add_argument("--whisper-model", default="small")
+    parser.add_argument("--language", default="auto")
     parser.add_argument("--compute-type", default="int8")
     parser.add_argument("--device", default="cpu")
     args = parser.parse_args()
@@ -322,9 +408,24 @@ def main() -> None:
     dirs = ensure_dirs(project_root)
 
     raw_text_path = Path(args.raw_text_path).resolve() if args.raw_text_path else None
+    effective_language = args.language
+    if raw_text_path and raw_text_path.exists() and str(args.language).strip().lower() in {"", "auto", "none"}:
+        inferred = infer_language_from_text(raw_text_path.read_text(encoding="utf-8-sig"))
+        effective_language = inferred
     audio_path = stage_audio(args.audio_source, dirs["audio"])
     publishing_files = create_publishing_scaffolds(dirs["publishing"], dirs["publishing_thumbs"])
-    manifest = create_project_manifest(args.project_id, project_root, audio_path, dirs, publishing_files, raw_text_path)
+    manifest = create_project_manifest(
+        args.project_id,
+        project_root,
+        audio_path,
+        dirs,
+        publishing_files,
+        raw_text_path,
+        whisper_model=args.whisper_model,
+        language=effective_language,
+        compute_type=args.compute_type,
+        device=args.device,
+    )
 
     project_manifest_path = project_root / "project.json"
     project_manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -341,7 +442,7 @@ def main() -> None:
         project_manifest_path,
         manifest,
         model=args.whisper_model,
-        language=args.language,
+        language=effective_language,
         compute_type=args.compute_type,
         device=args.device,
     )

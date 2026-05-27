@@ -84,16 +84,69 @@ Publishing files created automatically:
 
 Once audio intake and transcription are complete:
 
-1. build the scene plan from the real transcript timing
-2. build the prompt package for all scenes
-3. prepare the publishing package for title, description, and thumbnail generation
-4. run FastGen for still images
-5. normalize images
-6. build slideshow timeline
-7. render final slideshow video
-8. finalize title, description, and thumbnail
+1. clean the transcript against source text when source text exists
+2. build the scene plan from the cleaned timed transcript
+3. build the prompt package for all scenes
+4. auto-draft prompts in one global visual style
+5. prepare the publishing package for title, description, and thumbnail generation
+6. export the prompt package into generator-ready FastGen blocks
+7. run project-aware FastGen still-image generation
+8. normalize images
+9. build slideshow timeline
+10. render final slideshow video
+11. finalize title, description, and thumbnail
+
+## One-Command Backbone
+
+The project now has a unified runner:
+
+- `scripts/run_fastgen_only_project.py`
+
+And a minimal validator:
+
+- `scripts/validate_project.py`
+
+Example:
+
+```powershell
+python scripts/run_fastgen_only_project.py `
+  --project-json "C:\Users\MIKE\Documents\Codex\YT\projects\telegram_fastgen_001\project.json" `
+  --from cleanup_transcript_from_source `
+  --to render
+```
+
+Resume example:
+
+```powershell
+python scripts/run_fastgen_only_project.py `
+  --project-json "C:\Users\MIKE\Documents\Codex\YT\projects\telegram_fastgen_001\project.json" `
+  --resume
+```
+
+Validation example:
+
+```powershell
+python scripts/validate_project.py `
+  --project-json "C:\Users\MIKE\Documents\Codex\YT\projects\telegram_fastgen_001\project.json" `
+  --stage all
+```
+
+Transcript quality gate:
+
+```powershell
+python scripts/validate_project.py `
+  --project-json "C:\Users\MIKE\Documents\Codex\YT\projects\telegram_fastgen_001\project.json" `
+  --stage transcript_quality
+```
 
 ## Post-Transcription Commands
+
+Run transcript cleanup/alignment:
+
+```powershell
+python scripts/cleanup_transcript_from_source.py `
+  --project-json "C:\Users\MIKE\Documents\Codex\YT\projects\telegram_fastgen_001\project.json"
+```
 
 Build the project scene plan:
 
@@ -113,6 +166,13 @@ Build the prompt package:
 
 ```powershell
 python scripts/build_project_prompt_package.py `
+  --project-json "C:\Users\MIKE\Documents\Codex\YT\projects\telegram_fastgen_001\project.json"
+```
+
+Draft global-style visual prompts:
+
+```powershell
+python scripts/draft_project_visual_prompts.py `
   --project-json "C:\Users\MIKE\Documents\Codex\YT\projects\telegram_fastgen_001\project.json"
 ```
 
@@ -146,8 +206,21 @@ This flow now covers:
 - project bootstrap from audio
 - optional raw-text intake
 - Whisper transcription
+- transcript cleanup/alignment quality gate
 - project-aware scene-plan generation
 - project-aware prompt-package generation
-- publishing package preparation
+- project-aware prompt drafting in a unified style
+- project-aware publishing package preparation
+- unified stage runner
+- stage validation
+- project-aware still-image generation adapter
+- project-aware image normalization
+- slideshow timeline build
+- final slideshow render
 
-FastGen prompt generation, still-image generation, normalization, and final slideshow rendering remain the next execution stages, but they now have a clean per-project home and a stable manifest to build on.
+The remaining big quality layer is not technical backbone anymore, but creative refinement:
+
+- better prompt filling
+- richer thumbnail/title/description generation
+- selective scene regeneration
+- stronger QC heuristics

@@ -1,18 +1,12 @@
 import argparse
 import json
 import re
-from datetime import datetime, timezone
-from difflib import SequenceMatcher
 from pathlib import Path
 
-
-SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?…])\s+")
-SPACE_RE = re.compile(r"\s+")
-PUNCT_RE = re.compile(r"[^\w\s]+", re.UNICODE)
+from project_pipeline_utils import load_json, load_project, save_json, save_project
 
 
-def iso_now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+SENTENCE_END_RE = re.compile(r"[.!?…]$|[.!?…][\"'»”)]$")
 
 
 def parse_srt_timestamp(tc: str) -> float:
@@ -40,39 +34,54 @@ def parse_srt(text: str) -> list[dict]:
         content = " ".join(line.strip() for line in lines[2:])
         segments.append(
             {
-                "id": len(segments) + 1,
                 "start_tc": start_tc,
                 "end_tc": end_tc,
                 "start": parse_srt_timestamp(start_tc),
                 "end": parse_srt_timestamp(end_tc),
-                "text": SPACE_RE.sub(" ", content).strip(),
+                "text": re.sub(r"\s+", " ", content).strip(),
             }
         )
     return segments
 
 
+def merge_into_sentence_blocks(segments: list[dict]) -> list[dict]:
+    sentence_blocks = []
+    current = []
+    for seg in segments:
+        current.append(seg)
+        if SENTENCE_END_RE.search(seg["text"]):
+            sentence_blocks.append(
+                {
+                    "segment_id": len(sentence_blocks) + 1,
+                    "start": current[0]["start"],
+                    "end": current[-1]["end"],
+                    "start_tc": current[0]["start_tc"],
+                    "end_tc": current[-1]["end_tc"],
+                    "text": re.sub(r"\s+", " ", " ".join(item["text"] for item in current)).strip(),
+                }
+            )
+            current = []
+    if current:
+        sentence_blocks.append(
+            {
+                "segment_id": len(sentence_blocks) + 1,
+                "start": current[0]["start"],
+                "end": current[-1]["end"],
+                "start_tc": current[0]["start_tc"],
+                "end_tc": current[-1]["end_tc"],
+                "text": re.sub(r"\s+", " ", " ".join(item["text"] for item in current)).strip(),
+            }
+        )
+    return sentence_blocks
+
+
 def normalize_text(text: str) -> str:
-    lowered = text.lower().replace("ё", "е")
-    lowered = PUNCT_RE.sub(" ", lowered)
-    return SPACE_RE.sub(" ", lowered).strip()
+    return re.sub(r"\s+", " ", text.strip())
 
 
-def tokenize(text: str) -> list[str]:
-    normalized = normalize_text(text)
-    return [token for token in normalized.split(" ") if token]
-
-
-def split_source_sentences(text: str) -> list[str]:
-    flattened = SPACE_RE.sub(" ", text.replace("\n", " ")).strip()
-    if not flattened:
-        return []
-    parts = SENTENCE_SPLIT_RE.split(flattened)
-    sentences = [part.strip() for part in parts if part.strip()]
-    return sentences or [flattened]
-
-
-def read_source_text(project: dict) -> tuple[Path | None, str]:
+def resolve_source_text(project: dict) -> tuple[Path | None, str]:
     candidates = [
+        project.get("transcript_cleanup", {}).get("source_text_path"),
         project.get("rewrite", {}).get("approved_script_path"),
         project.get("rewrite", {}).get("rewritten_script_path"),
         project.get("rewrite", {}).get("source_text_path"),
@@ -82,121 +91,119 @@ def read_source_text(project: dict) -> tuple[Path | None, str]:
         if not candidate:
             continue
         path = Path(candidate)
-        if not path.exists():
-            continue
-        text = path.read_text(encoding="utf-8-sig").strip()
-        if text:
-            return path, text
+        if path.exists():
+            text = normalize_text(path.read_text(encoding="utf-8-sig"))
+            if text:
+                return path, text
     return None, ""
 
 
-def join_sentences(sentences: list[str], start: int, count: int) -> str:
-    return " ".join(sentence.strip() for sentence in sentences[start : start + count]).strip()
+def split_source_text_into_sentences(text: str) -> list[str]:
+    text = text.replace("\r", "\n")
+    chunks = re.split(r"(?<=[.!?…])\s+|\n+", text)
+    sentences = [normalize_text(chunk) for chunk in chunks if normalize_text(chunk)]
+    return sentences
 
 
-def similarity_score(source_text: str, whisper_text: str) -> float:
-    normalized_source = normalize_text(source_text)
-    normalized_whisper = normalize_text(whisper_text)
-    if not normalized_source or not normalized_whisper:
-        return 0.0
-    ratio = SequenceMatcher(None, normalized_source, normalized_whisper).ratio()
-    source_tokens = set(tokenize(source_text))
-    whisper_tokens = set(tokenize(whisper_text))
-    overlap = len(source_tokens & whisper_tokens)
-    token_score = overlap / max(1, len(whisper_tokens))
-    return ratio * 0.75 + token_score * 0.25
-
-
-def align_sentences_to_segments(source_sentences: list[str], whisper_segments: list[dict]) -> list[int]:
-    sentence_count = len(source_sentences)
-    segment_count = len(whisper_segments)
-    if sentence_count < segment_count:
-        raise RuntimeError(
-            f"Source has fewer sentences ({sentence_count}) than ASR segments ({segment_count}); cannot assign at least one sentence per segment."
-        )
-
-    max_group = max(1, min(6, sentence_count - segment_count + 1))
-    penalty = 10**9
-    dp: list[list[float]] = [[penalty] * (segment_count + 1) for _ in range(sentence_count + 1)]
-    choice: list[list[int]] = [[0] * (segment_count + 1) for _ in range(sentence_count + 1)]
-    dp[sentence_count][segment_count] = 0.0
-
-    for sentence_index in range(sentence_count - 1, -1, -1):
-        for segment_index in range(segment_count - 1, -1, -1):
-            remaining_sentences = sentence_count - sentence_index
-            remaining_segments = segment_count - segment_index
-            min_take = 1
-            max_take = min(max_group, remaining_sentences - (remaining_segments - 1))
-            if max_take < min_take:
-                continue
-            best_cost = penalty
-            best_take = 1
-            for take in range(min_take, max_take + 1):
-                joined = join_sentences(source_sentences, sentence_index, take)
-                score = similarity_score(joined, whisper_segments[segment_index]["text"])
-                length_gap = abs(len(normalize_text(joined)) - len(normalize_text(whisper_segments[segment_index]["text"])))
-                cost = (1.0 - score) * 100 + length_gap * 0.02 + dp[sentence_index + take][segment_index + 1]
-                if cost < best_cost:
-                    best_cost = cost
-                    best_take = take
-            dp[sentence_index][segment_index] = best_cost
-            choice[sentence_index][segment_index] = best_take
-
-    assignments = []
-    sentence_index = 0
-    for segment_index in range(segment_count):
-        take = choice[sentence_index][segment_index]
+def split_sentence_by_words(text: str, parts: int) -> list[str]:
+    words = text.split()
+    if parts <= 1 or len(words) <= 1:
+        return [text]
+    base = len(words) // parts
+    remainder = len(words) % parts
+    chunks = []
+    cursor = 0
+    for index in range(parts):
+        take = base + (1 if index < remainder else 0)
         if take <= 0:
-            raise RuntimeError("Failed to align source sentences to ASR segments.")
-        assignments.append(take)
-        sentence_index += take
-    if sentence_index != sentence_count:
-        raise RuntimeError("Alignment did not consume all source sentences.")
-    return assignments
+            take = 1
+        next_cursor = min(len(words), cursor + take)
+        chunks.append(" ".join(words[cursor:next_cursor]).strip())
+        cursor = next_cursor
+    if cursor < len(words):
+        chunks[-1] = f"{chunks[-1]} {' '.join(words[cursor:])}".strip()
+    return [chunk for chunk in chunks if chunk]
 
 
-def write_cleaned_srt(path: Path, cleaned_segments: list[dict]) -> None:
-    blocks = []
-    for index, item in enumerate(cleaned_segments, start=1):
-        blocks.append(
-            "\n".join(
-                [
-                    str(index),
-                    f"{item['start_tc']} --> {item['end_tc']}",
-                    item["text"],
-                ]
-            )
+def rebalance_sentences(sentences: list[str], target_count: int) -> tuple[list[str], list[str]]:
+    warnings: list[str] = []
+    if target_count <= 0:
+        return [], warnings
+    if not sentences:
+        return [], warnings
+    current = list(sentences)
+
+    if len(current) < target_count:
+        warnings.append("Source sentence count is lower than whisper block count; some source sentences were split.")
+        while len(current) < target_count:
+            longest_index = max(range(len(current)), key=lambda idx: len(current[idx].split()))
+            longest = current.pop(longest_index)
+            parts_needed = min(target_count - len(current), max(2, len(longest.split()) // 5))
+            split_parts = split_sentence_by_words(longest, parts_needed)
+            for offset, part in enumerate(split_parts):
+                current.insert(longest_index + offset, part)
+            if len(split_parts) == 1:
+                current.insert(longest_index + 1, longest)
+                break
+
+    if len(current) > target_count:
+        warnings.append("Source sentence count differs from whisper block count; some source sentences were merged to match audio timing.")
+        merged: list[str] = []
+        start = 0
+        total = len(current)
+        for bucket in range(target_count):
+            end = round((bucket + 1) * total / target_count)
+            if end <= start:
+                end = start + 1
+            merged.append(normalize_text(" ".join(current[start:end])))
+            start = end
+        current = merged
+
+    if len(current) != target_count:
+        warnings.append("Alignment ended with count mismatch; falling back to whisper wording for unmatched blocks.")
+
+    return current, warnings
+
+
+def build_cleaned_segments(whisper_blocks: list[dict], source_sentences: list[str]) -> list[dict]:
+    cleaned = []
+    for index, block in enumerate(whisper_blocks):
+        text = source_sentences[index] if index < len(source_sentences) and source_sentences[index] else block["text"]
+        cleaned.append(
+            {
+                "segment_id": index + 1,
+                "start": block["start"],
+                "end": block["end"],
+                "start_tc": block["start_tc"],
+                "end_tc": block["end_tc"],
+                "duration": round(block["end"] - block["start"], 6),
+                "text": normalize_text(text),
+                "whisper_text": block["text"],
+            }
         )
-    path.write_text("\n\n".join(blocks) + "\n", encoding="utf-8")
+    return cleaned
 
 
-def write_timed_transcript(path: Path, cleaned_segments: list[dict]) -> None:
+def write_cleaned_srt(path: Path, segments: list[dict]) -> None:
+    lines = []
+    for index, segment in enumerate(segments, start=1):
+        lines.extend(
+            [
+                str(index),
+                f"{format_srt_timestamp(segment['start'])} --> {format_srt_timestamp(segment['end'])}",
+                segment["text"],
+                "",
+            ]
+        )
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def write_cleaned_transcript_md(path: Path, segments: list[dict]) -> None:
     lines = ["# Cleaned Timed Transcript", ""]
-    for item in cleaned_segments:
-        lines.append(f"- [{item['start_tc']} - {item['end_tc']}] {item['text']}")
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-
-
-def write_timing_report(path: Path, report: dict) -> None:
-    warnings = report.get("warnings", [])
-    lines = [
-        "# Timing Cleanup Report",
-        "",
-        f"Status: {report['status']}",
-        f"Source sentence count: {report['source_sentence_count']}",
-        f"Whisper segment count: {report['whisper_segment_count']}",
-        f"Aligned segment count: {report['aligned_segment_count']}",
-        "",
-        "Method:",
-        "Source text was aligned onto raw ASR segment timings in order.",
-        "",
-        "Warnings:",
-    ]
-    if warnings:
-        lines.extend(f"- {warning}" for warning in warnings)
-    else:
-        lines.append("- none")
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    for segment in segments:
+        lines.append(f"- [{segment['start_tc']} - {segment['end_tc']}] {segment['text']}")
+    lines.append("")
+    path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def main() -> None:
@@ -205,82 +212,96 @@ def main() -> None:
     args = parser.parse_args()
 
     project_json = Path(args.project_json).resolve()
-    project = json.loads(project_json.read_text(encoding="utf-8"))
-    transcript_info = project["transcript_cleanup"]
-    source_path, source_text = read_source_text(project)
+    project = load_project(project_json)
+
+    srt_path = Path(project["transcription"]["srt_path"])
+    if not srt_path.exists():
+        raise FileNotFoundError(f"SRT not found: {srt_path}")
+
+    source_path, source_text = resolve_source_text(project)
+    cleanup_report_path = Path(project["transcript_cleanup"]["cleanup_report_path"])
+    timing_cleanup_report_path = Path(project["logs"]["timing_cleanup_report_path"])
+    cleaned_srt_path = Path(project["transcript_cleanup"]["cleaned_srt_path"])
+    cleaned_segments_json_path = Path(project["transcript_cleanup"]["cleaned_segments_json_path"])
+    cleaned_md_path = Path(project["transcript_cleanup"]["cleaned_timed_transcript_md_path"])
+
+    whisper_segments = parse_srt(srt_path.read_text(encoding="utf-8-sig"))
+    whisper_blocks = merge_into_sentence_blocks(whisper_segments)
+    meta_path = Path(project["transcription"]["meta_json_path"])
+    meta = load_json(meta_path) if meta_path.exists() else {}
+
     if not source_text:
-        raise FileNotFoundError("No non-empty source voiceover text file found for transcript cleanup.")
-
-    raw_srt_path = Path(project["transcription"]["srt_path"])
-    if not raw_srt_path.exists():
-        raise FileNotFoundError(f"Raw transcription SRT not found: {raw_srt_path}")
-
-    whisper_segments = parse_srt(raw_srt_path.read_text(encoding="utf-8-sig"))
-    source_sentences = split_source_sentences(source_text)
-    assignments = align_sentences_to_segments(source_sentences, whisper_segments)
-
-    cleaned_segments = []
-    sentence_index = 0
-    for whisper_segment, take in zip(whisper_segments, assignments, strict=True):
-        text = join_sentences(source_sentences, sentence_index, take)
-        sentence_index += take
-        cleaned_segments.append(
-            {
-                "segment_id": len(cleaned_segments) + 1,
-                "start": whisper_segment["start"],
-                "end": whisper_segment["end"],
-                "start_tc": whisper_segment["start_tc"],
-                "end_tc": whisper_segment["end_tc"],
-                "duration": round(whisper_segment["end"] - whisper_segment["start"], 6),
-                "text": text,
-                "whisper_text": whisper_segment["text"],
-            }
+        report = {
+            "project_id": project["project_id"],
+            "source_language": project["meta"].get("language", "auto"),
+            "whisper_language": meta.get("language"),
+            "source_sentence_count": 0,
+            "whisper_segment_count": len(whisper_blocks),
+            "aligned_segment_count": len(whisper_blocks),
+            "status": "warning",
+            "warnings": [
+                "No source script found. Scene plan will be built from raw Whisper transcript."
+            ],
+        }
+        save_json(cleanup_report_path, report)
+        timing_cleanup_report_path.write_text(
+            "# Timing Cleanup Report\n\nStatus: warning\n\n- No source script found. Scene plan will be built from raw Whisper transcript.\n",
+            encoding="utf-8",
         )
+        project["transcript_cleanup"]["status"] = "skipped_no_source"
+        project["transcript_cleanup"]["used_source_path"] = None
+        project["scene_plan"]["source_srt_path"] = str(srt_path)
+        save_project(project_json, project)
+        print(cleanup_report_path)
+        return
 
-    warnings = []
-    if len(source_sentences) != len(whisper_segments):
-        warnings.append(
-            "Source sentence count differs from whisper block count; source sentences were grouped onto raw ASR timings."
-        )
+    source_sentences = split_source_text_into_sentences(source_text)
+    rebalanced_sentences, warnings = rebalance_sentences(source_sentences, len(whisper_blocks))
+    cleaned_segments = build_cleaned_segments(whisper_blocks, rebalanced_sentences)
 
-    cleaned_srt_path = Path(transcript_info["cleaned_srt_path"])
-    cleaned_segments_path = Path(transcript_info["cleaned_segments_json_path"])
-    timed_transcript_path = Path(transcript_info["cleaned_timed_transcript_md_path"])
-    cleanup_report_path = Path(transcript_info["cleanup_report_path"])
-
+    cleaned_srt_path.parent.mkdir(parents=True, exist_ok=True)
     write_cleaned_srt(cleaned_srt_path, cleaned_segments)
-    cleaned_segments_path.write_text(json.dumps(cleaned_segments, ensure_ascii=False, indent=2), encoding="utf-8")
-    write_timed_transcript(timed_transcript_path, cleaned_segments)
+    save_json(cleaned_segments_json_path, cleaned_segments)
+    write_cleaned_transcript_md(cleaned_md_path, cleaned_segments)
 
+    status = "passed" if not warnings and len(source_sentences) == len(whisper_blocks) else "warning"
     report = {
         "project_id": project["project_id"],
-        "source_language": project["meta"].get("language", "unknown"),
-        "whisper_language": project["transcription"].get("requested_language", "unknown"),
+        "source_language": project["meta"].get("language", "auto"),
+        "whisper_language": meta.get("language"),
         "source_sentence_count": len(source_sentences),
-        "whisper_segment_count": len(whisper_segments),
+        "whisper_segment_count": len(whisper_blocks),
         "aligned_segment_count": len(cleaned_segments),
-        "status": "warning" if warnings else "success",
+        "status": status,
         "warnings": warnings,
-        "source_text_path": str(source_path) if source_path else None,
-        "raw_srt_path": str(raw_srt_path),
-        "method": "raw_asr_timings_with_source_text",
     }
-    cleanup_report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    save_json(cleanup_report_path, report)
+    timing_cleanup_report_path.write_text(
+        "\n".join(
+            [
+                "# Timing Cleanup Report",
+                "",
+                f"Status: {status}",
+                f"Source sentence count: {len(source_sentences)}",
+                f"Whisper segment count: {len(whisper_blocks)}",
+                f"Aligned segment count: {len(cleaned_segments)}",
+                "",
+                "Warnings:",
+                *(warnings or ["- none"]),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
 
-    timing_report_path = Path(project.get("logs", {}).get("timing_cleanup_report_path", ""))
-    if timing_report_path:
-        timing_report_path.parent.mkdir(parents=True, exist_ok=True)
-        write_timing_report(timing_report_path, report)
-
-    project["transcript_cleanup"]["status"] = report["status"]
-    project["transcript_cleanup"]["used_source_path"] = str(source_path) if source_path else project["transcript_cleanup"].get("used_source_path")
+    project["transcript_cleanup"]["status"] = "completed" if status == "passed" else "warning"
+    project["transcript_cleanup"]["used_source_path"] = str(source_path) if source_path else None
     project["scene_plan"]["source_srt_path"] = str(cleaned_srt_path)
-    project["updated_at"] = iso_now()
-    project_json.write_text(json.dumps(project, ensure_ascii=False, indent=2), encoding="utf-8")
+    project["current_stage"] = "scene_plan"
+    save_project(project_json, project)
 
     print(cleaned_srt_path)
-    print(cleaned_segments_path)
-    print(timed_transcript_path)
+    print(cleaned_segments_json_path)
     print(cleanup_report_path)
 
 

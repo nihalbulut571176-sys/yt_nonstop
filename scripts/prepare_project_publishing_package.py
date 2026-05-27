@@ -1,12 +1,8 @@
 import argparse
 import json
 import re
-from datetime import datetime, timezone
 from pathlib import Path
-
-
-def iso_now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+from project_pipeline_utils import load_project, save_project
 
 
 def load_text_if_present(path_str: str | None) -> str:
@@ -45,7 +41,7 @@ def main() -> None:
     args = parser.parse_args()
 
     project_json = Path(args.project_json).resolve()
-    project = json.loads(project_json.read_text(encoding="utf-8"))
+    project = load_project(project_json)
     project_root = Path(project["meta"]["project_root"])
     publishing_dir = project_root / "publishing"
     publishing_dir.mkdir(parents=True, exist_ok=True)
@@ -164,8 +160,7 @@ def main() -> None:
     thumbnail_brief_path.write_text("\n".join(brief_lines), encoding="utf-8")
 
     project["publishing"]["status"] = "ready_for_generation"
-    project["updated_at"] = iso_now()
-    project_json.write_text(json.dumps(project, ensure_ascii=False, indent=2), encoding="utf-8")
+    save_project(project_json, project)
 
     print(source_snapshot_path)
     print(title_drafts_path)

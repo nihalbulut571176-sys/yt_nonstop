@@ -8,6 +8,7 @@
     "primary_rule": "Always derive the visual pipeline from the real audio timing, not from a rewritten literary script.",
     "timing_rule": "First create SRT from the real audio. Only after that generate prompts and build the shot plan.",
     "max_static_shot_duration_seconds": 5,
+    "narrative_rule": "Every shot, transition, and inserted visual must justify its place in the story, not merely look impressive in isolation.",
     "consistency_rule": "Keep visual continuity by using stable character references and by preserving shot order from the timeline.",
     "source_of_truth_rule": "For montage and automation, treat timeline/manifest files as the source of truth, not ad hoc folder inspection.",
     "mixed_cut_rule": "If a video exists for a shot and the current cut strategy says that shot should be animated, use the video. Otherwise use the still image for that shot."
@@ -17,6 +18,11 @@
       "problem": "The pipeline previously used one sentence = one prompt = one frame.",
       "why_it_failed": "Some SRT sentences were 10-18 seconds long, which produced overlong static holds in the montage.",
       "correct_fix": "Detect all segments longer than 5 seconds, split them into multiple shots before image generation, then rebuild the timeline."
+    },
+    "veo_scene_planning_error": {
+      "problem": "A technically valid generator-ready package can still be wrong for VEO mixed-cut if it mirrors subtitle granularity too literally.",
+      "why_it_failed": "Very short SRT beats created too many scenes, repeated prompts, weak shot variation, and poor fit for 4s/6s/8s video generation.",
+      "correct_fix": "For VEO-first mixed-cut work, merge neighboring short SRT beats when meaning is preserved, target durations that map cleanly to 4s, 6s, or 8s generation, and avoid prompt duplication across adjacent scenes."
     },
     "render_error_learned": {
       "problem": "Mixed source image resolutions caused render freezes that looked like repeated frames.",
@@ -33,7 +39,9 @@
     "policy": [
       "Use the real audio/SRT text as the base for prompt timing.",
       "Split long timed segments so no still frame is held longer than 5 seconds.",
-      "The shot plan must be computed before generating the final production set of images."
+      "The shot plan must be computed before generating the final production set of images.",
+      "For VEO mixed-cut projects, do not preserve subtitle-level fragmentation by default; merge adjacent short SRT beats when one larger scene communicates the idea more cleanly.",
+      "For VEO mixed-cut projects, prefer scene durations that can map directly to 4s, 6s, or 8s generation presets."
     ],
     "derived_files": {
       "long_segment_report": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\edit\\long_segment_report.json",
@@ -65,7 +73,24 @@
       "Do not attach all character references to every prompt.",
       "Attach only the references actually needed for that shot.",
       "If a shot has no recurring character, use no character reference.",
-      "If a prompt generator splits on blank lines, the reference directive must stay in the same paragraph as the prompt."
+      "If a prompt generator splits on blank lines, the reference directive must stay in the same paragraph as the prompt.",
+      "For multilingual source scripts, keep `voice_text` in the source language if useful for auditability, but keep generator prompts themselves fully in English.",
+      "Do not include mixed-language `Scene beat` fragments inside final generator prompts when a clean English visual instruction can express the same idea.",
+      "For silent B-roll workflows, prompts must explicitly forbid generated narration, dialogue, lip-sync, talking heads, captions, and subtitle overlays."
+    ]
+  },
+  "veo_mixed_cut_authoring_rules": {
+    "purpose": "Rules for planning generator-ready mixed-cut scenes for VEO-style production under a separate external voice-over track.",
+    "rules": [
+      "Optimize the scene plan for final montage, not for literal subtitle counting.",
+      "A long-form documentary should usually target an editorially manageable scene count rather than maximizing scene granularity. A rough target band such as 260-280 scenes can be healthier than 450+ when pacing still reads well.",
+      "Assign an explicit generation preset per scene when possible, such as 4, 6, or 8 seconds, instead of leaving duration interpretation implicit.",
+      "Preserve one coherent documentary world with recurring characters, wardrobe, objects, and props when the story benefits from continuity.",
+      "Use richer shot-role taxonomies than a handful of overly broad buckets. Different story chapters should have distinct visual languages.",
+      "A prompt must show the concrete mechanism described by the narration, not merely a generic summary of the broader topic.",
+      "Avoid exact prompt duplication, especially in consecutive scenes. If two neighboring scenes cover related meaning, vary framing, action, scale, consequence, or point of view.",
+      "Use real brand context in semantic planning when the script is explicitly about real brands, while still avoiding readable logos and on-screen text inside the frame.",
+      "Store per-scene metadata that supports automation: source SRT linkage, timecodes, duration, duration preset, shot role, visual goal, brand context, continuity anchor, prompt, negative prompt, and audio policy."
     ]
   },
   "fastgen_image_pipeline": {
@@ -110,6 +135,7 @@
     ],
     "important_rules": [
       "Before each new submit, re-check whether the target mp4 already exists in veononstop_run/videos.",
+      "Use the API `duration` field explicitly for 4-second and 6-second renders. Omit it only when an 8-second render is desired by default behavior.",
       "When the service returns cookie slot saturation, treat it as a capacity/backoff issue, not a content problem in the frame.",
       "When the user explicitly asks to stop after 5 errors, count any 5 error events in a row and stop immediately.",
       "Logs must be returned to the user after such a stop."
@@ -150,6 +176,28 @@
     "planned_future_partial": {
       "description": "After enough videos exist, build part 131-247 as a separate mixed cut and then concatenate part_001_130 with part_131_247 into one continuous master."
     }
+  },
+  "editorial_review_checklist": {
+    "purpose": "Use this checklist when refining veononstop videos so editorial decisions remain understandable to the viewer, not only technically correct to the editor.",
+    "storytelling_and_meaning": [
+      "The video's core idea must be expressible in one sentence.",
+      "Every clip, scene, insert, and motion choice must serve the story or communicate information.",
+      "Remove fragments that repeat the same point, do not advance the story, or distract from the main narrative line.",
+      "The story should have a clear arc such as setup, development, escalation, and resolution.",
+      "At any moment, there should be a clear answer to the question: why is this part necessary?"
+    ],
+    "narrative_and_retention": [
+      "Within the first 15 seconds, the viewer should understand the context and why it is worth continuing.",
+      "At higher playback speed, the video must remain legible and not become confusing.",
+      "Include at least one genuine hook that creates a reason to keep watching.",
+      "Avoid stretches where nothing changes emotionally, informationally, or visually."
+    ],
+    "final_pass": [
+      "The video without sound must still reveal a clear structure that can be followed visually.",
+      "Check the result on multiple devices and confirm that visuals and phone-speaker audio still read well.",
+      "Whenever possible, have someone unfamiliar with the project watch the final cut and verify they understand it without extra explanation."
+    ],
+    "judgment_rule": "Not every video must satisfy every item literally. The checklist exists to force deliberate editorial choices and to optimize for viewer comprehension rather than editing-software convenience."
   },
   "known_good_practical_preferences": {
     "vps_note": "A VPS is useful later for unattended long renders and automation, but it does not solve veononstop service-side limits.",

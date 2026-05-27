@@ -214,14 +214,59 @@ Suggested fields:
 {
   "status": "completed",
   "prompt_language": "English",
+  "authoring_mode": "llm_authored",
+  "authoring_model": "codex-gpt-5",
   "style_preset": "cinematic-realistic-v1",
+  "style_guide_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\prompts\\style_guide.json",
+  "visual_bible_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\prompts\\visual_bible.json",
+  "visual_bible_review_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\prompts\\visual_bible_review.md",
+  "quality_mode": "standard",
   "reference_mapping_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\deliverables\\fastgen_ref_paths.json",
+  "scene_context_pack_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\prompts\\scene_context_pack.json",
+  "visual_shot_plan_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\prompts\\visual_shot_plan.json",
+  "visual_shot_plan_status": "pending",
+  "shot_prompt_package_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\prompts\\shot_prompt_package.json",
+  "shot_prompt_review_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\prompts\\shot_prompt_review.md",
+  "llm_prompt_drafts_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\prompts\\llm_prompt_drafts.json",
   "prompt_export_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\scene_plan\\scene_prompts.md",
   "prompt_package_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\prompts\\prompt_package.json",
   "generator_ready_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\prompts\\fastgen_prompts_generator_ready.md",
   "prompt_review_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\prompts\\prompt_review.md"
 }
 ```
+
+Prompt-authoring rule:
+
+- `Python` builds `scene_context_pack.json`
+- `LLM` writes `visual_bible.json`
+- optional `Python` or `LLM` builds `visual_shot_plan.json`
+- optional `Python` builds `shot_prompt_package.json`
+- optional `Python` expands shot prompts back into scene-level drafts
+- `LLM` writes `llm_prompt_drafts.json`
+- `Python` validates and exports prompts
+
+Recommended context-pack fields for LLM authoring:
+
+- `source_language`
+- `prompt_language`
+- `previous_role_hint`
+- `next_role_hint`
+- `style_summary`
+- `master_subject`
+- `story_arc_summary`
+
+Recommended visual-bible fields:
+
+- `main_subject`
+- `subject_type`
+- `visual_world`
+- `style_summary`
+- `recurring_motifs`
+- `continuity_rules`
+- `forbidden_mistakes`
+- `scene_role_taxonomy`
+- `visual_blocks`
+- `global_negative_prompt`
 
 #### `images`
 
@@ -526,16 +571,21 @@ For `veononstop`:
 1. rewrite
 2. transcribe
 3. build_scene_plan
-4. build_prompts
-5. generate_images
-6. normalize_images
-7. select_animation_targets
-8. generate_videos
-9. build_mixed_cut
-10. generate_publishing_drafts
-11. generate_thumbnails
-12. qc
-13. final_render
+4. build_prompt_package
+5. build_scene_context_pack
+6. llm_visual_bible
+7. llm_prompt_authoring
+8. apply_llm_prompt_drafts
+9. export_fastgen_prompts
+10. generate_images
+11. normalize_images
+12. select_animation_targets
+13. generate_videos
+14. build_mixed_cut
+15. generate_publishing_drafts
+16. generate_thumbnails
+17. qc
+18. final_render
 
 For `fastgen_only`:
 
@@ -543,13 +593,18 @@ For `fastgen_only`:
 2. transcribe
 3. build_scene_plan
 4. build_prompt_package
-5. generate_images
-6. normalize_images
-7. build_slideshow_cut
-8. generate_publishing_drafts
-9. generate_thumbnails
-10. qc
-11. final_render
+5. build_scene_context_pack
+6. llm_visual_bible
+7. llm_prompt_authoring
+8. apply_llm_prompt_drafts
+9. export_fastgen_prompts
+10. generate_images
+11. normalize_images
+12. build_slideshow_cut
+13. generate_publishing_drafts
+14. generate_thumbnails
+15. qc
+16. final_render
 
 Editorial recommendation:
 

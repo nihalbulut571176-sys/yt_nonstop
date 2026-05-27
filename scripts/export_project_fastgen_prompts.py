@@ -1,13 +1,13 @@
 import argparse
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 
-from prompt_continuity import stable_hash
+from project_pipeline_utils import load_project, save_project
+from prompt_safety import build_prompt_guardrail
 
 
-def iso_now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+def normalize_prompt_block(prompt: str) -> str:
+    return " ".join(str(prompt).split())
 
 
 def build_reference_prefix(reference_ids: list[str]) -> str:
@@ -18,8 +18,27 @@ def build_reference_prefix(reference_ids: list[str]) -> str:
     return f"Use reference images: {', '.join(reference_ids)}."
 
 
-def flatten_prompt(prompt: str) -> str:
-    return " ".join(str(prompt or "").split())
+def choose_export_prompt(scene: dict) -> str:
+    prompt = str(scene.get("prompt", "")).strip()
+    final_prompt = str(scene.get("final_prompt", "")).strip()
+    structured_markers = (
+        "Create a premium cinematic documentary still",
+        "Scene meaning:",
+        "Visual strategy:",
+        "Restrictions:",
+    )
+    if prompt and any(marker in prompt for marker in structured_markers):
+        return prompt
+    return final_prompt or prompt
+
+
+def block_for_scene(scene: dict) -> str:
+    prompt = normalize_prompt_block(choose_export_prompt(scene))
+    guardrail = build_prompt_guardrail(scene)
+    if guardrail and guardrail not in prompt:
+        prompt = normalize_prompt_block(f"{prompt} {guardrail}")
+    prefix = build_reference_prefix(scene.get("reference_ids", []))
+    return f"{prefix} {prompt}".strip()
 
 
 def main() -> None:
@@ -29,74 +48,61 @@ def main() -> None:
     args = parser.parse_args()
 
     project_json = Path(args.project_json).resolve()
-    project = json.loads(project_json.read_text(encoding="utf-8"))
+    project = load_project(project_json)
+    final_scene_plan_path = Path(project["prompts"]["final_scene_plan_path"])
     prompt_package_path = Path(project["prompts"]["prompt_package_path"])
-    package = json.loads(prompt_package_path.read_text(encoding="utf-8"))
+    fastgen_export_path = Path(project["prompts"]["fastgen_export_path"])
     generator_ready_path = Path(project["prompts"]["generator_ready_path"])
-    export_meta_path = generator_ready_path.with_suffix(generator_ready_path.suffix + ".meta.json")
+    export_report_path = Path(project["logs"]["export_report_path"])
 
-    qa_status = package.get("qa_status", {}).get("status")
-    if qa_status != "passed":
-        raise RuntimeError(f"Prompt package QA status is {qa_status!r}; refusing export")
+    source_path = final_scene_plan_path if final_scene_plan_path.exists() else Path(project["scene_plan"]["scene_plan_path"])
+    scene_plan = json.loads(source_path.read_text(encoding="utf-8"))
+    prompt_package = json.loads(prompt_package_path.read_text(encoding="utf-8"))
 
     blocks = []
     missing = []
-    for item in package.get("items", []):
-        prompt = flatten_prompt(item.get("prompt", ""))
+    for scene in scene_plan.get("scenes", []):
+        prompt = normalize_prompt_block(choose_export_prompt(scene))
         if not prompt:
-            missing.append(item["scene_id"])
+            missing.append(scene["scene_id"])
             if args.require_filled_prompts:
                 continue
-        prefix = build_reference_prefix(item.get("reference_ids", []))
-        blocks.append(f"{prefix} {prompt}".strip())
+        blocks.append(block_for_scene(scene))
 
     if args.require_filled_prompts and missing:
         raise RuntimeError(f"Missing prompts for scenes: {', '.join(missing[:20])}")
 
-    if len(blocks) != package.get("scene_count"):
-        raise RuntimeError("Prompt block count does not match package scene_count")
+    fastgen_export_path.parent.mkdir(parents=True, exist_ok=True)
+    text = "\n\n".join(blocks).strip() + "\n"
+    fastgen_export_path.write_text(text, encoding="utf-8")
+    if generator_ready_path != fastgen_export_path:
+        generator_ready_path.parent.mkdir(parents=True, exist_ok=True)
+        generator_ready_path.write_text(text, encoding="utf-8")
 
-    export_text = "\n\n".join(blocks).strip() + "\n"
-    export_signature = stable_hash(
-        {
-            "package_path": str(prompt_package_path),
-            "package_signature": package.get("source_signature"),
-            "prompt_count": len(blocks),
-            "content": export_text,
-        }
-    )
-    generator_ready_path.write_text(export_text, encoding="utf-8")
-    export_meta = {
-        "generated_at": iso_now(),
-        "project_id": project["project_id"],
-        "package_path": str(prompt_package_path),
-        "package_signature": package.get("source_signature"),
-        "package_scene_count": package.get("scene_count"),
-        "prompt_count": len(blocks),
-        "export_signature": export_signature,
-        "generator_ready_path": str(generator_ready_path),
-        "profile_id": project.get("profile_id"),
-        "package_items": [
-            {
-                "scene_id": item.get("scene_id"),
-                "beat_priority": item.get("beat_priority", "standard"),
-                "key_beat": bool(item.get("key_beat")),
-                "variant_count": int(item.get("variant_count", 1) or 1),
-                "reference_ids": item.get("reference_ids", []),
-            }
-            for item in package.get("items", [])
-        ],
-    }
-    export_meta_path.write_text(json.dumps(export_meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    prompt_package["export_path"] = str(fastgen_export_path)
+    for item in prompt_package.get("items", []):
+        if not item.get("final_prompt") and item.get("prompt"):
+            item["final_prompt"] = item["prompt"]
+    prompt_package_path.write_text(json.dumps(prompt_package, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    export_report_lines = [
+        "# Export Report",
+        "",
+        f"Source scene plan: {source_path}",
+        f"Prompt package: {prompt_package_path}",
+        f"Exported blocks: {len(blocks)}",
+        f"Missing final prompts: {len(missing)}",
+        f"Output: {fastgen_export_path}",
+    ]
+    if missing:
+        export_report_lines.extend(["", "Missing scene IDs:", *[f"- {scene_id}" for scene_id in missing[:50]]])
+    export_report_path.write_text("\n".join(export_report_lines) + "\n", encoding="utf-8")
 
     project["prompts"]["status"] = "generator_ready"
-    project["prompts"]["export_meta_path"] = str(export_meta_path)
-    project["current_stage"] = "images"
-    project["updated_at"] = iso_now()
-    project_json.write_text(json.dumps(project, ensure_ascii=False, indent=2), encoding="utf-8")
+    project["current_stage"] = "final_review"
+    save_project(project_json, project)
 
-    print(generator_ready_path)
-    print(export_meta_path)
+    print(fastgen_export_path)
 
 
 if __name__ == "__main__":

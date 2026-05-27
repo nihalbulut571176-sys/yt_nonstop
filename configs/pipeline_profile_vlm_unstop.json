@@ -1,0 +1,29 @@
+{
+  "profile_id": "vlm_unstop",
+  "schema_version": "draft-1",
+  "description": "Video-first workflow with direct VEO Nonstop text-to-video generation for every scene, while keeping the FastGen-only audio and prompt workflow structure.",
+  "pipeline_mode": "video_only",
+  "image_generation": {
+    "enabled": false,
+    "provider": null,
+    "route": null,
+    "normalize_before_render": false
+  },
+  "animation": {
+    "enabled": true,
+    "provider": "veononstop",
+    "policy": "all_scenes_text_to_video",
+    "backoff_on_capacity_errors": true,
+    "stop_after_consecutive_errors": 5
+  },
+  "render": {
+    "mode": "videos_only",
+    "allow_partial_deliveries": true
+  },
+  "publishing": {
+    "generate_titles": true,
+    "generate_descriptions": true,
+    "generate_thumbnails": true,
+    "thumbnail_provider": "fastgen"
+  }
+}
