@@ -61,6 +61,7 @@ def lock_record(frame_brief: dict, scene: dict, previous_prompt: str) -> tuple[d
 
     locked = GenerationLockedFrame(
         frame_id=frame_brief["frame_id"],
+        beat_id=frame_brief["beat_id"],
         image_prompt=image_prompt,
         negative_prompt=negative_prompt,
         motion_prompt=motion_prompt,
@@ -78,6 +79,8 @@ def lock_record(frame_brief: dict, scene: dict, previous_prompt: str) -> tuple[d
     payload = locked.__dict__
     payload["reference_bindings"] = reference_bindings
     payload["reference_images"] = reference_images
+    payload["visualized_claim"] = str(scene.get("visualized_claim") or frame_brief.get("visualized_claim") or "")
+    payload["must_show"] = list(scene.get("must_show") or frame_brief.get("must_show") or [])
     payload["reference_strength"] = scene.get("reference_strength") or frame_brief.get("subject_continuity_strength") or "none"
     payload["reference_usage"] = scene.get("reference_usage") or (reference_bindings[0]["usage"] if reference_bindings else "none")
     payload["reference_prefix"] = build_reference_prefix(reference_ids)

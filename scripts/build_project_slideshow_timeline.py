@@ -25,22 +25,34 @@ def main() -> None:
         raise RuntimeError(f"No scenes found in {scene_plan_path}")
     montage_rows = json.loads(montage_map_path.read_text(encoding="utf-8")) if montage_map_path.exists() else []
     montage_by_frame = {row["frame_id"]: row for row in montage_rows if row.get("frame_id")}
+    selected_manifest_path = Path(project["images"].get("selected_images_manifest_path", ""))
+    selected_manifest = json.loads(selected_manifest_path.read_text(encoding="utf-8")) if selected_manifest_path.exists() else {}
+    selected_by_scene = {
+        row["scene_id"]: row
+        for row in selected_manifest.get("selected_images", [])
+        if row.get("scene_id")
+    }
 
     renders_dir = Path(project["meta"]["project_root"]) / "renders"
     renders_dir.mkdir(parents=True, exist_ok=True)
     ffconcat_path = renders_dir / "timeline.ffconcat"
     timeline_json_path = renders_dir / "slideshow_timeline.json"
+    edit_decision_list_path = Path(project["render"]["edit_decision_list_path"])
     audio_duration = float(project["inputs"].get("audio_duration_seconds") or 0)
     if audio_duration <= 0:
         audio_duration = float(scenes[-1]["end"])
 
     ffconcat_lines = ["ffconcat version 1.0"]
     timeline = []
+    edit_decision_list = []
 
     for index, scene in enumerate(scenes):
         montage_row = montage_by_frame.get(scene.get("frame_id", ""))
+        selected_row = selected_by_scene.get(scene["scene_id"], {})
         image_path_str = (
-            (montage_row or {}).get("asset_image_path")
+            selected_row.get("selected_image_path")
+            or selected_row.get("image_path")
+            or (montage_row or {}).get("asset_image_path")
             or scene.get("render_asset_path")
             or scene.get("still_image_path")
         )
@@ -62,6 +74,7 @@ def main() -> None:
         timeline.append(
             {
                 "frame_id": scene.get("frame_id", ""),
+                "beat_id": scene.get("beat_id", ""),
                 "scene_id": scene["scene_id"],
                 "shot_index": scene["shot_index"],
                 "start": start,
@@ -76,15 +89,34 @@ def main() -> None:
                 "motion_plan": scene.get("motion_plan", {}),
             }
         )
+        edit_decision_list.append(
+            {
+                "frame_id": scene.get("frame_id", ""),
+                "beat_id": scene.get("beat_id", ""),
+                "scene_id": scene["scene_id"],
+                "image_path": str(image_path),
+                "start": start,
+                "end": display_end,
+                "duration": duration,
+                "motion": scene.get("motion_id") or scene.get("motion_plan", {}).get("motion") or "slow_push_in",
+                "transition_in": scene.get("transition_in", "cut"),
+                "transition_out": scene.get("transition_out", "cut_on_phrase_end"),
+                "voice_text": scene.get("voice_text", ""),
+                "visualized_claim": scene.get("visualized_claim", ""),
+                "sync_rule": "frame starts exactly at beat start",
+            }
+        )
 
     last_image = Path(scenes[-1].get("render_asset_path") or scenes[-1].get("still_image_path"))
     ffconcat_lines.append(f"file '{safe_ffconcat_path(last_image)}'")
 
     ffconcat_path.write_text("\n".join(ffconcat_lines) + "\n", encoding="utf-8")
     timeline_json_path.write_text(json.dumps(timeline, ensure_ascii=False, indent=2), encoding="utf-8")
+    edit_decision_list_path.write_text(json.dumps({"project_id": project["project_id"], "edl": edit_decision_list}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     project["render"]["ffconcat_path"] = str(ffconcat_path)
     project["render"]["slideshow_timeline_path"] = str(timeline_json_path)
+    project["render"]["edit_decision_list_path"] = str(edit_decision_list_path)
     project["render"]["status"] = "timeline_built"
     project["current_stage"] = "render"
     save_project(project_json, project)

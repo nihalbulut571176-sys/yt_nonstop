@@ -344,6 +344,8 @@ def build_prompt(record: dict, theme: str, visual_bible: dict) -> dict:
 
     return {
         "scene_id": record["scene_id"],
+        "frame_id": record.get("frame_id") or record["scene_id"].replace("scene_", "F"),
+        "beat_id": record.get("beat_id") or record["scene_id"].replace("scene_", "beat_"),
         "scene_meaning": blueprint["scene_meaning"],
         "narrative_purpose": blueprint["narrative_purpose"],
         "viewer_emotion": blueprint["viewer_emotion"],
@@ -353,6 +355,7 @@ def build_prompt(record: dict, theme: str, visual_bible: dict) -> dict:
         "main_subject": primary_subject,
         "environment": environment,
         "visual_goal": blueprint["scene_meaning"],
+        "visualized_claim": record.get("spoken_claim") or blueprint["scene_meaning"],
         "scene_importance": blueprint["scene_importance"],
         "shot_role": infer_shot_role(record, theme),
         "primary_subject": primary_subject,
@@ -368,6 +371,12 @@ def build_prompt(record: dict, theme: str, visual_bible: dict) -> dict:
             + ("Continuity map missing, so preserve the same world through repeated wardrobe, silhouette, and object identity cues. " if continuity_mode == "fallback" else "")
             + (str(record.get("event_priority_reason", "")).strip() if record.get("event_clarity_required") else "")
         ).strip(),
+        "must_not_show": [
+            "different face for recurring character",
+            "new outfit without a wardrobe change event",
+            "readable text or subtitles",
+            "fake UI",
+        ],
         "negative_prompt": "text, subtitle, logo, watermark, fake UI, unreadable signage, glamorized criminal hero shot, random replacement character, distorted hands, plastic skin",
         "draft_prompt": final_prompt,
         "final_prompt": final_prompt,

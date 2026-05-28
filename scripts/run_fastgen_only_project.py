@@ -15,7 +15,7 @@ from project_pipeline_utils import (
 )
 
 
-ROOT = Path(r"C:\Users\MIKE\Documents\Codex\YT")
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def stage_done(project: dict, stage: str) -> bool:
@@ -41,6 +41,8 @@ def stage_done(project: dict, stage: str) -> bool:
         return Path(project["planning"]["continuity_map_json_path"]).exists()
     if stage == "allocate_frames":
         return Path(project["scene_plan"]["scene_plan_path"]).exists()
+    if stage == "build_narration_beats":
+        return Path(project["planning"]["narration_beats_path"]).exists()
     if stage == "build_frame_briefs":
         return Path(project["planning"]["frame_briefs_json_path"]).exists()
     if stage == "attach_reference_assets":
@@ -65,6 +67,8 @@ def stage_done(project: dict, stage: str) -> bool:
         return project["publishing"].get("status") == "ready_for_generation"
     if stage == "generate_images":
         return project["images"].get("status") in {"generated", "normalized"}
+    if stage == "image_qc":
+        return Path(project["images"]["image_qc_report_path"]).exists() and Path(project["images"]["selected_images_manifest_path"]).exists()
     if stage == "normalize_images":
         return project["images"].get("status") == "normalized"
     if stage == "timeline":
@@ -118,6 +122,7 @@ def build_stage_command(project: dict, project_json: Path, stage: str, args: arg
         "build_subject_registry": [sys.executable, str(ROOT / "scripts" / "build_subject_registry.py"), "--project-json", str(project_json)],
         "build_continuity_map": [sys.executable, str(ROOT / "scripts" / "build_project_continuity_bible.py"), "--project-json", str(project_json)],
         "allocate_frames": [sys.executable, str(ROOT / "scripts" / "allocate_frames.py"), "--project-json", str(project_json)],
+        "build_narration_beats": [sys.executable, str(ROOT / "scripts" / "build_narration_beats.py"), "--project-json", str(project_json)],
         "build_frame_briefs": [sys.executable, str(ROOT / "scripts" / "build_frame_briefs.py"), "--project-json", str(project_json)],
         "attach_reference_assets": [sys.executable, str(ROOT / "scripts" / "attach_reference_assets.py"), "--project-json", str(project_json)],
         "generate_fastgen_prompt_drafts": [sys.executable, str(ROOT / "scripts" / "apply_llm_prompt_drafts.py"), "--project-json", str(project_json)],
@@ -129,6 +134,7 @@ def build_stage_command(project: dict, project_json: Path, stage: str, args: arg
         "motion_plan": [sys.executable, str(ROOT / "scripts" / "build_project_motion_plan.py"), "--project-json", str(project_json)],
         "final_review": [sys.executable, str(ROOT / "scripts" / "run_final_review.py"), "--project-json", str(project_json)],
         "publishing_package": [sys.executable, str(ROOT / "scripts" / "prepare_project_publishing_package.py"), "--project-json", str(project_json)],
+        "image_qc": [sys.executable, str(ROOT / "scripts" / "qc_generated_images.py"), "--project-json", str(project_json)],
         "normalize_images": [
             sys.executable,
             str(ROOT / "scripts" / "normalize_project_images.py"),
@@ -198,6 +204,10 @@ def post_stage_update(project_json: Path, stage: str) -> None:
         project["current_stage"] = "build_subject_registry"
     elif stage == "build_subject_registry":
         project["current_stage"] = "allocate_frames"
+    elif stage == "allocate_frames":
+        project["current_stage"] = "build_narration_beats"
+    elif stage == "build_narration_beats":
+        project["current_stage"] = "build_frame_briefs"
     elif stage == "build_frame_briefs":
         project["current_stage"] = "attach_reference_assets"
     elif stage == "attach_reference_assets":
@@ -217,6 +227,10 @@ def post_stage_update(project_json: Path, stage: str) -> None:
     elif stage == "publishing_package":
         project["publishing"]["status"] = "ready_for_generation"
         project["current_stage"] = "generate_images"
+    elif stage == "generate_images":
+        project["current_stage"] = "image_qc"
+    elif stage == "image_qc":
+        project["current_stage"] = "normalize_images"
     elif stage == "render":
         project["render"]["status"] = "completed"
         project["status"] = "completed"
@@ -294,6 +308,7 @@ def main() -> None:
         "build_subject_registry": "build_subject_registry",
         "build_continuity_map": "build_continuity_map",
         "allocate_frames": "allocate_frames",
+        "build_narration_beats": "build_narration_beats",
         "build_frame_briefs": "build_frame_briefs",
         "attach_reference_assets": "attach_reference_assets",
         "generate_fastgen_prompt_drafts": "generate_fastgen_prompt_drafts",
@@ -304,6 +319,7 @@ def main() -> None:
         "motion_plan": "motion_plan",
         "final_review": "final_review",
         "generate_images": "images",
+        "image_qc": "images",
         "normalize_images": "normalized_images",
         "timeline": "timeline",
         "render": "render",

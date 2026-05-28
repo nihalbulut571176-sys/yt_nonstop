@@ -17,10 +17,11 @@ from llm_pipeline_contracts import classify_generation_error, iso_now
 
 ROOT = "https://googler.fast-gen.ai"
 STORAGE = "https://storage.fast-gen.ai"
-ENV_PATH = Path(r"C:\Users\MIKE\Documents\Codex\YT\.env")
-DEFAULT_PROMPTS = Path(r"C:\Users\MIKE\Documents\Codex\YT\deliverables\sentence_visual_prompts_generator_ready.md")
-DEFAULT_REFS = Path(r"C:\Users\MIKE\Documents\Codex\YT\deliverables\fastgen_ref_paths.json")
-DEFAULT_WORKDIR = Path(r"C:\Users\MIKE\Documents\Codex\YT\fastgen_run")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+ENV_PATH = REPO_ROOT / ".env"
+DEFAULT_PROMPTS = REPO_ROOT / "deliverables" / "sentence_visual_prompts_generator_ready.md"
+DEFAULT_REFS = REPO_ROOT / "deliverables" / "fastgen_ref_paths.json"
+DEFAULT_WORKDIR = REPO_ROOT / "fastgen_run"
 def stable_hash(payload: object) -> str:
     data = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return __import__("hashlib").sha256(data.encode("utf-8")).hexdigest()

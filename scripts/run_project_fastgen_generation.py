@@ -9,7 +9,7 @@ from pipeline_contracts import stable_hash
 from project_pipeline_utils import append_event, append_log, load_json, load_project, mark_stage, save_json, save_project
 
 
-ROOT = Path(r"C:\Users\MIKE\Documents\Codex\YT")
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def load_failed_records(path: Path) -> list[dict]:
@@ -168,8 +168,6 @@ def main() -> None:
         "provider": "fastgen_openai_v4",
         "size": args.size,
     }
-    package_items_by_scene = {item["scene_id"]: item for item in prompt_package.get("items", [])}
-
     generated_images = []
     for record in raw_manifest:
         prompt_index = int(record["source_prompt_index"])
@@ -250,7 +248,7 @@ def main() -> None:
     project["images"]["job_id"] = job_id
     project["images"]["generated_count"] = enriched_manifest["completed_count"]
     project["images"]["failed_count"] = enriched_manifest["failed_count"]
-    project["current_stage"] = "normalize_images"
+    project["current_stage"] = "image_qc"
     save_project(project_json, project)
     append_event(project, {"kind": "stage_end", "stage": "generate_images", "status": "generated"})
     append_log(project, f"FastGen generation completed: {enriched_manifest['completed_count']} images ready")

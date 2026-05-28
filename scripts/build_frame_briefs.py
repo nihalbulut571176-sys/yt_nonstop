@@ -2,7 +2,7 @@ import argparse
 import json
 from pathlib import Path
 
-from pipeline_contracts import FrameBrief, build_frame_id, build_shot_id, request_spec_from_project, stable_hash, write_csv
+from pipeline_contracts import FrameBrief, build_frame_id, build_shot_id, dedupe_strings, request_spec_from_project, stable_hash, write_csv
 from project_pipeline_utils import load_json, load_project, save_json, save_project
 
 
@@ -74,6 +74,14 @@ def legacy_prompt_package_item(scene: dict, frame_brief: dict) -> dict:
     item["source_stage"] = frame_brief["source_stage"]
     item["screen_action"] = frame_brief["screen_action"]
     item["camera_storyboard"] = frame_brief["camera_storyboard"]
+    item["beat_id"] = frame_brief["beat_id"]
+    item["visualized_claim"] = frame_brief["visualized_claim"]
+    item["must_show"] = frame_brief["must_show"]
+    item["entity_locks"] = frame_brief["entity_locks"]
+    item["camera_rule"] = frame_brief["camera_rule"]
+    item["style_rule"] = frame_brief["style_rule"]
+    item["negative_constraints"] = frame_brief["negative_constraints"]
+    item["film_block_id"] = frame_brief["film_block_id"]
     item["continuity_tags"] = frame_brief["continuity_tags"]
     item["hard_constraints"] = frame_brief["hard_constraints"]
     item["frame_brief_hash"] = frame_brief["frame_brief_hash"]
@@ -118,12 +126,24 @@ def main() -> None:
     continuity_path = Path(project["planning"]["continuity_map_json_path"])
     continuity = load_json(continuity_path) if continuity_path.exists() else {}
     continuity_by_segment = continuity.get("segment_entity_map", {})
+    narration_beats_path = Path(project["planning"]["narration_beats_path"])
+    narration_beats = load_json(narration_beats_path).get("beats", []) if narration_beats_path.exists() else []
+    beats_by_scene = {beat.get("scene_id"): beat for beat in narration_beats if beat.get("scene_id")}
+    subject_registry_path = Path(project["prompts"]["subject_registry_path"])
+    subject_registry = load_json(subject_registry_path).get("subjects", []) if subject_registry_path.exists() else []
+    subject_by_id = {item["subject_id"]: item for item in subject_registry if item.get("subject_id")}
+    visual_shot_plan_path = Path(project["prompts"]["visual_shot_plan_path"])
+    visual_shot_plan = load_json(visual_shot_plan_path) if visual_shot_plan_path.exists() else {}
+    scene_to_shot = visual_shot_plan.get("scene_to_shot", {})
 
     frame_briefs = []
     legacy_items = []
     for index, scene in enumerate(scene_plan.get("scenes", []), start=1):
         storyboard_item = storyboard_by_segment.get(int(scene["source_segment_id"]), {})
         style_meta = choose_style_meta(scene, index)
+        beat = beats_by_scene.get(scene["scene_id"], {})
+        beat_id = str(beat.get("beat_id") or scene.get("beat_id") or f"beat_{index:04d}")
+        shot_mapping = scene_to_shot.get(scene["scene_id"], {})
         subject_meta = infer_subject_fields(
             scene,
             storyboard_item,
@@ -140,8 +160,20 @@ def main() -> None:
             )
         )
         continuity_tags = [tag for tag in continuity_tags if tag]
+        entity_locks = []
+        for subject_id in dedupe_strings([str(item) for item in (beat.get("entity_mentions", []) or subject_meta["visible_subject_ids"] or subject_meta["mentioned_subject_ids"])]):
+            profile = subject_by_id.get(subject_id, {})
+            entity_locks.append(
+                {
+                    "entity_id": subject_id,
+                    "identity_lock": "required" if profile.get("reference_policy") == "required" else "optional",
+                    "reference_policy": profile.get("reference_policy", "optional"),
+                    "reference_ids": profile.get("reference_asset_ids", []),
+                }
+            )
         frame_brief = FrameBrief(
             frame_id=build_frame_id(index),
+            beat_id=beat_id,
             scene_id=scene["scene_id"],
             segment_id=f"B{int(scene['source_segment_id']):02d}",
             storyboard_id=storyboard_item.get("storyboard_id", f"SB{int(scene['source_segment_id']):04d}"),
@@ -159,6 +191,13 @@ def main() -> None:
             screen_action=str(storyboard_item.get("on_screen_action") or scene.get("visual_idea") or scene["voice_text"]),
             plan=str(scene.get("composition") or storyboard_item.get("composition_progression") or "documentary still"),
             camera_storyboard=str(storyboard_item.get("camera_storyboard") or scene.get("camera") or "documentary framing"),
+            visualized_claim=str(beat.get("spoken_claim") or scene.get("visual_goal") or scene.get("scene_meaning") or scene["voice_text"]),
+            must_show=[str(item) for item in beat.get("must_visualize", [])],
+            entity_locks=entity_locks,
+            camera_rule=str(scene.get("camera") or storyboard_item.get("camera_storyboard") or "documentary framing"),
+            style_rule=str(project["prompts"].get("global_style_summary") or project["prompts"]["style_preset"]),
+            negative_constraints=["no logos", "no readable text", "no fake UI words"],
+            film_block_id=str(shot_mapping.get("shot_id") or scene.get("global_scene_id") or f"block_{index:04d}"),
             mentioned_subject_ids=subject_meta["mentioned_subject_ids"],
             visible_subject_ids=subject_meta["visible_subject_ids"],
             subject_ids=subject_meta["subject_ids"],
@@ -194,6 +233,7 @@ def main() -> None:
         )
         frame_briefs.append(frame_dict)
         scene["frame_id"] = frame_dict["frame_id"]
+        scene["beat_id"] = frame_dict["beat_id"]
         scene["storyboard_id"] = frame_dict["storyboard_id"]
         scene["semantic_unit_id"] = frame_dict["semantic_unit_id"]
         scene["shot_id"] = frame_dict["shot_id"]
@@ -206,6 +246,10 @@ def main() -> None:
         scene["subject_visible"] = frame_dict["subject_visible"]
         scene["subject_continuity_strength"] = frame_dict["subject_continuity_strength"]
         scene["reference_bindings"] = frame_dict["reference_bindings"]
+        scene["visualized_claim"] = frame_dict["visualized_claim"]
+        scene["must_show"] = frame_dict["must_show"]
+        scene["entity_locks"] = frame_dict["entity_locks"]
+        scene["film_block_id"] = frame_dict["film_block_id"]
         legacy_items.append(legacy_prompt_package_item(scene, frame_dict))
 
     frame_briefs_json_path = Path(project["planning"]["frame_briefs_json_path"])

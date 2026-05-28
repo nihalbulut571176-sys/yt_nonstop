@@ -76,6 +76,9 @@ def main() -> None:
     package = load_json(prompt_package_path)
     style_guide = load_json(style_guide_path) if style_guide_path.exists() else {}
     continuity = load_json(continuity_path) if continuity_path.exists() else {}
+    narration_beats_path = Path(project["planning"]["narration_beats_path"])
+    narration_beats = load_json(narration_beats_path).get("beats", []) if narration_beats_path.exists() else []
+    beats_by_scene = {beat.get("scene_id"): beat for beat in narration_beats if beat.get("scene_id")}
 
     scenes = scene_plan.get("scenes", [])
     items = package.get("items", [])
@@ -107,6 +110,7 @@ def main() -> None:
         prev_item = item_by_scene.get(scenes[index - 1]["scene_id"], {}) if index > 0 else {}
         next_item = item_by_scene.get(scenes[index + 1]["scene_id"], {}) if index + 1 < len(scenes) else {}
         item = item_by_scene.get(scene["scene_id"], {})
+        beat = beats_by_scene.get(scene["scene_id"], {})
         scene_continuity = scene_entity_map.get(scene["scene_id"], {})
         if not scene_continuity:
             scene_continuity = segment_entity_map.get(str(scene.get("source_segment_id", "")), {})
@@ -116,11 +120,16 @@ def main() -> None:
             {
                 "project_id": project["project_id"],
                 "scene_id": scene["scene_id"],
+                "beat_id": beat.get("beat_id") or scene.get("beat_id"),
                 "shot_index": scene["shot_index"],
                 "start": scene["start"],
                 "end": scene["end"],
                 "duration": scene["duration"],
                 "voice_text": scene.get("voice_text", ""),
+                "spoken_claim": beat.get("spoken_claim", ""),
+                "must_visualize": beat.get("must_visualize", []),
+                "beat_role": beat.get("beat_role", ""),
+                "visual_priority": beat.get("visual_priority", ""),
                 "context_before": prev_text,
                 "context_after": next_text,
                 "source_language": source_language,

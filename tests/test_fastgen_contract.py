@@ -21,6 +21,7 @@ class FastGenContractTests(unittest.TestCase):
     def test_generation_lock_rejects_direct_srt_and_text_conflict(self):
         frame_brief = {
             "frame_id": "F0001",
+            "beat_id": "beat_0001",
             "srt_text": "This exact narration sentence should not be copied into the prompt.",
             "continuity_tags": ["evidence_table"],
             "frame_brief_hash": stable_hash({"frame_id": "F0001"}),
@@ -63,9 +64,12 @@ class FastGenContractTests(unittest.TestCase):
             frame_briefs = [
                 {
                     "frame_id": "F0001",
+                    "beat_id": "beat_0001",
                     "scene_id": "scene_0001",
                     "timeline_in": 0.0,
                     "timeline_out": 1.0,
+                    "visualized_claim": "cold evidence table establishes the setup",
+                    "must_show": ["cold evidence table"],
                     "scale": "wide",
                     "angle": "eye-level",
                     "scene_type": "place",
@@ -76,9 +80,12 @@ class FastGenContractTests(unittest.TestCase):
                 },
                 {
                     "frame_id": "F0002",
+                    "beat_id": "beat_0002",
                     "scene_id": "scene_0002",
                     "timeline_in": 1.0,
                     "timeline_out": 2.0,
+                    "visualized_claim": "cold evidence table stays in view",
+                    "must_show": ["cold evidence table"],
                     "scale": "wide",
                     "angle": "eye-level",
                     "scene_type": "place",
@@ -89,8 +96,8 @@ class FastGenContractTests(unittest.TestCase):
                 },
             ]
             locked_rows = [
-                {"frame_id": "F0001", "generation_lock_status": "locked", "image_prompt": "prompt one"},
-                {"frame_id": "F0002", "generation_lock_status": "locked", "image_prompt": "prompt two"},
+                {"frame_id": "F0001", "beat_id": "beat_0001", "generation_lock_status": "locked", "image_prompt": "cold evidence table prompt one"},
+                {"frame_id": "F0002", "beat_id": "beat_0002", "generation_lock_status": "locked", "image_prompt": "cold evidence table prompt two"},
             ]
             frame_briefs_path.write_text(json.dumps(frame_briefs), encoding="utf-8")
             locked_path.write_text(json.dumps(locked_rows), encoding="utf-8")
@@ -290,9 +297,9 @@ class FastGenContractTests(unittest.TestCase):
                 },
             }
             locked_rows = [
-                {"frame_id": "F0001", "generation_lock_status": "locked"},
-                {"frame_id": "F0002", "generation_lock_status": "locked_with_warnings"},
-                {"frame_id": "F0003", "generation_lock_status": "failed"},
+                {"frame_id": "F0001", "beat_id": "beat_0001", "generation_lock_status": "locked"},
+                {"frame_id": "F0002", "beat_id": "beat_0002", "generation_lock_status": "locked_with_warnings"},
+                {"frame_id": "F0003", "beat_id": "beat_0003", "generation_lock_status": "failed"},
             ]
             locked_path.write_text(json.dumps(locked_rows), encoding="utf-8")
             export_path.write_text("block-one\n\nblock-two\n", encoding="utf-8")
@@ -302,6 +309,7 @@ class FastGenContractTests(unittest.TestCase):
     def test_generation_lock_carries_reference_binding_fields(self):
         frame_brief = {
             "frame_id": "F0002",
+            "beat_id": "beat_0002",
             "srt_text": "A security guard watches the boutique entrance.",
             "continuity_tags": ["security_guard_01"],
             "frame_brief_hash": stable_hash({"frame_id": "F0002"}),

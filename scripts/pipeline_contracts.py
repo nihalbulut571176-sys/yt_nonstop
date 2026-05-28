@@ -81,6 +81,7 @@ class SceneMap:
 @dataclass
 class FrameBrief:
     frame_id: str
+    beat_id: str
     scene_id: str
     segment_id: str
     storyboard_id: str
@@ -98,6 +99,13 @@ class FrameBrief:
     screen_action: str
     plan: str
     camera_storyboard: str
+    visualized_claim: str = ""
+    must_show: list[str] = field(default_factory=list)
+    entity_locks: list[dict[str, Any]] = field(default_factory=list)
+    camera_rule: str = ""
+    style_rule: str = ""
+    negative_constraints: list[str] = field(default_factory=list)
+    film_block_id: str = ""
     mentioned_subject_ids: list[str] = field(default_factory=list)
     visible_subject_ids: list[str] = field(default_factory=list)
     subject_ids: list[str] = field(default_factory=list)
@@ -125,6 +133,7 @@ class FrameBrief:
 @dataclass
 class GenerationLockedFrame:
     frame_id: str
+    beat_id: str
     image_prompt: str
     negative_prompt: str
     motion_prompt: str
@@ -378,3 +387,12 @@ def count_pattern_breaks(frames: list[dict[str, Any]], seconds_window: float = 3
             window_start = start
         last_world = world
     return breaks
+
+
+def dedupe_strings(values: list[str]) -> list[str]:
+    result: list[str] = []
+    for value in values:
+        normalized = normalize_text(value)
+        if normalized and normalized not in result:
+            result.append(normalized)
+    return result

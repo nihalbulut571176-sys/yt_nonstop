@@ -16,7 +16,7 @@ from project_pipeline_utils import load_project  # noqa: E402
 
 
 class V2PipelineTests(unittest.TestCase):
-    def build_project_fixture(self, root: Path, frame_count: int = 30) -> Path:
+    def build_project_fixture(self, root: Path, frame_count: int = 30, inject_mixed_paths: bool = False) -> Path:
         template = json.loads((ROOT / "deliverables" / "project.template.json").read_text(encoding="utf-8"))
         sample_root = r"C:\Users\MIKE\Documents\Codex\YT\projects\telegram_darknet_001"
         project_root = root / "project"
@@ -50,6 +50,13 @@ class V2PipelineTests(unittest.TestCase):
         project["scene_plan"]["source_srt_path"] = str(project_root / "transcript" / "cleaned.srt")
         project["transcription"]["srt_path"] = str(project_root / "transcript" / "cleaned.srt")
         project["transcription"]["raw_srt_path"] = str(project_root / "transcript" / "cleaned.srt")
+        if inject_mixed_paths:
+            project["scene_plan"]["scene_plan_path"] = f"{project_root.as_posix()}\\scene_plan\\scene_plan.json"
+            project["scene_plan"]["source_srt_path"] = f"{project_root.as_posix()}\\transcript\\cleaned.srt"
+            project["transcription"]["srt_path"] = f"{project_root.as_posix()}\\transcript\\cleaned.srt"
+            project["transcription"]["raw_srt_path"] = f"{project_root.as_posix()}\\transcript\\cleaned.srt"
+            project["logs"]["pipeline_log_path"] = f"{project_root.as_posix()}\\logs\\pipeline.log"
+            project["logs"]["events_jsonl_path"] = f"{project_root.as_posix()}\\logs\\events.jsonl"
 
         srt_blocks = []
         scenes = []
@@ -131,9 +138,39 @@ class V2PipelineTests(unittest.TestCase):
             self.assertTrue(project["exports"]["generator_queue_csv_path"].endswith("generator_queue.csv"))
             self.assertTrue(project["reports"]["qc_report_md_path"].endswith("qc_report.md"))
 
+    def test_load_project_rebases_template_and_mixed_paths_into_active_project_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            project_json = self.build_project_fixture(Path(tmp), frame_count=4, inject_mixed_paths=True)
+            project = load_project(project_json)
+            project_root = project_json.parent.resolve()
+            stale_prefix = r"C:\Users\MIKE\Documents\Codex\YT\projects\telegram_darknet_001"
+
+            self.assertEqual(Path(project["meta"]["project_root"]).resolve(), project_root)
+            self.assertEqual(Path(project["scene_plan"]["scene_plan_path"]).resolve(), project_root / "scene_plan" / "scene_plan.json")
+            self.assertEqual(Path(project["scene_plan"]["source_srt_path"]).resolve(), project_root / "transcript" / "cleaned.srt")
+            self.assertEqual(Path(project["transcription"]["srt_path"]).resolve(), project_root / "transcript" / "cleaned.srt")
+            self.assertEqual(Path(project["logs"]["pipeline_log_path"]).resolve(), project_root / "logs" / "pipeline.log")
+
+            path_like_values: list[str] = []
+
+            def collect_paths(payload):
+                if isinstance(payload, dict):
+                    for key, value in payload.items():
+                        if isinstance(value, str) and (key.endswith(("_path", "_dir", "_root")) or key == "audio_path"):
+                            path_like_values.append(value)
+                        else:
+                            collect_paths(value)
+                elif isinstance(payload, list):
+                    for item in payload:
+                        collect_paths(item)
+
+            collect_paths(project)
+            self.assertTrue(path_like_values)
+            self.assertFalse(any(stale_prefix in value for value in path_like_values))
+
     def test_v2_pipeline_cli_builds_and_exports(self):
         with tempfile.TemporaryDirectory() as tmp:
-            project_json = self.build_project_fixture(Path(tmp), frame_count=30)
+            project_json = self.build_project_fixture(Path(tmp), frame_count=30, inject_mixed_paths=True)
             self.run_pipeline(project_json, "parse-srt")
             self.run_pipeline(project_json, "build-scenes", "--target-scenes", "5")
             self.run_pipeline(project_json, "build-subscenes")

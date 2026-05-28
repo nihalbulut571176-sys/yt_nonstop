@@ -140,9 +140,32 @@ def main() -> None:
         assets.extend(asset.__dict__ for asset in subject_assets)
 
     subject_registry_path = Path(project["prompts"]["subject_registry_path"])
+    entity_registry_path = Path(project["prompts"]["entity_registry_path"])
     ref_assets_path = Path(project["prompts"]["reference_assets_manifest_path"])
     ref_mapping_path = Path(project["prompts"]["reference_mapping_path"])
     save_json(subject_registry_path, {"project_id": project["project_id"], "subjects": profiles})
+    save_json(
+        entity_registry_path,
+        {
+            "project_id": project["project_id"],
+            "entities": [
+                {
+                    "entity_id": profile["subject_id"],
+                    "entity_type": "character",
+                    "recurring": True,
+                    "identity_lock": "required" if profile["reference_policy"] == "required" else "optional",
+                    "reference_policy": profile["reference_policy"],
+                    "reference_ids": profile["reference_asset_ids"],
+                    "appearance": {
+                        "narrative_role": profile["narrative_role"],
+                        "visual_markers": profile["visual_markers"],
+                    },
+                    "must_remain_constant": profile["forbidden_variation"],
+                }
+                for profile in profiles
+            ],
+        },
+    )
     save_json(ref_assets_path, {"project_id": project["project_id"], "reference_assets": assets})
     save_json(
         ref_mapping_path,
@@ -156,6 +179,7 @@ def main() -> None:
     project["current_stage"] = "allocate_frames"
     save_project(project_json, project)
     print(subject_registry_path)
+    print(entity_registry_path)
     print(ref_assets_path)
     print(ref_mapping_path)
 

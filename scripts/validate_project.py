@@ -32,6 +32,7 @@ STAGE_CHOICES = [
     "build_subject_registry",
     "build_continuity_map",
     "allocate_frames",
+    "build_narration_beats",
     "build_frame_briefs",
     "attach_reference_assets",
     "generate_fastgen_prompt_drafts",
@@ -43,6 +44,7 @@ STAGE_CHOICES = [
     "motion_plan",
     "final_review",
     "images",
+    "image_qc",
     "normalized_images",
     "timeline",
     "render",
@@ -500,11 +502,19 @@ def validate_build_frame_briefs(project: dict[str, Any]) -> tuple[list[str], lis
     briefs_path = file_must_exist(project["planning"].get("frame_briefs_json_path"), "planning.frame_briefs_json_path", errors)
     package_path = file_must_exist(project["prompts"].get("prompt_package_path"), "prompts.prompt_package_path", errors)
     storyboard_path = file_must_exist(project["planning"].get("storyboard_path"), "planning.storyboard_path", errors)
+    narration_beats_path = file_must_exist(project["planning"].get("narration_beats_path"), "planning.narration_beats_path", errors)
     if not briefs_path or not package_path:
         return errors, warnings
     drafts = load_json(briefs_path)
     package = load_json(package_path)
     package_scene_ids = {item["scene_id"] for item in package.get("items", [])}
+    beats_by_scene = {}
+    if narration_beats_path:
+        beats_by_scene = {
+            item.get("scene_id"): item
+            for item in load_json(narration_beats_path).get("beats", [])
+            if item.get("scene_id")
+        }
     draft_scene_ids = set()
     required_fields = ["frame_id", "scene_id", "storyboard_id", "shot_id", "semantic_unit_id", "visual_role", "shot_function", "frame_brief_hash"]
     if not isinstance(drafts, list) or not drafts:
@@ -522,10 +532,77 @@ def validate_build_frame_briefs(project: dict[str, Any]) -> tuple[list[str], lis
                 errors.append(f"{frame_id} missing required field `{field}`")
         if record.get("subject_visible") and not record.get("primary_subject_id"):
             errors.append(f"{frame_id} subject_visible but no primary_subject_id")
+        if not str(record.get("beat_id", "")).strip():
+            errors.append(f"{frame_id} missing required field `beat_id`")
+        if not str(record.get("visualized_claim", "")).strip():
+            errors.append(f"{frame_id} missing required field `visualized_claim`")
+        must_show = record.get("must_show", [])
+        if not isinstance(must_show, list) or not [item for item in must_show if str(item).strip()]:
+            errors.append(f"{frame_id} must contain at least one `must_show` item")
+        if record.get("entity_locks") is not None and not isinstance(record.get("entity_locks"), list):
+            errors.append(f"{frame_id} entity_locks must be a list")
+        beat = beats_by_scene.get(scene_id)
+        if beat and record.get("beat_id") != beat.get("beat_id"):
+            errors.append(f"{frame_id} beat_id does not match narration_beats for {scene_id}")
+        if beat and not str(record.get("voice_text", "")).strip():
+            warnings.append(f"{frame_id} missing voice_text even though narration beat is available")
     if not storyboard_path and request_spec_from_project(project).is_sequence and not request_spec_from_project(project).skip_storyboard_allowed:
         errors.append("Sequence workflow cannot build frame briefs without storyboard")
     if draft_scene_ids != package_scene_ids:
         errors.append("frame_briefs scene coverage does not match prompt_package")
+    return errors, warnings
+
+
+def validate_build_narration_beats(project: dict[str, Any]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    beats_path = file_must_exist(project["planning"].get("narration_beats_path"), "planning.narration_beats_path", errors)
+    scene_plan_path = file_must_exist(project["scene_plan"].get("scene_plan_path"), "scene_plan.scene_plan_path", errors)
+    if not beats_path or not scene_plan_path:
+        return errors, warnings
+    payload = load_json(beats_path)
+    scene_plan = load_json(scene_plan_path)
+    beats = payload.get("beats", [])
+    scenes = scene_plan.get("scenes", [])
+    if not isinstance(beats, list) or not beats:
+        errors.append("narration_beats payload has no beats")
+        return errors, warnings
+    if len(beats) != len(scenes):
+        errors.append("narration_beats count does not match scene_plan scene count")
+    scene_index = {scene.get("scene_id"): scene for scene in scenes if scene.get("scene_id")}
+    previous_end = -1.0
+    for index, beat in enumerate(beats, start=1):
+        beat_id = str(beat.get("beat_id", "")).strip()
+        scene_id = str(beat.get("scene_id", "")).strip()
+        if not beat_id:
+            errors.append(f"beat #{index} missing beat_id")
+            continue
+        if not scene_id:
+            errors.append(f"{beat_id} missing scene_id")
+            continue
+        scene = scene_index.get(scene_id)
+        if not scene:
+            errors.append(f"{beat_id} points to unknown scene_id {scene_id}")
+            continue
+        start = float(beat.get("start", 0) or 0)
+        end = float(beat.get("end", 0) or 0)
+        duration = float(beat.get("duration", 0) or 0)
+        if abs(start - float(scene.get("start", 0) or 0)) > 0.02:
+            errors.append(f"{beat_id} start does not match scene timing")
+        if abs(end - float(scene.get("end", 0) or 0)) > 0.02:
+            errors.append(f"{beat_id} end does not match scene timing")
+        if abs(duration - float(scene.get("duration", 0) or 0)) > 0.02:
+            errors.append(f"{beat_id} duration does not match scene timing")
+        if previous_end > start + 0.02:
+            errors.append(f"{beat_id} overlaps previous beat")
+        previous_end = max(previous_end, end)
+        if not str(beat.get("voice_text", "")).strip():
+            errors.append(f"{beat_id} missing voice_text")
+        must_visualize = beat.get("must_visualize", [])
+        if not isinstance(must_visualize, list) or not [item for item in must_visualize if str(item).strip()]:
+            errors.append(f"{beat_id} must contain at least one concrete must_visualize item")
+        if not str(beat.get("spoken_claim", "")).strip():
+            warnings.append(f"{beat_id} missing spoken_claim")
     return errors, warnings
 
 
@@ -593,6 +670,7 @@ def validate_generate_fastgen_prompt_drafts(project: dict[str, Any]) -> tuple[li
     drafts = load_json(drafts_path)
     prompt_package = load_json(prompt_package_path)
     visual_bible = load_json(visual_bible_path)
+    final_scene_plan = load_json(final_scene_plan_path)
     draft_errors, draft_warnings = validate_scene_prompt_drafts_payload(
         drafts,
         expected_scene_ids=[item["scene_id"] for item in prompt_package.get("items", [])],
@@ -602,6 +680,30 @@ def validate_generate_fastgen_prompt_drafts(project: dict[str, Any]) -> tuple[li
     errors.extend(bible_errors)
     warnings.extend(draft_warnings)
     warnings.extend(bible_warnings)
+    package_items = {item["scene_id"]: item for item in prompt_package.get("items", []) if item.get("scene_id")}
+    final_scene_by_id = {item["scene_id"]: item for item in final_scene_plan.get("scenes", []) if item.get("scene_id")}
+    for draft in drafts if isinstance(drafts, list) else []:
+        scene_id = draft.get("scene_id")
+        frame_id = str(draft.get("frame_id", "")).strip()
+        beat_id = str(draft.get("beat_id", "")).strip()
+        if not frame_id:
+            errors.append(f"{scene_id or '<unknown>'} missing frame_id")
+        if not beat_id:
+            errors.append(f"{scene_id or '<unknown>'} missing beat_id")
+        if not str(draft.get("visualized_claim", "")).strip():
+            errors.append(f"{scene_id or '<unknown>'} missing visualized_claim")
+        must_not_show = draft.get("must_not_show")
+        if must_not_show is not None and not isinstance(must_not_show, list):
+            errors.append(f"{scene_id or '<unknown>'} must_not_show must be a list when present")
+        package_item = package_items.get(scene_id, {})
+        final_scene = final_scene_by_id.get(scene_id, {})
+        expected_beat = package_item.get("beat_id") or final_scene.get("beat_id")
+        if expected_beat and beat_id and expected_beat != beat_id:
+            errors.append(f"{scene_id} beat_id does not match prompt package/final scene plan")
+        visualized_claim = normalize_text_lower(str(draft.get("visualized_claim", "")))
+        prompt_blob = normalize_text_lower(" ".join([str(draft.get("final_prompt", "")), str(draft.get("visual_goal", ""))]))
+        if visualized_claim and visualized_claim not in prompt_blob:
+            warnings.append(f"{scene_id} visualized_claim is not explicitly grounded in final_prompt/visual_goal")
     return errors, warnings
 
 
@@ -627,6 +729,10 @@ def validate_generation_lock(project: dict[str, Any]) -> tuple[list[str], list[s
         for field in ("image_prompt", "negative_prompt", "motion_prompt", "continuity_note", "frame_brief_hash"):
             if not str(row.get(field, "")).strip():
                 errors.append(f"{row.get('frame_id', '<unknown>')} missing generation lock field `{field}`")
+        if not str(row.get("beat_id", "")).strip():
+            errors.append(f"{row.get('frame_id', '<unknown>')} missing generation lock field `beat_id`")
+        if row.get("reference_ids") is not None and not isinstance(row.get("reference_ids"), list):
+            errors.append(f"{row.get('frame_id', '<unknown>')} reference_ids must be a list")
     return errors, warnings
 
 
@@ -641,6 +747,7 @@ def validate_quality_assurance(project: dict[str, Any]) -> tuple[list[str], list
     locked_rows = load_json(locked_path)
     if len(frame_briefs) != len(locked_rows):
         errors.append("frame_briefs and generation_locked_frames length mismatch")
+    locked_by_frame = {row.get("frame_id"): row for row in locked_rows if row.get("frame_id")}
     continuity_path_value = project.get("planning", {}).get("continuity_map_json_path")
     continuity_path = Path(continuity_path_value) if continuity_path_value else None
     if request_spec_from_project(project).is_sequence and (continuity_path is None or not continuity_path.exists()):
@@ -668,6 +775,26 @@ def validate_quality_assurance(project: dict[str, Any]) -> tuple[list[str], list
         if len({brief.get("scale"), brief.get("angle"), brief.get("scene_type"), brief.get("lighting"), brief.get("visual_density"), brief.get("motion_treatment")}) < 4:
             warnings.append(f"prompt_noise: {frame_id} has low style diversity metadata")
         scene_windows.setdefault(brief["scene_id"], []).append(brief)
+        if not str(brief.get("beat_id", "")).strip():
+            errors.append(f"{frame_id} missing beat_id")
+        if not str(brief.get("visualized_claim", "")).strip():
+            errors.append(f"{frame_id} missing visualized_claim")
+        must_show = brief.get("must_show", [])
+        if not isinstance(must_show, list) or not [item for item in must_show if str(item).strip()]:
+            errors.append(f"{frame_id} has empty must_show coverage")
+        locked = locked_by_frame.get(frame_id, {})
+        prompt_blob = normalize_text_lower(" ".join([str(locked.get("image_prompt", "")), str(locked.get("continuity_note", ""))]))
+        claim = normalize_text_lower(str(brief.get("visualized_claim", "")))
+        if claim and claim not in prompt_blob:
+            warnings.append(f"visualized_claim_not_grounded: {frame_id}")
+        if brief.get("entity_locks"):
+            required_entities = [
+                entity
+                for entity in brief.get("entity_locks", [])
+                if entity.get("reference_policy") == "required" or entity.get("identity_lock") == "required"
+            ]
+            if required_entities and not locked.get("reference_ids"):
+                errors.append(f"missing_required_reference_lock: {frame_id}")
 
     previous = None
     for brief in frame_briefs:
@@ -726,6 +853,51 @@ def validate_export_generation_batches(project: dict[str, Any]) -> tuple[list[st
     expected = sum(1 for row in locked_rows if row.get("generation_lock_status") in allowed)
     if len(blocks) != expected:
         errors.append(f"Generator-ready block count mismatch: {len(blocks)} blocks vs {expected} locked frames")
+    return errors, warnings
+
+
+def validate_image_qc(project: dict[str, Any]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    qc_path = file_must_exist(project["images"].get("image_qc_report_path"), "images.image_qc_report_path", errors)
+    selected_path = file_must_exist(project["images"].get("selected_images_manifest_path"), "images.selected_images_manifest_path", errors)
+    if not qc_path or not selected_path:
+        return errors, warnings
+    qc_payload = load_json(qc_path)
+    selected_payload = load_json(selected_path)
+    qc_rows = qc_payload.get("images", [])
+    selected_rows = selected_payload.get("selected_images", [])
+    if not isinstance(qc_rows, list) or not qc_rows:
+        errors.append("image_qc_report has no image rows")
+        return errors, warnings
+    if not isinstance(selected_rows, list) or not selected_rows:
+        errors.append("selected_images_manifest has no selected_images rows")
+        return errors, warnings
+    seen_scenes = set()
+    for row in selected_rows:
+        scene_id = str(row.get("scene_id", "")).strip()
+        if not scene_id:
+            errors.append("selected image row missing scene_id")
+            continue
+        seen_scenes.add(scene_id)
+        if not str(row.get("beat_id", "")).strip():
+            errors.append(f"{scene_id} selected image missing beat_id")
+        if not str(row.get("voice_text", "")).strip():
+            errors.append(f"{scene_id} selected image missing voice_text")
+        if not str(row.get("visualized_claim", "")).strip():
+            errors.append(f"{scene_id} selected image missing visualized_claim")
+        if row.get("coverage_status") != "pass":
+            errors.append(f"{scene_id} selected image failed semantic coverage")
+        if row.get("semantic_flags"):
+            errors.append(f"{scene_id} selected image has semantic flags: {', '.join(row.get('semantic_flags', []))}")
+        image_path = row.get("selected_image_path") or row.get("image_path")
+        if not image_path or not Path(image_path).exists():
+            errors.append(f"{scene_id} selected image file is missing")
+    qc_by_scene = {row.get("scene_id"): row for row in qc_rows if row.get("scene_id")}
+    for scene_id in seen_scenes:
+        qc_row = qc_by_scene.get(scene_id)
+        if not qc_row:
+            errors.append(f"{scene_id} missing qc row for selected scene")
     return errors, warnings
 
 
@@ -884,15 +1056,37 @@ def validate_timeline(project: dict[str, Any]) -> tuple[list[str], list[str]]:
     warnings: list[str] = []
     ffconcat_path = file_must_exist(project["render"].get("ffconcat_path"), "render.ffconcat_path", errors)
     timeline_path = file_must_exist(project["render"].get("slideshow_timeline_path"), "render.slideshow_timeline_path", errors)
-    if not ffconcat_path or not timeline_path:
+    edl_path = file_must_exist(project["render"].get("edit_decision_list_path"), "render.edit_decision_list_path", errors)
+    if not ffconcat_path or not timeline_path or not edl_path:
         return errors, warnings
     timeline = load_json(timeline_path)
+    edl_payload = load_json(edl_path)
+    edl = edl_payload.get("edl", [])
     total_duration = sum(float(item.get("duration", 0) or 0) for item in timeline)
     audio_duration = float(project["inputs"].get("audio_duration_seconds") or 0)
-    if audio_duration > 0 and abs(total_duration - audio_duration) > 1.0:
-        warnings.append(f"Timeline duration differs from audio by {abs(total_duration - audio_duration):.3f}s")
+    if audio_duration > 0 and abs(total_duration - audio_duration) > 0.2:
+        errors.append(f"Timeline duration differs from audio by {abs(total_duration - audio_duration):.3f}s")
     if "ffconcat version 1.0" not in ffconcat_path.read_text(encoding="utf-8"):
         errors.append("ffconcat header is missing")
+    previous_end = None
+    for row in edl if isinstance(edl, list) else []:
+        frame_id = row.get("frame_id", "<unknown>")
+        if not str(row.get("beat_id", "")).strip():
+            errors.append(f"{frame_id} missing beat_id in edit_decision_list")
+        if not str(row.get("voice_text", "")).strip():
+            errors.append(f"{frame_id} missing voice_text in edit_decision_list")
+        if not str(row.get("visualized_claim", "")).strip():
+            errors.append(f"{frame_id} missing visualized_claim in edit_decision_list")
+        start = float(row.get("start", 0) or 0)
+        end = float(row.get("end", 0) or 0)
+        if end <= start:
+            errors.append(f"{frame_id} has invalid EDL timing window")
+        if previous_end is not None:
+            if start > previous_end + 0.02:
+                errors.append(f"{frame_id} introduces a timeline gap")
+            if start < previous_end - 0.02:
+                errors.append(f"{frame_id} overlaps previous EDL frame")
+        previous_end = end
     return errors, warnings
 
 
@@ -930,6 +1124,7 @@ VALIDATORS = {
     "build_subject_registry": validate_build_subject_registry,
     "build_continuity_map": validate_build_continuity_map,
     "allocate_frames": validate_scene_plan,
+    "build_narration_beats": validate_build_narration_beats,
     "build_frame_briefs": validate_build_frame_briefs,
     "attach_reference_assets": validate_attach_reference_assets,
     "scene_context_pack": validate_scene_context_pack,
@@ -949,6 +1144,7 @@ VALIDATORS = {
     "motion_plan": validate_motion_plan,
     "final_review": validate_final_review,
     "images": validate_images,
+    "image_qc": validate_image_qc,
     "normalized_images": validate_normalized_images,
     "timeline": validate_timeline,
     "render": validate_render,

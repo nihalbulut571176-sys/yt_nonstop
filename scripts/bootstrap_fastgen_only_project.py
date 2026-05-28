@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-ROOT = Path(r"C:\Users\MIKE\Documents\Codex\YT")
+ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE_PATH = ROOT / "deliverables" / "project.template.json"
 DEFAULT_PROJECTS_DIR = ROOT / "projects"
 

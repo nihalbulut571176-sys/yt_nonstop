@@ -6,7 +6,7 @@ from pathlib import Path
 from project_pipeline_utils import append_event, append_log, load_json, load_project, mark_stage, save_json, save_project
 
 
-ROOT = Path(r"C:\Users\MIKE\Documents\Codex\YT")
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def main() -> None:

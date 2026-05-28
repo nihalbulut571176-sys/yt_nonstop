@@ -13,7 +13,7 @@ except ImportError:  # pragma: no cover - Pillow may be unavailable in some envi
     Image = None
 
 
-REQUIRED_SCENE_DRAFT_FIELDS = ("scene_id", "visual_goal", "final_prompt")
+REQUIRED_SCENE_DRAFT_FIELDS = ("scene_id", "frame_id", "beat_id", "visual_goal", "visualized_claim", "final_prompt")
 RECOMMENDED_SCENE_DRAFT_FIELDS = (
     "shot_role",
     "primary_subject",
@@ -25,6 +25,7 @@ RECOMMENDED_SCENE_DRAFT_FIELDS = (
     "mood",
     "continuity_notes",
     "negative_prompt",
+    "must_not_show",
     "event_clarity_required",
     "event_type",
 )

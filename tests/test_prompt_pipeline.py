@@ -197,7 +197,10 @@ class PromptPipelineTests(unittest.TestCase):
         drafts = [
             {
                 "scene_id": "scene_0001",
+                "frame_id": "F0001",
+                "beat_id": "beat_0001",
                 "visual_goal": "Show the guarded boutique entry as a controlled threshold.",
+                "visualized_claim": "guarded boutique threshold is shown as a controlled threshold",
                 "final_prompt": "Premium documentary still of the guarded boutique threshold.",
                 "start": 0.0,
                 "image_path": "C:/fake/output.png",
@@ -210,7 +213,10 @@ class PromptPipelineTests(unittest.TestCase):
         drafts = [
             {
                 "scene_id": "scene_0001",
+                "frame_id": "F0001",
+                "beat_id": "beat_0001",
                 "visual_goal": "Show the guarded boutique entry as a controlled threshold.",
+                "visualized_claim": "guarded boutique threshold is shown as a controlled threshold",
                 "final_prompt": "Premium documentary still of the guarded boutique threshold.",
             }
         ]
@@ -219,6 +225,19 @@ class PromptPipelineTests(unittest.TestCase):
             expected_scene_ids=["scene_0001", "scene_0002"],
         )
         self.assertTrue(any("Missing LLM prompt drafts" in item for item in errors))
+
+    def test_scene_prompt_draft_contract_requires_beat_grounding_fields(self):
+        drafts = [
+            {
+                "scene_id": "scene_0001",
+                "visual_goal": "Show the guarded boutique entry as a controlled threshold.",
+                "final_prompt": "Premium documentary still of the guarded boutique threshold.",
+            }
+        ]
+        errors, _warnings = validate_scene_prompt_drafts_payload(drafts, expected_scene_ids=["scene_0001"])
+        self.assertTrue(any("missing required field `frame_id`" in item for item in errors))
+        self.assertTrue(any("missing required field `beat_id`" in item for item in errors))
+        self.assertTrue(any("missing required field `visualized_claim`" in item for item in errors))
 
 
 if __name__ == "__main__":

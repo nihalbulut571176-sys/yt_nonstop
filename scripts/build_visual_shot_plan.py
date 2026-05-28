@@ -38,11 +38,21 @@ def build_default_plan(project: dict, package: dict) -> dict:
             "importance": importance,
             "generation_mode": "unique",
             "primary_scene_id": scene_id,
+            "beat_ids": [str(item.get("beat_id") or f"beat_{index:04d}")],
             "scene_ids": [scene_id],
+            "shot_type": "medium shot" if importance != "bridge" else "bridge shot",
+            "visual_function": str(item.get("visual_function") or item.get("narrative_purpose") or "explain"),
+            "primary_entity_ids": list(item.get("subject_ids", []) or item.get("mentioned_subject_ids", []) or []),
+            "must_show": list(item.get("must_show", []) or [visual_anchor] if visual_anchor else []),
+            "film_block_id": f"film_block_{index:04d}",
             "visual_anchor": visual_anchor,
             "off_topic_risk": "unknown",
             "prompt_strategy": "one concrete documentary shot per scene until grouping is explicitly authored",
             "primary_subject": str(item.get("primary_subject", "")).strip(),
+            "camera": str(item.get("camera", "")).strip(),
+            "lighting": str(item.get("lighting", "")).strip(),
+            "transition_in": "cut",
+            "transition_out": "cut",
         }
         shots.append(shot_record)
         scene_groups.append(
@@ -60,6 +70,7 @@ def build_default_plan(project: dict, package: dict) -> dict:
             "generation_mode": "unique",
             "source_shot_id": shot_id,
             "variation_note": "",
+            "beat_id": str(item.get("beat_id") or f"beat_{index:04d}"),
         }
 
     return {
@@ -99,11 +110,21 @@ def normalize_plan(raw_plan: dict, scene_ids: set[str], quality_mode: str) -> di
             "importance": importance,
             "generation_mode": generation_mode,
             "primary_scene_id": primary_scene_id,
+            "beat_ids": [str(beat_id).strip() for beat_id in shot.get("beat_ids", []) if str(beat_id).strip()],
             "scene_ids": scene_ids_for_shot,
+            "shot_type": str(shot.get("shot_type", "medium shot")).strip() or "medium shot",
+            "visual_function": str(shot.get("visual_function", "explain")).strip() or "explain",
+            "primary_entity_ids": [str(entity_id).strip() for entity_id in shot.get("primary_entity_ids", []) if str(entity_id).strip()],
+            "must_show": [str(item).strip() for item in shot.get("must_show", []) if str(item).strip()],
+            "film_block_id": str(shot.get("film_block_id", shot_id)).strip() or shot_id,
             "visual_anchor": str(shot.get("visual_anchor", "")).strip(),
             "off_topic_risk": str(shot.get("off_topic_risk", "unknown")).strip() or "unknown",
             "prompt_strategy": str(shot.get("prompt_strategy", "")).strip(),
             "primary_subject": str(shot.get("primary_subject", "")).strip(),
+            "camera": str(shot.get("camera", "")).strip(),
+            "lighting": str(shot.get("lighting", "")).strip(),
+            "transition_in": str(shot.get("transition_in", "cut")).strip() or "cut",
+            "transition_out": str(shot.get("transition_out", "cut")).strip() or "cut",
         }
         shots_by_id[shot_id] = normalized
         normalized_shots.append(normalized)

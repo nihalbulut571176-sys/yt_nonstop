@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+import re
 from typing import Any
 
 
@@ -15,6 +16,7 @@ STAGE_SEQUENCE = [
     "generate_reference_images",
     "build_subject_registry",
     "allocate_frames",
+    "build_narration_beats",
     "build_frame_briefs",
     "attach_reference_assets",
     "generate_fastgen_prompt_drafts",
@@ -27,6 +29,7 @@ STAGE_SEQUENCE = [
     "final_review",
     "publishing_package",
     "generate_images",
+    "image_qc",
     "normalize_images",
     "timeline",
     "render",
@@ -70,22 +73,82 @@ def load_json(path: Path) -> Any:
 
 
 def save_json(path: Path, payload: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def load_project(project_json: Path) -> dict[str, Any]:
     project = load_json(project_json)
-    project_root = Path(project.get("meta", {}).get("project_root", project_json.parent))
+    project_root = project_json.resolve().parent
+    project.setdefault("meta", {})
+    template_project_root = str(project["meta"].get("project_root") or "").strip()
+    project["meta"]["project_root"] = str(project_root)
+
+    def normalize_path_text(value: str) -> str:
+        return re.sub(r"/+", "/", str(value or "").strip().replace("\\", "/"))
+
+    def path_key(key: str) -> bool:
+        return key.endswith(("_path", "_dir", "_root")) or key in {"audio_path"}
+
+    def rebase_template_path(value: str) -> str:
+        normalized_value = normalize_path_text(value)
+        if not normalized_value:
+            return normalized_value
+        normalized_template_root = normalize_path_text(template_project_root)
+        normalized_project_root = normalize_path_text(project_root.as_posix())
+        lowered_value = normalized_value.lower()
+        lowered_template_root = normalized_template_root.lower()
+        if normalized_template_root and lowered_value == lowered_template_root:
+            return normalized_project_root
+        if normalized_template_root and lowered_value.startswith(lowered_template_root.rstrip("/") + "/"):
+            suffix = normalized_value[len(normalized_template_root.rstrip("/")) :].lstrip("/")
+            return str((project_root / Path(suffix)).resolve(strict=False))
+        if re.match(r"^[A-Za-z]:/", normalized_value):
+            return normalized_value
+        candidate = Path(normalized_value)
+        if candidate.is_absolute():
+            return str(candidate.resolve(strict=False))
+        return str((project_root / candidate).resolve(strict=False))
+
+    def rebase_path_like_fields(payload: Any) -> Any:
+        if isinstance(payload, dict):
+            rewritten: dict[str, Any] = {}
+            for key, value in payload.items():
+                if isinstance(value, str) and path_key(key):
+                    rewritten[key] = rebase_template_path(value)
+                else:
+                    rewritten[key] = rebase_path_like_fields(value)
+            return rewritten
+        if isinstance(payload, list):
+            return [rebase_path_like_fields(item) for item in payload]
+        return payload
+
+    project = rebase_path_like_fields(project)
 
     def project_local_path(value: str | None, fallback: Path) -> str:
         if not value:
-            return str(fallback)
+            return str(fallback.resolve(strict=False))
+        normalized_value = normalize_path_text(value)
+        if not normalized_value:
+            return str(fallback.resolve(strict=False))
+        normalized_root = project_root.resolve(strict=False)
+        normalized_root_text = normalize_path_text(normalized_root.as_posix()).lower()
         try:
-            candidate = Path(value)
-            candidate.relative_to(project_root)
+            if re.match(r"^[A-Za-z]:/", normalized_value):
+                if not normalized_root.drive:
+                    return str(fallback.resolve(strict=False))
+                if not normalized_value.lower().startswith(normalized_root_text.rstrip("/") + "/") and normalized_value.lower() != normalized_root_text:
+                    return str(fallback.resolve(strict=False))
+                candidate = Path(normalized_value)
+            else:
+                candidate = Path(normalized_value)
+                if not candidate.is_absolute():
+                    candidate = normalized_root / candidate
+            candidate = candidate.resolve(strict=False)
+            candidate.relative_to(normalized_root)
             return str(candidate)
         except Exception:
-            return str(fallback)
+            return str(fallback.resolve(strict=False))
 
     project.setdefault("transcript_cleanup", {})
     cleanup = project["transcript_cleanup"]
@@ -187,6 +250,10 @@ def load_project(project_json: Path) -> dict[str, Any]:
         prompts.get("subject_registry_path"),
         project_root / "prompts" / "subject_registry.json",
     )
+    prompts["entity_registry_path"] = project_local_path(
+        prompts.get("entity_registry_path"),
+        project_root / "prompts" / "entity_registry.json",
+    )
     prompts["reference_assets_manifest_path"] = project_local_path(
         prompts.get("reference_assets_manifest_path"),
         project_root / "prompts" / "reference_assets.json",
@@ -268,6 +335,10 @@ def load_project(project_json: Path) -> dict[str, Any]:
         planning.get("reference_binding_report_path"),
         project_root / "planning" / "reference_binding_report.json",
     )
+    planning["narration_beats_path"] = project_local_path(
+        planning.get("narration_beats_path"),
+        project_root / "planning" / "narration_beats.json",
+    )
     planning.setdefault("v2_target_scene_count", 15)
     planning.setdefault("v2_chunk_size", 30)
 
@@ -298,8 +369,42 @@ def load_project(project_json: Path) -> dict[str, Any]:
         project_root / "motion" / "motion_plan.csv",
     )
 
+    project.setdefault("transcription", {})
+    transcription = project["transcription"]
+    transcription["srt_path"] = project_local_path(
+        transcription.get("srt_path"),
+        project_root / "transcript" / "raw_whisper.srt",
+    )
+    transcription["raw_srt_path"] = project_local_path(
+        transcription.get("raw_srt_path"),
+        project_root / "transcript" / "raw_whisper.srt",
+    )
+
+    project.setdefault("scene_plan", {})
+    scene_plan = project["scene_plan"]
+    scene_plan["source_srt_path"] = project_local_path(
+        scene_plan.get("source_srt_path"),
+        project_root / "transcript" / "cleaned.srt",
+    )
+    scene_plan["scene_plan_path"] = project_local_path(
+        scene_plan.get("scene_plan_path"),
+        project_root / "scene_plan" / "scene_plan.json",
+    )
+    scene_plan["long_segment_report_path"] = project_local_path(
+        scene_plan.get("long_segment_report_path"),
+        project_root / "scene_plan" / "long_segment_report.json",
+    )
+
     project.setdefault("logs", {})
     logs = project["logs"]
+    logs["pipeline_log_path"] = project_local_path(
+        logs.get("pipeline_log_path"),
+        project_root / "logs" / "pipeline.log",
+    )
+    logs["events_jsonl_path"] = project_local_path(
+        logs.get("events_jsonl_path"),
+        project_root / "logs" / "events.jsonl",
+    )
     logs["input_validation_report_path"] = project_local_path(
         logs.get("input_validation_report_path"),
         project_root / "logs" / "input_validation_report.md",
@@ -416,6 +521,24 @@ def load_project(project_json: Path) -> dict[str, Any]:
         project_root / "reports" / "weak_frames.csv",
     )
 
+    project.setdefault("images", {})
+    images = project["images"]
+    images["image_qc_report_path"] = project_local_path(
+        images.get("image_qc_report_path"),
+        project_root / "qc" / "image_qc_report.json",
+    )
+    images["selected_images_manifest_path"] = project_local_path(
+        images.get("selected_images_manifest_path"),
+        project_root / "qc" / "selected_images_manifest.json",
+    )
+
+    project.setdefault("render", {})
+    render = project["render"]
+    render["edit_decision_list_path"] = project_local_path(
+        render.get("edit_decision_list_path"),
+        project_root / "renders" / "edit_decision_list.json",
+    )
+
     return project
 
 
@@ -458,6 +581,7 @@ def mark_stage(project: dict[str, Any], stage: str, status: str, current_stage: 
         "build_subject_registry": "planning",
         "build_continuity_map": "planning",
         "allocate_frames": "scene_plan",
+        "build_narration_beats": "planning",
         "build_frame_briefs": "planning",
         "attach_reference_assets": "planning",
         "generate_fastgen_prompt_drafts": "prompts",
@@ -470,6 +594,7 @@ def mark_stage(project: dict[str, Any], stage: str, status: str, current_stage: 
         "final_review": "qc",
         "publishing_package": "publishing",
         "generate_images": "images",
+        "image_qc": "qc",
         "normalize_images": "images",
         "timeline": "render",
         "render": "render",
