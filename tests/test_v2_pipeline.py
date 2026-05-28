@@ -119,6 +119,7 @@ class V2PipelineTests(unittest.TestCase):
             capture_output=True,
             text=True,
             check=True,
+            timeout=30,
         )
 
     def run_validator(self, project_json: Path, stage: str) -> subprocess.CompletedProcess:
@@ -127,6 +128,7 @@ class V2PipelineTests(unittest.TestCase):
             capture_output=True,
             text=True,
             check=True,
+            timeout=30,
         )
 
     def test_load_project_adds_v2_defaults(self):

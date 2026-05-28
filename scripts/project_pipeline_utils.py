@@ -17,6 +17,8 @@ STAGE_SEQUENCE = [
     "build_subject_registry",
     "allocate_frames",
     "build_narration_beats",
+    "author_narration_beats",
+    "build_visual_shot_plan",
     "build_frame_briefs",
     "attach_reference_assets",
     "generate_fastgen_prompt_drafts",
@@ -339,6 +341,7 @@ def load_project(project_json: Path) -> dict[str, Any]:
         planning.get("narration_beats_path"),
         project_root / "planning" / "narration_beats.json",
     )
+    planning.setdefault("narration_beats_status", "pending")
     planning.setdefault("v2_target_scene_count", 15)
     planning.setdefault("v2_chunk_size", 30)
 
@@ -582,6 +585,8 @@ def mark_stage(project: dict[str, Any], stage: str, status: str, current_stage: 
         "build_continuity_map": "planning",
         "allocate_frames": "scene_plan",
         "build_narration_beats": "planning",
+        "author_narration_beats": "planning",
+        "build_visual_shot_plan": "prompts",
         "build_frame_briefs": "planning",
         "attach_reference_assets": "planning",
         "generate_fastgen_prompt_drafts": "prompts",

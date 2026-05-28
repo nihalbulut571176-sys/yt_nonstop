@@ -1,3 +1,4 @@
+import base64
 import json
 import subprocess
 import sys
@@ -14,10 +15,14 @@ if str(SCRIPTS) not in sys.path:
 from generation_lock import lock_record  # noqa: E402
 from llm_pipeline_contracts import classify_generation_error, validate_generation_manifest  # noqa: E402
 from pipeline_contracts import prompt_has_text_conflict, prompt_restates_srt, stable_hash  # noqa: E402
-from validate_project import validate_export_generation_batches, validate_quality_assurance  # noqa: E402
+from validate_project import validate_author_narration_beats, validate_export_generation_batches, validate_image_qc, validate_quality_assurance  # noqa: E402
 
 
 class FastGenContractTests(unittest.TestCase):
+    @staticmethod
+    def write_tiny_png(path: Path) -> None:
+        path.write_bytes(base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9l9uoAAAAASUVORK5CYII="))
+
     def test_generation_lock_rejects_direct_srt_and_text_conflict(self):
         frame_brief = {
             "frame_id": "F0001",
@@ -187,6 +192,92 @@ class FastGenContractTests(unittest.TestCase):
             )
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("requires storyboard output", result.stderr or result.stdout)
+
+    def test_build_frame_briefs_requires_visual_shot_plan_for_sequence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scene_plan_path = root / "scene_plan.json"
+            storyboard_path = root / "storyboard.json"
+            frame_briefs_path = root / "frame_briefs.json"
+            frame_briefs_csv_path = root / "frame_briefs.csv"
+            prompt_package_path = root / "prompt_package.json"
+            narration_beats_path = root / "narration_beats.json"
+            project_json = root / "project.json"
+            scene_plan_path.write_text(
+                json.dumps(
+                    {
+                        "scenes": [
+                            {
+                                "scene_id": "scene_0001",
+                                "source_segment_id": 1,
+                                "shot_index": 1,
+                                "start": 0.0,
+                                "end": 1.0,
+                                "duration": 1.0,
+                                "voice_text": "hello",
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            storyboard_path.write_text(json.dumps({"items": [{"segment_id": 1}]}), encoding="utf-8")
+            prompt_package_path.write_text(json.dumps({"items": [{"scene_id": "scene_0001"}]}), encoding="utf-8")
+            narration_beats_path.write_text(
+                json.dumps(
+                    {
+                        "beats": [
+                            {
+                                "beat_id": "beat_0001",
+                                "scene_id": "scene_0001",
+                                "start": 0.0,
+                                "end": 1.0,
+                                "duration": 1.0,
+                                "voice_text": "hello",
+                                "spoken_claim": "person enters room",
+                                "must_visualize": ["person entering a room"],
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            project_json.write_text(
+                json.dumps(
+                    {
+                        "project_id": "brief_shot_plan_gate_test",
+                        "profile_id": "fastgen_only",
+                        "schema_version": "draft-1",
+                        "meta": {"project_root": str(root)},
+                        "workflow": {"task_type": "full_build", "is_sequence": True, "skip_storyboard_allowed": False},
+                        "scene_plan": {"scene_plan_path": str(scene_plan_path)},
+                        "planning": {
+                            "storyboard_path": str(storyboard_path),
+                            "frame_briefs_json_path": str(frame_briefs_path),
+                            "frame_briefs_csv_path": str(frame_briefs_csv_path),
+                            "continuity_map_json_path": str(root / "continuity_entities.json"),
+                            "narration_beats_path": str(narration_beats_path),
+                        },
+                        "prompts": {
+                            "prompt_package_path": str(prompt_package_path),
+                            "visual_shot_plan_path": str(root / "missing_visual_shot_plan.json"),
+                            "prompt_language": "English",
+                            "style_preset": "cinematic-realistic-v1",
+                            "global_style_summary": None,
+                            "authoring_model": "codex-gpt-5",
+                            "subject_registry_path": str(root / "subject_registry.json"),
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                [sys.executable, str(SCRIPTS / "build_frame_briefs.py"), "--project-json", str(project_json)],
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("requires visual_shot_plan output", result.stderr or result.stdout)
 
     def test_continuity_map_feeds_context_pack(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -368,6 +459,304 @@ class FastGenContractTests(unittest.TestCase):
         }
         errors, _warnings = validate_generation_manifest(manifest)
         self.assertTrue(any("marked success but image file is missing" in item for item in errors))
+
+    def test_validate_author_narration_beats_rejects_abstract_only_must_visualize(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scene_plan_path = root / "scene_plan.json"
+            beats_path = root / "narration_beats.json"
+            scene_plan_path.write_text(
+                json.dumps({"scenes": [{"scene_id": "scene_0001", "start": 0.0, "end": 1.0, "duration": 1.0, "voice_text": "hello"}]}),
+                encoding="utf-8",
+            )
+            beats_path.write_text(
+                json.dumps(
+                    {
+                        "beats": [
+                            {
+                                "beat_id": "beat_0001",
+                                "scene_id": "scene_0001",
+                                "start": 0.0,
+                                "end": 1.0,
+                                "duration": 1.0,
+                                "voice_text": "hello",
+                                "spoken_claim": "betrayal becomes visible",
+                                "must_visualize": ["betrayal", "danger"],
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            project = {"planning": {"narration_beats_path": str(beats_path)}, "scene_plan": {"scene_plan_path": str(scene_plan_path)}}
+            errors, _warnings = validate_author_narration_beats(project)
+            self.assertTrue(any("abstract-only must_visualize" in item for item in errors))
+
+    def test_validate_image_qc_rejects_failed_selected_image(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            qc_path = root / "image_qc_report.json"
+            selected_path = root / "selected_images_manifest.json"
+            image_path = root / "scene_0001.png"
+            image_path.write_bytes(b"fake")
+            qc_path.write_text(
+                json.dumps({"images": [{"scene_id": "scene_0001"}]}),
+                encoding="utf-8",
+            )
+            selected_path.write_text(
+                json.dumps(
+                    {
+                        "selected_images": [
+                            {
+                                "scene_id": "scene_0001",
+                                "beat_id": "beat_0001",
+                                "voice_text": "voice",
+                                "visualized_claim": "claim",
+                                "selection_status": "reject",
+                                "coverage_status": "fail",
+                                "semantic_flags": ["missing"],
+                                "selected_image_path": str(image_path),
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            project = {"images": {"image_qc_report_path": str(qc_path), "selected_images_manifest_path": str(selected_path)}}
+            errors, _warnings = validate_image_qc(project)
+            self.assertTrue(any("invalid selection_status" in item or "failed semantic coverage" in item for item in errors))
+
+    def test_qc_generated_images_accepts_enriched_manifest_without_success_log(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_root = root / "project"
+            (project_root / "prompts").mkdir(parents=True, exist_ok=True)
+            (project_root / "images" / "run").mkdir(parents=True, exist_ok=True)
+            image_path = project_root / "images" / "run" / "scene_0001_V01.png"
+            self.write_tiny_png(image_path)
+            prompt_package_path = project_root / "prompts" / "prompt_package.json"
+            final_scene_plan_path = project_root / "prompts" / "final_scene_plan.json"
+            narration_beats_path = project_root / "planning" / "narration_beats.json"
+            run_manifest_path = project_root / "images" / "run" / "run_manifest.json"
+            project_json = project_root / "project.json"
+            narration_beats_path.parent.mkdir(parents=True, exist_ok=True)
+            prompt_package_path.write_text(
+                json.dumps(
+                    {
+                        "items": [
+                            {
+                                "scene_id": "scene_0001",
+                                "voice_text": "voice",
+                                "visualized_claim": "security guard near boutique entrance",
+                                "must_show": ["security guard near boutique entrance"],
+                                "reference_ids": [],
+                                "entity_locks": [],
+                                "shot_role": "security_system",
+                                "prompt": "security guard near boutique entrance",
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            final_scene_plan_path.write_text(
+                json.dumps(
+                    {
+                        "scenes": [
+                            {
+                                "scene_id": "scene_0001",
+                                "frame_id": "F0001",
+                                "beat_id": "beat_0001",
+                                "voice_text": "voice",
+                                "visualized_claim": "security guard near boutique entrance",
+                                "must_show": ["security guard near boutique entrance"],
+                                "reference_ids": [],
+                                "entity_locks": [],
+                                "shot_role": "security_system",
+                                "prompt": "security guard near boutique entrance",
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            narration_beats_path.write_text(
+                json.dumps(
+                    {
+                        "beats": [
+                            {
+                                "beat_id": "beat_0001",
+                                "scene_id": "scene_0001",
+                                "voice_text": "voice",
+                                "spoken_claim": "security guard near boutique entrance",
+                                "must_visualize": ["security guard near boutique entrance"],
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            run_manifest_path.write_text(
+                json.dumps(
+                    {
+                        "project_id": "qc_manifest_test",
+                        "job_id": "job-1",
+                        "generated_images": [
+                            {
+                                "scene_id": "scene_0001",
+                                "variant_index": 1,
+                                "variant_label": "V01",
+                                "variant_count": 1,
+                                "status": "success",
+                                "image_path": str(image_path),
+                                "normalized_image_path": str(image_path),
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            project_json.write_text(
+                json.dumps(
+                    {
+                        "project_id": "qc_manifest_test",
+                        "meta": {"project_root": str(project_root)},
+                        "prompts": {
+                            "prompt_package_path": str(prompt_package_path),
+                            "final_scene_plan_path": str(final_scene_plan_path),
+                        },
+                        "planning": {"narration_beats_path": str(narration_beats_path)},
+                        "images": {
+                            "run_manifest_path": str(run_manifest_path),
+                            "image_qc_report_path": str(project_root / "qc" / "image_qc_report.json"),
+                            "selected_images_manifest_path": str(project_root / "qc" / "selected_images_manifest.json"),
+                        },
+                        "qc": {},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            subprocess.run(
+                [sys.executable, str(SCRIPTS / "qc_generated_images.py"), "--project-json", str(project_json)],
+                check=True,
+            )
+            qc_payload = json.loads((project_root / "qc" / "image_qc_report.json").read_text(encoding="utf-8"))
+            self.assertEqual(len(qc_payload["images"]), 1)
+
+    def test_timeline_prefers_normalized_render_asset_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_root = root / "project"
+            (project_root / "exports").mkdir(parents=True, exist_ok=True)
+            (project_root / "prompts").mkdir(parents=True, exist_ok=True)
+            (project_root / "renders").mkdir(parents=True, exist_ok=True)
+            raw_image = project_root / "raw.png"
+            normalized_image = project_root / "normalized.png"
+            raw_image.write_bytes(b"fake")
+            normalized_image.write_bytes(b"fake")
+            final_scene_plan_path = project_root / "prompts" / "final_scene_plan.json"
+            montage_path = project_root / "exports" / "montage_timing_map.json"
+            selected_path = project_root / "qc_selected.json"
+            project_json = project_root / "project.json"
+            final_scene_plan_path.write_text(
+                json.dumps(
+                    {
+                        "scenes": [
+                            {
+                                "scene_id": "scene_0001",
+                                "frame_id": "F0001",
+                                "shot_index": 1,
+                                "start": 0.0,
+                                "end": 1.0,
+                                "voice_text": "voice",
+                                "render_asset_path": str(normalized_image),
+                                "still_image_path": str(normalized_image),
+                                "visualized_claim": "claim",
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            montage_path.write_text("[]", encoding="utf-8")
+            selected_path.write_text(
+                json.dumps(
+                    {
+                        "selected_images": [
+                            {
+                                "scene_id": "scene_0001",
+                                "selection_status": "use",
+                                "selected_image_path": str(raw_image),
+                                "normalized_image_path": str(normalized_image),
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            project_json.write_text(
+                json.dumps(
+                    {
+                        "project_id": "timeline_priority_test",
+                        "meta": {"project_root": str(project_root)},
+                        "inputs": {"audio_duration_seconds": 1.0},
+                        "exports": {"montage_timing_map_json_path": str(montage_path)},
+                        "prompts": {"final_scene_plan_path": str(final_scene_plan_path)},
+                        "images": {"selected_images_manifest_path": str(selected_path)},
+                        "render": {"edit_decision_list_path": str(project_root / "renders" / "edit_decision_list.json")},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            subprocess.run(
+                [sys.executable, str(SCRIPTS / "build_project_slideshow_timeline.py"), "--project-json", str(project_json)],
+                check=True,
+            )
+            timeline = json.loads((project_root / "renders" / "slideshow_timeline.json").read_text(encoding="utf-8"))
+            self.assertEqual(timeline[0]["image"], str(normalized_image))
+
+    def test_timeline_fails_on_rejected_selected_image(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_root = root / "project"
+            (project_root / "exports").mkdir(parents=True, exist_ok=True)
+            (project_root / "prompts").mkdir(parents=True, exist_ok=True)
+            raw_image = project_root / "raw.png"
+            raw_image.write_bytes(b"fake")
+            final_scene_plan_path = project_root / "prompts" / "final_scene_plan.json"
+            montage_path = project_root / "exports" / "montage_timing_map.json"
+            selected_path = project_root / "qc_selected.json"
+            project_json = project_root / "project.json"
+            final_scene_plan_path.write_text(
+                json.dumps({"scenes": [{"scene_id": "scene_0001", "frame_id": "F0001", "shot_index": 1, "start": 0.0, "end": 1.0, "voice_text": "voice"}]}),
+                encoding="utf-8",
+            )
+            montage_path.write_text("[]", encoding="utf-8")
+            selected_path.write_text(
+                json.dumps({"selected_images": [{"scene_id": "scene_0001", "selection_status": "reject", "selected_image_path": str(raw_image)}]}),
+                encoding="utf-8",
+            )
+            project_json.write_text(
+                json.dumps(
+                    {
+                        "project_id": "timeline_reject_test",
+                        "meta": {"project_root": str(project_root)},
+                        "inputs": {"audio_duration_seconds": 1.0},
+                        "exports": {"montage_timing_map_json_path": str(montage_path)},
+                        "prompts": {"final_scene_plan_path": str(final_scene_plan_path)},
+                        "images": {"selected_images_manifest_path": str(selected_path)},
+                        "render": {"edit_decision_list_path": str(project_root / "renders" / "edit_decision_list.json")},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                [sys.executable, str(SCRIPTS / "build_project_slideshow_timeline.py"), "--project-json", str(project_json)],
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("not timeline-eligible", result.stderr or result.stdout)
 
     def test_attach_reference_assets_populates_visible_subject_only(self):
         with tempfile.TemporaryDirectory() as tmp:

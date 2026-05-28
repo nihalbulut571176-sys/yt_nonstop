@@ -99,6 +99,12 @@ class FrameBrief:
     screen_action: str
     plan: str
     camera_storyboard: str
+    generation_mode: str = "unique"
+    source_shot_id: str = ""
+    variation_note: str = ""
+    shot_type: str = "medium shot"
+    transition_in: str = "cut"
+    transition_out: str = "cut"
     visualized_claim: str = ""
     must_show: list[str] = field(default_factory=list)
     entity_locks: list[dict[str, Any]] = field(default_factory=list)
@@ -106,6 +112,9 @@ class FrameBrief:
     style_rule: str = ""
     negative_constraints: list[str] = field(default_factory=list)
     film_block_id: str = ""
+    beat_priority: str = "supporting"
+    key_beat: bool = False
+    variant_count: int = 1
     mentioned_subject_ids: list[str] = field(default_factory=list)
     visible_subject_ids: list[str] = field(default_factory=list)
     subject_ids: list[str] = field(default_factory=list)
@@ -134,6 +143,7 @@ class FrameBrief:
 class GenerationLockedFrame:
     frame_id: str
     beat_id: str
+    scene_id: str
     image_prompt: str
     negative_prompt: str
     motion_prompt: str

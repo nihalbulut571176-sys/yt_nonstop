@@ -21,6 +21,7 @@ def main() -> None:
     source_dir = Path(project["images"]["raw_images_dir"])
     output_dir = Path(project["images"]["normalized_images_dir"])
     run_manifest_path = Path(project["images"]["run_manifest_path"])
+    selected_manifest_path = Path(project["images"]["selected_images_manifest_path"])
     final_scene_plan_path = Path(project["prompts"]["final_scene_plan_path"])
     scene_plan_path = final_scene_plan_path if final_scene_plan_path.exists() else Path(project["scene_plan"]["scene_plan_path"])
 
@@ -53,7 +54,13 @@ def main() -> None:
     project = load_project(project_json)
     manifest = load_json(run_manifest_path)
     scene_plan = load_json(scene_plan_path)
+    selected_manifest = load_json(selected_manifest_path) if selected_manifest_path.exists() else {"selected_images": []}
     scene_map = {scene["scene_id"]: scene for scene in scene_plan.get("scenes", [])}
+    selected_by_scene = {
+        row["scene_id"]: row
+        for row in selected_manifest.get("selected_images", [])
+        if row.get("scene_id")
+    }
 
     for record in manifest.get("generated_images", []):
         output_file = record.get("output_file")
@@ -71,6 +78,10 @@ def main() -> None:
                 if "Normalized image ready" not in notes:
                     notes.append("Normalized image ready")
                 scene["notes"] = notes
+            selected_row = selected_by_scene.get(record["scene_id"])
+            if selected_row and selected_row.get("selected_image_path") == record.get("image_path"):
+                selected_row["normalized_image_path"] = normalized_path
+                selected_row["selected_image_path"] = normalized_path
 
     if "normalization" not in manifest:
         manifest["normalization"] = {}
@@ -79,6 +90,8 @@ def main() -> None:
     manifest["normalization"]["output_dir"] = str(output_dir)
     save_json(run_manifest_path, manifest)
     save_json(scene_plan_path, scene_plan)
+    if selected_manifest.get("selected_images"):
+        save_json(selected_manifest_path, selected_manifest)
 
     project["images"]["status"] = "normalized"
     project["current_stage"] = "timeline"

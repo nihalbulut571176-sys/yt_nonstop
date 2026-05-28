@@ -71,6 +71,12 @@ def legacy_prompt_package_item(scene: dict, frame_brief: dict) -> dict:
     item["shot_id"] = frame_brief["shot_id"]
     item["visual_role"] = frame_brief["visual_role"]
     item["shot_function"] = frame_brief["shot_function"]
+    item["generation_mode"] = frame_brief["generation_mode"]
+    item["source_shot_id"] = frame_brief["source_shot_id"]
+    item["variation_note"] = frame_brief["variation_note"]
+    item["shot_type"] = frame_brief["shot_type"]
+    item["transition_in"] = frame_brief["transition_in"]
+    item["transition_out"] = frame_brief["transition_out"]
     item["source_stage"] = frame_brief["source_stage"]
     item["screen_action"] = frame_brief["screen_action"]
     item["camera_storyboard"] = frame_brief["camera_storyboard"]
@@ -82,6 +88,9 @@ def legacy_prompt_package_item(scene: dict, frame_brief: dict) -> dict:
     item["style_rule"] = frame_brief["style_rule"]
     item["negative_constraints"] = frame_brief["negative_constraints"]
     item["film_block_id"] = frame_brief["film_block_id"]
+    item["beat_priority"] = frame_brief["beat_priority"]
+    item["key_beat"] = frame_brief["key_beat"]
+    item["variant_count"] = frame_brief["variant_count"]
     item["continuity_tags"] = frame_brief["continuity_tags"]
     item["hard_constraints"] = frame_brief["hard_constraints"]
     item["frame_brief_hash"] = frame_brief["frame_brief_hash"]
@@ -104,6 +113,21 @@ def legacy_prompt_package_item(scene: dict, frame_brief: dict) -> dict:
     item["subject_continuity_strength"] = frame_brief["subject_continuity_strength"]
     item["reference_bindings"] = frame_brief["reference_bindings"]
     return item
+
+
+def derive_variant_count(beat: dict, entity_locks: list[dict]) -> tuple[str, bool, int]:
+    priority = str(beat.get("visual_priority") or "low").strip().lower() or "low"
+    required_identity = any(
+        entity.get("reference_policy") == "required" or entity.get("identity_lock") == "required"
+        for entity in entity_locks
+    )
+    if priority == "high" and required_identity:
+        return "hero", True, 3
+    if priority == "high":
+        return "hero", True, 2
+    if priority == "medium":
+        return "supporting", False, 1
+    return "bridge", False, 1
 
 
 def main() -> None:
@@ -133,8 +157,11 @@ def main() -> None:
     subject_registry = load_json(subject_registry_path).get("subjects", []) if subject_registry_path.exists() else []
     subject_by_id = {item["subject_id"]: item for item in subject_registry if item.get("subject_id")}
     visual_shot_plan_path = Path(project["prompts"]["visual_shot_plan_path"])
+    if request_spec.is_sequence and not visual_shot_plan_path.exists():
+        raise RuntimeError("Sequence workflow requires visual_shot_plan output before frame briefs can be built")
     visual_shot_plan = load_json(visual_shot_plan_path) if visual_shot_plan_path.exists() else {}
     scene_to_shot = visual_shot_plan.get("scene_to_shot", {})
+    shots_by_id = {item["shot_id"]: item for item in visual_shot_plan.get("shots", []) if item.get("shot_id")}
 
     frame_briefs = []
     legacy_items = []
@@ -144,6 +171,7 @@ def main() -> None:
         beat = beats_by_scene.get(scene["scene_id"], {})
         beat_id = str(beat.get("beat_id") or scene.get("beat_id") or f"beat_{index:04d}")
         shot_mapping = scene_to_shot.get(scene["scene_id"], {})
+        shot = shots_by_id.get(shot_mapping.get("shot_id") or scene.get("shot_id"), {})
         subject_meta = infer_subject_fields(
             scene,
             storyboard_item,
@@ -171,16 +199,19 @@ def main() -> None:
                     "reference_ids": profile.get("reference_asset_ids", []),
                 }
             )
+        beat_priority, key_beat, variant_count = derive_variant_count(beat, entity_locks)
+        shot_must_show = [str(item) for item in (shot.get("must_show") or beat.get("must_visualize", [])) if str(item).strip()]
+        screen_action = str(storyboard_item.get("on_screen_action") or scene.get("visual_idea") or (shot_must_show[0] if shot_must_show else scene["voice_text"]))
         frame_brief = FrameBrief(
             frame_id=build_frame_id(index),
             beat_id=beat_id,
             scene_id=scene["scene_id"],
             segment_id=f"B{int(scene['source_segment_id']):02d}",
             storyboard_id=storyboard_item.get("storyboard_id", f"SB{int(scene['source_segment_id']):04d}"),
-            shot_id=scene.get("shot_id") or build_shot_id(index),
+            shot_id=str(shot_mapping.get("shot_id") or scene.get("shot_id") or build_shot_id(index)),
             semantic_unit_id=scene.get("semantic_unit_id") or storyboard_item.get("semantic_unit_id", f"SU{int(scene['source_segment_id']):04d}"),
-            visual_role=storyboard_item.get("visual_role", scene.get("visual_function", "explain")),
-            shot_function=storyboard_item.get("shot_function", scene.get("narrative_purpose", "explain")),
+            visual_role=shot.get("visual_function") or storyboard_item.get("visual_role", scene.get("visual_function", "explain")),
+            shot_function=shot.get("visual_function") or storyboard_item.get("shot_function", scene.get("narrative_purpose", "explain")),
             source_stage=storyboard_item.get("source_stage", "build_frame_briefs"),
             timeline_in=float(scene["start"]),
             timeline_out=float(scene["end"]),
@@ -188,16 +219,25 @@ def main() -> None:
             srt_indices=str(scene.get("srt_indices") or scene["source_segment_id"]),
             srt_text=str(scene["voice_text"]),
             scene_anchor=str(scene.get("main_subject") or scene.get("scene_meaning") or scene["voice_text"]),
-            screen_action=str(storyboard_item.get("on_screen_action") or scene.get("visual_idea") or scene["voice_text"]),
-            plan=str(scene.get("composition") or storyboard_item.get("composition_progression") or "documentary still"),
-            camera_storyboard=str(storyboard_item.get("camera_storyboard") or scene.get("camera") or "documentary framing"),
+            screen_action=screen_action,
+            plan=str(scene.get("composition") or storyboard_item.get("composition_progression") or shot.get("shot_type") or "documentary still"),
+            camera_storyboard=str(storyboard_item.get("camera_storyboard") or shot.get("camera") or scene.get("camera") or "documentary framing"),
+            generation_mode=str(shot_mapping.get("generation_mode") or shot.get("generation_mode") or "unique"),
+            source_shot_id=str(shot_mapping.get("source_shot_id") or shot.get("shot_id") or scene.get("shot_id") or ""),
+            variation_note=str(shot_mapping.get("variation_note") or ""),
+            shot_type=str(shot.get("shot_type") or "medium shot"),
+            transition_in=str(shot.get("transition_in") or "cut"),
+            transition_out=str(shot.get("transition_out") or "cut_on_phrase_end"),
             visualized_claim=str(beat.get("spoken_claim") or scene.get("visual_goal") or scene.get("scene_meaning") or scene["voice_text"]),
-            must_show=[str(item) for item in beat.get("must_visualize", [])],
+            must_show=shot_must_show,
             entity_locks=entity_locks,
-            camera_rule=str(scene.get("camera") or storyboard_item.get("camera_storyboard") or "documentary framing"),
+            camera_rule=str(shot.get("camera") or scene.get("camera") or storyboard_item.get("camera_storyboard") or "documentary framing"),
             style_rule=str(project["prompts"].get("global_style_summary") or project["prompts"]["style_preset"]),
             negative_constraints=["no logos", "no readable text", "no fake UI words"],
-            film_block_id=str(shot_mapping.get("shot_id") or scene.get("global_scene_id") or f"block_{index:04d}"),
+            film_block_id=str(shot.get("film_block_id") or scene.get("global_scene_id") or f"block_{index:04d}"),
+            beat_priority=beat_priority,
+            key_beat=key_beat,
+            variant_count=variant_count,
             mentioned_subject_ids=subject_meta["mentioned_subject_ids"],
             visible_subject_ids=subject_meta["visible_subject_ids"],
             subject_ids=subject_meta["subject_ids"],
@@ -237,6 +277,12 @@ def main() -> None:
         scene["storyboard_id"] = frame_dict["storyboard_id"]
         scene["semantic_unit_id"] = frame_dict["semantic_unit_id"]
         scene["shot_id"] = frame_dict["shot_id"]
+        scene["generation_mode"] = frame_dict["generation_mode"]
+        scene["source_shot_id"] = frame_dict["source_shot_id"]
+        scene["variation_note"] = frame_dict["variation_note"]
+        scene["shot_type"] = frame_dict["shot_type"]
+        scene["transition_in"] = frame_dict["transition_in"]
+        scene["transition_out"] = frame_dict["transition_out"]
         scene["visual_role"] = frame_dict["visual_role"]
         scene["shot_function"] = frame_dict["shot_function"]
         scene["mentioned_subject_ids"] = frame_dict["mentioned_subject_ids"]
@@ -250,6 +296,9 @@ def main() -> None:
         scene["must_show"] = frame_dict["must_show"]
         scene["entity_locks"] = frame_dict["entity_locks"]
         scene["film_block_id"] = frame_dict["film_block_id"]
+        scene["beat_priority"] = frame_dict["beat_priority"]
+        scene["key_beat"] = frame_dict["key_beat"]
+        scene["variant_count"] = frame_dict["variant_count"]
         legacy_items.append(legacy_prompt_package_item(scene, frame_dict))
 
     frame_briefs_json_path = Path(project["planning"]["frame_briefs_json_path"])

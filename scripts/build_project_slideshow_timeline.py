@@ -49,12 +49,16 @@ def main() -> None:
     for index, scene in enumerate(scenes):
         montage_row = montage_by_frame.get(scene.get("frame_id", ""))
         selected_row = selected_by_scene.get(scene["scene_id"], {})
+        selection_status = str(selected_row.get("selection_status", "use")).strip()
+        if selected_row and selection_status not in {"use", "manual_review"}:
+            raise RuntimeError(f"Scene {scene['scene_id']} selected image is not timeline-eligible: {selection_status}")
         image_path_str = (
-            selected_row.get("selected_image_path")
+            scene.get("render_asset_path")
+            or scene.get("still_image_path")
+            or selected_row.get("normalized_image_path")
+            or selected_row.get("selected_image_path")
             or selected_row.get("image_path")
             or (montage_row or {}).get("asset_image_path")
-            or scene.get("render_asset_path")
-            or scene.get("still_image_path")
         )
         if not image_path_str:
             raise FileNotFoundError(f"Scene {scene.get('scene_id')} has no still image path")
@@ -107,7 +111,7 @@ def main() -> None:
             }
         )
 
-    last_image = Path(scenes[-1].get("render_asset_path") or scenes[-1].get("still_image_path"))
+    last_image = Path(timeline[-1]["image"])
     ffconcat_lines.append(f"file '{safe_ffconcat_path(last_image)}'")
 
     ffconcat_path.write_text("\n".join(ffconcat_lines) + "\n", encoding="utf-8")

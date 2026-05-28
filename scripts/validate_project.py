@@ -18,6 +18,7 @@ from pipeline_contracts import (
     request_spec_from_project,
     similarity_score,
 )
+from prompt_safety import is_probably_abstract, lint_prompt_observability
 from project_pipeline_utils import load_json, load_project, normalize_stage_name, save_json, save_project
 
 
@@ -33,6 +34,8 @@ STAGE_CHOICES = [
     "build_continuity_map",
     "allocate_frames",
     "build_narration_beats",
+    "author_narration_beats",
+    "build_visual_shot_plan",
     "build_frame_briefs",
     "attach_reference_assets",
     "generate_fastgen_prompt_drafts",
@@ -48,6 +51,7 @@ STAGE_CHOICES = [
     "normalized_images",
     "timeline",
     "render",
+    "entity_reference_lock",
     "generate_fastgen_prompts",
     "scene_context_pack",
     "parse_srt",
@@ -503,6 +507,7 @@ def validate_build_frame_briefs(project: dict[str, Any]) -> tuple[list[str], lis
     package_path = file_must_exist(project["prompts"].get("prompt_package_path"), "prompts.prompt_package_path", errors)
     storyboard_path = file_must_exist(project["planning"].get("storyboard_path"), "planning.storyboard_path", errors)
     narration_beats_path = file_must_exist(project["planning"].get("narration_beats_path"), "planning.narration_beats_path", errors)
+    visual_shot_plan_path = file_must_exist(project["prompts"].get("visual_shot_plan_path"), "prompts.visual_shot_plan_path", errors)
     if not briefs_path or not package_path:
         return errors, warnings
     drafts = load_json(briefs_path)
@@ -515,6 +520,12 @@ def validate_build_frame_briefs(project: dict[str, Any]) -> tuple[list[str], lis
             for item in load_json(narration_beats_path).get("beats", [])
             if item.get("scene_id")
         }
+    scene_to_shot = {}
+    shots_by_id = {}
+    if visual_shot_plan_path:
+        shot_plan = load_json(visual_shot_plan_path)
+        scene_to_shot = shot_plan.get("scene_to_shot", {})
+        shots_by_id = {item["shot_id"]: item for item in shot_plan.get("shots", []) if item.get("shot_id")}
     draft_scene_ids = set()
     required_fields = ["frame_id", "scene_id", "storyboard_id", "shot_id", "semantic_unit_id", "visual_role", "shot_function", "frame_brief_hash"]
     if not isinstance(drafts, list) or not drafts:
@@ -541,9 +552,19 @@ def validate_build_frame_briefs(project: dict[str, Any]) -> tuple[list[str], lis
             errors.append(f"{frame_id} must contain at least one `must_show` item")
         if record.get("entity_locks") is not None and not isinstance(record.get("entity_locks"), list):
             errors.append(f"{frame_id} entity_locks must be a list")
+        for field in ("generation_mode", "shot_type", "transition_in", "transition_out", "beat_priority"):
+            if not str(record.get(field, "")).strip():
+                errors.append(f"{frame_id} missing required field `{field}`")
         beat = beats_by_scene.get(scene_id)
         if beat and record.get("beat_id") != beat.get("beat_id"):
             errors.append(f"{frame_id} beat_id does not match narration_beats for {scene_id}")
+        mapping = scene_to_shot.get(scene_id, {})
+        shot_id = str(record.get("shot_id", "")).strip()
+        if mapping and shot_id != mapping.get("shot_id"):
+            errors.append(f"{frame_id} shot_id does not match visual_shot_plan for {scene_id}")
+        shot = shots_by_id.get(shot_id, {})
+        if shot and str(record.get("film_block_id", "")).strip() != str(shot.get("film_block_id", "")).strip():
+            errors.append(f"{frame_id} film_block_id does not match visual_shot_plan for {scene_id}")
         if beat and not str(record.get("voice_text", "")).strip():
             warnings.append(f"{frame_id} missing voice_text even though narration beat is available")
     if not storyboard_path and request_spec_from_project(project).is_sequence and not request_spec_from_project(project).skip_storyboard_allowed:
@@ -600,9 +621,70 @@ def validate_build_narration_beats(project: dict[str, Any]) -> tuple[list[str], 
             errors.append(f"{beat_id} missing voice_text")
         must_visualize = beat.get("must_visualize", [])
         if not isinstance(must_visualize, list) or not [item for item in must_visualize if str(item).strip()]:
-            errors.append(f"{beat_id} must contain at least one concrete must_visualize item")
+            errors.append(f"{beat_id} must contain at least one must_visualize item")
+    return errors, warnings
+
+
+def validate_author_narration_beats(project: dict[str, Any]) -> tuple[list[str], list[str]]:
+    abstract_only_terms = {"betrayal", "danger", "truth", "corruption", "systemic failure", "identity", "logic", "network", "pressure"}
+    errors, warnings = validate_build_narration_beats(project)
+    if errors:
+        return errors, warnings
+    beats_path = Path(project["planning"]["narration_beats_path"])
+    beats = load_json(beats_path).get("beats", [])
+    for beat in beats:
+        beat_id = beat.get("beat_id", "<unknown>")
         if not str(beat.get("spoken_claim", "")).strip():
-            warnings.append(f"{beat_id} missing spoken_claim")
+            errors.append(f"{beat_id} missing spoken_claim")
+        must_visualize = beat.get("must_visualize", [])
+        if not isinstance(must_visualize, list) or not must_visualize:
+            errors.append(f"{beat_id} missing must_visualize")
+            continue
+        drawable = False
+        for item in must_visualize:
+            cleaned = normalize_text_lower(str(item))
+            if not cleaned:
+                continue
+            if cleaned in abstract_only_terms or is_probably_abstract(cleaned):
+                errors.append(f"{beat_id} contains abstract-only must_visualize item: {item}")
+                continue
+            warnings_for_item = lint_prompt_observability(cleaned, what_is_in_frame=cleaned)
+            if len(warnings_for_item) < 3:
+                drawable = True
+        if not drawable:
+            errors.append(f"{beat_id} has no clearly drawable must_visualize item")
+    return errors, warnings
+
+
+def validate_build_visual_shot_plan(project: dict[str, Any]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    shot_plan_path = file_must_exist(project["prompts"].get("visual_shot_plan_path"), "prompts.visual_shot_plan_path", errors)
+    beats_path = file_must_exist(project["planning"].get("narration_beats_path"), "planning.narration_beats_path", errors)
+    if not shot_plan_path or not beats_path:
+        return errors, warnings
+    shot_plan = load_json(shot_plan_path)
+    beats = load_json(beats_path).get("beats", [])
+    shots = shot_plan.get("shots", [])
+    scene_to_shot = shot_plan.get("scene_to_shot", {})
+    if not shots:
+        errors.append("visual_shot_plan has no shots")
+        return errors, warnings
+    beat_scene_ids = {beat.get("scene_id") for beat in beats if beat.get("scene_id")}
+    for scene_id in beat_scene_ids:
+        mapping = scene_to_shot.get(scene_id)
+        if not mapping:
+            errors.append(f"visual_shot_plan missing scene_to_shot mapping for {scene_id}")
+            continue
+        if not str(mapping.get("shot_id", "")).strip():
+            errors.append(f"visual_shot_plan mapping for {scene_id} missing shot_id")
+    for shot in shots:
+        shot_id = shot.get("shot_id", "<unknown>")
+        for field in ("film_block_id", "generation_mode", "shot_type", "visual_function", "camera", "lighting", "transition_in", "transition_out"):
+            if not str(shot.get(field, "")).strip():
+                errors.append(f"{shot_id} missing visual_shot_plan field `{field}`")
+        if not isinstance(shot.get("must_show", []), list) or not [item for item in shot.get("must_show", []) if str(item).strip()]:
+            errors.append(f"{shot_id} missing must_show coverage")
     return errors, warnings
 
 
@@ -641,6 +723,29 @@ def validate_attach_reference_assets(project: dict[str, Any]) -> tuple[list[str]
             for asset_path in frame.get("reference_images", []):
                 if not Path(asset_path).exists():
                     errors.append(f"reference_asset_file_missing: {frame_id}:{asset_path}")
+    return errors, warnings
+
+
+def validate_entity_reference_lock(project: dict[str, Any]) -> tuple[list[str], list[str]]:
+    errors, warnings = validate_attach_reference_assets(project)
+    entity_registry_path = file_must_exist(project["prompts"].get("entity_registry_path"), "prompts.entity_registry_path", errors)
+    briefs_path = file_must_exist(project["planning"].get("frame_briefs_json_path"), "planning.frame_briefs_json_path", errors)
+    if not entity_registry_path or not briefs_path:
+        return errors, warnings
+    entities = load_json(entity_registry_path).get("entities", [])
+    entity_by_id = {item["entity_id"]: item for item in entities if item.get("entity_id")}
+    frame_briefs = load_json(briefs_path)
+    for frame in frame_briefs:
+        frame_id = frame.get("frame_id", "<unknown>")
+        visible_ids = frame.get("visible_subject_ids", [])
+        reference_ids = frame.get("reference_ids", [])
+        for entity_id in visible_ids:
+            entity = entity_by_id.get(entity_id)
+            if not entity:
+                continue
+            if entity.get("identity_lock") == "required" or entity.get("reference_policy") == "required":
+                if not reference_ids:
+                    errors.append(f"missing_required_reference_lock: {frame_id}:{entity_id}")
     return errors, warnings
 
 
@@ -726,7 +831,7 @@ def validate_generation_lock(project: dict[str, Any]) -> tuple[list[str], list[s
             errors.append(f"{row.get('frame_id', '<unknown>')} is not fully locked under strict mode")
         elif status == "locked_with_warnings":
             warnings.append(f"{row.get('frame_id', '<unknown>')} locked with warnings: {', '.join(row.get('validation_flags', []))}")
-        for field in ("image_prompt", "negative_prompt", "motion_prompt", "continuity_note", "frame_brief_hash"):
+        for field in ("image_prompt", "negative_prompt", "motion_prompt", "continuity_note", "frame_brief_hash", "scene_id"):
             if not str(row.get(field, "")).strip():
                 errors.append(f"{row.get('frame_id', '<unknown>')} missing generation lock field `{field}`")
         if not str(row.get("beat_id", "")).strip():
@@ -886,6 +991,8 @@ def validate_image_qc(project: dict[str, Any]) -> tuple[list[str], list[str]]:
             errors.append(f"{scene_id} selected image missing voice_text")
         if not str(row.get("visualized_claim", "")).strip():
             errors.append(f"{scene_id} selected image missing visualized_claim")
+        if str(row.get("selection_status", "")).strip() not in {"use", "manual_review"}:
+            errors.append(f"{scene_id} selected image has invalid selection_status `{row.get('selection_status')}`")
         if row.get("coverage_status") != "pass":
             errors.append(f"{scene_id} selected image failed semantic coverage")
         if row.get("semantic_flags"):
@@ -1125,8 +1232,11 @@ VALIDATORS = {
     "build_continuity_map": validate_build_continuity_map,
     "allocate_frames": validate_scene_plan,
     "build_narration_beats": validate_build_narration_beats,
+    "author_narration_beats": validate_author_narration_beats,
+    "build_visual_shot_plan": validate_build_visual_shot_plan,
     "build_frame_briefs": validate_build_frame_briefs,
     "attach_reference_assets": validate_attach_reference_assets,
+    "entity_reference_lock": validate_entity_reference_lock,
     "scene_context_pack": validate_scene_context_pack,
     "directors_cut": validate_directors_cut,
     "write_prompts": validate_write_prompts,

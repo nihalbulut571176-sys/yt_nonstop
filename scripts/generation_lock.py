@@ -52,6 +52,13 @@ def lock_record(frame_brief: dict, scene: dict, previous_prompt: str) -> tuple[d
         warnings.append("too_generic")
     if previous_prompt and normalize_text(previous_prompt).lower() == normalize_text(image_prompt).lower():
         warnings.append("neighbor_duplicate")
+    required_entities = [
+        entity
+        for entity in frame_brief.get("entity_locks", [])
+        if entity.get("reference_policy") == "required" or entity.get("identity_lock") == "required"
+    ]
+    if required_entities and not reference_ids:
+        errors.append("missing_required_reference_lock")
 
     status = "locked"
     if errors:
@@ -62,6 +69,7 @@ def lock_record(frame_brief: dict, scene: dict, previous_prompt: str) -> tuple[d
     locked = GenerationLockedFrame(
         frame_id=frame_brief["frame_id"],
         beat_id=frame_brief["beat_id"],
+        scene_id=frame_brief.get("scene_id") or scene.get("scene_id", ""),
         image_prompt=image_prompt,
         negative_prompt=negative_prompt,
         motion_prompt=motion_prompt,

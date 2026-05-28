@@ -50,9 +50,14 @@ def extract_policy_failed_indices(records: list[dict]) -> list[int]:
     return sorted(set(indices))
 
 
-def build_scene_lookup(project: dict, scene_plan: dict, package: dict) -> tuple[dict[int, str], dict[str, dict]]:
+def build_scene_lookup(prompt_file: Path, scene_plan: dict, package: dict) -> tuple[dict[int, str], dict[str, dict]]:
     scene_by_prompt_index: dict[int, str] = {}
-    for prompt_index, item in enumerate(package.get("items", []), start=1):
+    meta_path = prompt_file.with_suffix(prompt_file.suffix + ".meta.json")
+    meta_items = []
+    if meta_path.exists():
+        meta_items = load_json(meta_path).get("package_items", [])
+    source_items = meta_items or package.get("items", [])
+    for prompt_index, item in enumerate(source_items, start=1):
         scene_by_prompt_index[prompt_index] = item["scene_id"]
 
     scene_map = {scene["scene_id"]: scene for scene in scene_plan.get("scenes", [])}
@@ -162,7 +167,7 @@ def main() -> None:
     run_summary = load_json(run_summary_path) if run_summary_path.exists() else {"done": 0, "skipped": 0, "failed": 0}
     prompt_package = load_json(prompt_package_path)
     scene_plan = load_json(scene_plan_path)
-    scene_by_prompt_index, scene_map = build_scene_lookup(project, scene_plan, prompt_package)
+    scene_by_prompt_index, scene_map = build_scene_lookup(prompt_file, scene_plan, prompt_package)
     failed_lookup = build_failed_lookup(last_failed_records)
     prompt_profile = {
         "provider": "fastgen_openai_v4",
@@ -200,6 +205,8 @@ def main() -> None:
                 "created_at": created_at,
                 "scene_id": scene_id,
                 "source_prompt_index": prompt_index,
+                "variant_index": int(record.get("variant_index", 1) or 1),
+                "variant_label": str(record.get("variant_label", f"V{int(record.get('variant_index', 1) or 1):02d}")),
                 "prompt_hash": prompt_hash,
                 "generator_profile": stable_hash(prompt_profile),
                 "generator_settings": prompt_profile,
@@ -207,6 +214,10 @@ def main() -> None:
                 "prompt": record.get("prompt", ""),
                 "output_file": record["output"],
                 "image_path": image_path,
+                "beat_priority": record.get("beat_priority", "standard"),
+                "key_beat": bool(record.get("key_beat")),
+                "variant_count": int(record.get("variant_count", 1) or 1),
+                "selection_required": bool(record.get("selection_required")),
                 "status": status,
                 "error_type": error_type,
                 "error_message": error_message,

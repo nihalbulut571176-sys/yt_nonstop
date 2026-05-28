@@ -92,7 +92,8 @@ def main() -> None:
     save_json(output_path, {"project_id": project["project_id"], "beats": beats})
     save_json(Path(project["scene_plan"]["scene_plan_path"]), scene_plan)
     project["planning"]["status"] = "narration_beats_built"
-    project["current_stage"] = "build_frame_briefs"
+    project["planning"]["narration_beats_status"] = "skeleton_built"
+    project["current_stage"] = "author_narration_beats"
     save_project(project_json, project)
     print(output_path)
 

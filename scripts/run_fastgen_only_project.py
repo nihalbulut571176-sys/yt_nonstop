@@ -42,7 +42,11 @@ def stage_done(project: dict, stage: str) -> bool:
     if stage == "allocate_frames":
         return Path(project["scene_plan"]["scene_plan_path"]).exists()
     if stage == "build_narration_beats":
-        return Path(project["planning"]["narration_beats_path"]).exists()
+        return project["planning"].get("narration_beats_status") in {"skeleton_built", "authored"} and Path(project["planning"]["narration_beats_path"]).exists()
+    if stage == "author_narration_beats":
+        return project["planning"].get("narration_beats_status") == "authored" and Path(project["planning"]["narration_beats_path"]).exists()
+    if stage == "build_visual_shot_plan":
+        return Path(project["prompts"]["visual_shot_plan_path"]).exists()
     if stage == "build_frame_briefs":
         return Path(project["planning"]["frame_briefs_json_path"]).exists()
     if stage == "attach_reference_assets":
@@ -123,6 +127,8 @@ def build_stage_command(project: dict, project_json: Path, stage: str, args: arg
         "build_continuity_map": [sys.executable, str(ROOT / "scripts" / "build_project_continuity_bible.py"), "--project-json", str(project_json)],
         "allocate_frames": [sys.executable, str(ROOT / "scripts" / "allocate_frames.py"), "--project-json", str(project_json)],
         "build_narration_beats": [sys.executable, str(ROOT / "scripts" / "build_narration_beats.py"), "--project-json", str(project_json)],
+        "author_narration_beats": [sys.executable, str(ROOT / "scripts" / "author_narration_beats.py"), "--project-json", str(project_json)],
+        "build_visual_shot_plan": [sys.executable, str(ROOT / "scripts" / "build_visual_shot_plan.py"), "--project-json", str(project_json)],
         "build_frame_briefs": [sys.executable, str(ROOT / "scripts" / "build_frame_briefs.py"), "--project-json", str(project_json)],
         "attach_reference_assets": [sys.executable, str(ROOT / "scripts" / "attach_reference_assets.py"), "--project-json", str(project_json)],
         "generate_fastgen_prompt_drafts": [sys.executable, str(ROOT / "scripts" / "apply_llm_prompt_drafts.py"), "--project-json", str(project_json)],
@@ -207,6 +213,10 @@ def post_stage_update(project_json: Path, stage: str) -> None:
     elif stage == "allocate_frames":
         project["current_stage"] = "build_narration_beats"
     elif stage == "build_narration_beats":
+        project["current_stage"] = "author_narration_beats"
+    elif stage == "author_narration_beats":
+        project["current_stage"] = "build_visual_shot_plan"
+    elif stage == "build_visual_shot_plan":
         project["current_stage"] = "build_frame_briefs"
     elif stage == "build_frame_briefs":
         project["current_stage"] = "attach_reference_assets"
@@ -309,8 +319,10 @@ def main() -> None:
         "build_continuity_map": "build_continuity_map",
         "allocate_frames": "allocate_frames",
         "build_narration_beats": "build_narration_beats",
+        "author_narration_beats": "author_narration_beats",
+        "build_visual_shot_plan": "build_visual_shot_plan",
         "build_frame_briefs": "build_frame_briefs",
-        "attach_reference_assets": "attach_reference_assets",
+        "attach_reference_assets": "entity_reference_lock",
         "generate_fastgen_prompt_drafts": "generate_fastgen_prompt_drafts",
         "generation_lock": "generation_lock",
         "export_montage_map": "export_montage_map",
@@ -319,7 +331,7 @@ def main() -> None:
         "motion_plan": "motion_plan",
         "final_review": "final_review",
         "generate_images": "images",
-        "image_qc": "images",
+        "image_qc": "image_qc",
         "normalize_images": "normalized_images",
         "timeline": "timeline",
         "render": "render",

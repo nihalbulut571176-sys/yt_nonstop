@@ -3,6 +3,7 @@ import csv
 import json
 from pathlib import Path
 
+from pipeline_contracts import stable_hash
 from project_pipeline_utils import load_json, load_project, save_project
 
 
@@ -24,6 +25,7 @@ def main() -> None:
     export_report_path = Path(project["logs"]["export_report_path"])
     batches_json_path = export_path.with_suffix(".batches.json")
     batches_csv_path = export_path.with_suffix(".batches.csv")
+    meta_path = export_path.with_suffix(export_path.suffix + ".meta.json")
 
     allowed = ALLOWED_STRICT if project["workflow"].get("strict_generation_lock") else ALLOWED_NON_STRICT
     eligible = [row for row in locked_rows if row["generation_lock_status"] in allowed]
@@ -36,6 +38,33 @@ def main() -> None:
     export_path.write_text(text, encoding="utf-8")
     if generator_ready_path != export_path:
         generator_ready_path.write_text(text, encoding="utf-8")
+
+    package_items = [
+        {
+            "scene_id": row.get("scene_id"),
+            "frame_id": row.get("frame_id"),
+            "beat_id": row.get("beat_id"),
+            "beat_priority": row.get("beat_priority", "supporting"),
+            "key_beat": bool(row.get("key_beat")),
+            "variant_count": int(row.get("variant_count", 1) or 1),
+        }
+        for row in eligible
+    ]
+    meta_payload = {
+        "package_path": str(project["prompts"]["generation_locked_json_path"]),
+        "package_signature": stable_hash({"eligible_frames": [row.get("frame_id") for row in eligible], "items": package_items}),
+        "prompt_count": len(eligible),
+        "package_items": package_items,
+    }
+    meta_payload["export_signature"] = stable_hash(
+        {
+            "package_path": meta_payload["package_path"],
+            "package_signature": meta_payload["package_signature"],
+            "prompt_count": meta_payload["prompt_count"],
+            "content": text,
+        }
+    )
+    meta_path.write_text(json.dumps(meta_payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     batch_rows = [
         {
