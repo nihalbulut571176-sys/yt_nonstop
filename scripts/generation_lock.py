@@ -23,7 +23,11 @@ def lock_record(frame_brief: dict, scene: dict, previous_prompt: str) -> tuple[d
     negative_prompt = str(scene.get("negative_prompt") or "").strip()
     continuity_note = str(scene.get("continuity_notes") or derive_continuity_note(frame_brief)).strip()
     motion_prompt = str(scene.get("motion_prompt") or derive_motion_prompt(frame_brief)).strip()
+    reference_bindings = list(scene.get("reference_bindings") or frame_brief.get("reference_bindings") or [])
     reference_ids = list(scene.get("reference_ids", []))
+    if not reference_ids:
+        reference_ids = [asset_id for binding in reference_bindings for asset_id in binding.get("reference_asset_ids", [])]
+    reference_images = list(scene.get("reference_images", []))
     continuity_mode = str(scene.get("continuity_mode") or "").strip().lower()
 
     errors: list[str] = []
@@ -72,6 +76,10 @@ def lock_record(frame_brief: dict, scene: dict, previous_prompt: str) -> tuple[d
         generation_lock_version=frame_brief["generation_lock_version"],
     )
     payload = locked.__dict__
+    payload["reference_bindings"] = reference_bindings
+    payload["reference_images"] = reference_images
+    payload["reference_strength"] = scene.get("reference_strength") or frame_brief.get("subject_continuity_strength") or "none"
+    payload["reference_usage"] = scene.get("reference_usage") or (reference_bindings[0]["usage"] if reference_bindings else "none")
     payload["reference_prefix"] = build_reference_prefix(reference_ids)
     payload["generator_block"] = derive_generation_block(payload["reference_prefix"], image_prompt, negative_prompt)
     payload["locked_hash"] = stable_hash(payload)

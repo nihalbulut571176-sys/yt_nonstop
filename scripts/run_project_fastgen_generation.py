@@ -4,6 +4,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from llm_pipeline_contracts import build_generation_job_id, classify_generation_error, compute_prompt_hash, inspect_image_file, iso_now
+from pipeline_contracts import stable_hash
 from project_pipeline_utils import append_event, append_log, load_json, load_project, mark_stage, save_json, save_project
 
 
@@ -20,6 +22,17 @@ def load_failed_records(path: Path) -> list[dict]:
             continue
         records.append(json.loads(line))
     return records
+
+
+def build_failed_lookup(records: list[dict]) -> dict[int, dict]:
+    return {
+        int(record["index"]): {
+            "error_message": str(record.get("error", "")),
+            "error_type": str(record.get("error_type") or classify_generation_error(str(record.get("error", "")))),
+        }
+        for record in records
+        if "index" in record
+    }
 
 
 def extract_policy_failed_indices(records: list[dict]) -> list[int]:
@@ -109,6 +122,8 @@ def main() -> None:
     retry_rounds = max(1, args.retry_rounds)
     failed_path = workdir / "failed.jsonl"
     last_failed_records: list[dict] = []
+    job_id = build_generation_job_id(project["project_id"])
+    created_at = iso_now()
 
     for round_index in range(1, retry_rounds + 1):
         append_log(project, f"FastGen attempt {round_index}/{retry_rounds}")
@@ -148,6 +163,12 @@ def main() -> None:
     prompt_package = load_json(prompt_package_path)
     scene_plan = load_json(scene_plan_path)
     scene_by_prompt_index, scene_map = build_scene_lookup(project, scene_plan, prompt_package)
+    failed_lookup = build_failed_lookup(last_failed_records)
+    prompt_profile = {
+        "provider": "fastgen_openai_v4",
+        "size": args.size,
+    }
+    package_items_by_scene = {item["scene_id"]: item for item in prompt_package.get("items", [])}
 
     generated_images = []
     for record in raw_manifest:
@@ -156,16 +177,44 @@ def main() -> None:
         if not scene_id:
             continue
         image_path = str(workdir / "images" / record["output"])
-        status = "success" if Path(image_path).exists() else "missing"
+        failed_meta = failed_lookup.get(int(record["index"]))
+        if Path(image_path).exists():
+            status = "success"
+            error_type = ""
+            error_message = ""
+        elif failed_meta:
+            status = "failed"
+            error_type = failed_meta["error_type"]
+            error_message = failed_meta["error_message"]
+        else:
+            status = "missing"
+            error_type = "filesystem_error"
+            error_message = "Image file missing after generation run"
+        prompt_hash = compute_prompt_hash(
+            prompt=record.get("prompt", ""),
+            refs=record.get("refs", []),
+            settings=prompt_profile,
+        )
+        image_info = inspect_image_file(Path(image_path)) if status == "success" else {}
         generated_images.append(
             {
+                "job_id": job_id,
+                "created_at": created_at,
                 "scene_id": scene_id,
                 "source_prompt_index": prompt_index,
+                "prompt_hash": prompt_hash,
+                "generator_profile": stable_hash(prompt_profile),
+                "generator_settings": prompt_profile,
                 "refs": record.get("refs", []),
                 "prompt": record.get("prompt", ""),
                 "output_file": record["output"],
                 "image_path": image_path,
                 "status": status,
+                "error_type": error_type,
+                "error_message": error_message,
+                "image_format": image_info.get("format"),
+                "image_width": image_info.get("width"),
+                "image_height": image_info.get("height"),
             }
         )
 
@@ -182,9 +231,12 @@ def main() -> None:
 
     enriched_manifest = {
         "project_id": project["project_id"],
+        "job_id": job_id,
+        "created_at": created_at,
         "profile_id": project["profile_id"],
         "prompt_file": str(prompt_file),
         "workdir": str(workdir),
+        "generator_profile": prompt_profile,
         "generated_images": generated_images,
         "failed_count": int(run_summary.get("failed", 0) or 0),
         "completed_count": sum(1 for item in generated_images if item["status"] == "success"),
@@ -195,6 +247,7 @@ def main() -> None:
     save_json(scene_plan_path, scene_plan)
 
     project["images"]["status"] = "generated"
+    project["images"]["job_id"] = job_id
     project["images"]["generated_count"] = enriched_manifest["completed_count"]
     project["images"]["failed_count"] = enriched_manifest["failed_count"]
     project["current_stage"] = "normalize_images"

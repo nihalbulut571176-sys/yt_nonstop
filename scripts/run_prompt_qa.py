@@ -2,6 +2,7 @@ import argparse
 import json
 from pathlib import Path
 
+from llm_pipeline_contracts import iso_now
 from project_pipeline_utils import load_project, save_project
 from prompt_safety import lint_event_clarity, lint_prompt_observability
 
@@ -31,20 +32,24 @@ def main() -> None:
 
     errors: list[str] = []
     warnings: list[str] = []
+    rewrite_targets: list[dict[str, str]] = []
     for scene in scene_plan.get("scenes", []):
         scene_id = scene["scene_id"]
         prompt_source = draft_records.get(scene_id, {}) if draft_records is not None else scene
         prompt = str(prompt_source.get("final_prompt") or prompt_source.get("prompt", "")).strip()
         if not prompt:
             errors.append(f"{scene_id} is missing final prompt")
+            rewrite_targets.append({"scene_id": scene_id, "reason": "missing_final_prompt"})
             continue
         lowered = prompt.lower()
         for marker in DISALLOWED_PROMPT_MARKERS:
             if marker in lowered:
                 errors.append(f"{scene_id} contains disallowed prompt marker: {marker}")
+                rewrite_targets.append({"scene_id": scene_id, "reason": f"disallowed_marker:{marker}"})
         for marker in NEGATIVE_ONLY_MARKERS:
             if marker in lowered and f"no {marker}" not in lowered and f"without {marker}" not in lowered:
                 errors.append(f"{scene_id} contains positive disallowed prompt marker: {marker}")
+                rewrite_targets.append({"scene_id": scene_id, "reason": f"positive_disallowed_marker:{marker}"})
         if len(prompt) < 80:
             warnings.append(f"{scene_id} prompt may be too thin")
         observability_warnings = lint_prompt_observability(
@@ -57,6 +62,7 @@ def main() -> None:
             message = f"{scene_id}: {warning}"
             if bool(prompt_source.get("event_clarity_required", scene.get("event_clarity_required", False))) and "Event-critical scene" in warning:
                 errors.append(message)
+                rewrite_targets.append({"scene_id": scene_id, "reason": "event_clarity_failure"})
             else:
                 warnings.append(message)
         if bool(prompt_source.get("event_clarity_required", scene.get("event_clarity_required", False))):
@@ -68,6 +74,7 @@ def main() -> None:
             )
             for warning in event_warnings:
                 errors.append(f"{scene_id}: {warning}")
+                rewrite_targets.append({"scene_id": scene_id, "reason": "event_semantic_failure"})
         scene.setdefault("qa_status", {})
         scene["qa_status"]["prompt_qa"] = "approved"
 
@@ -83,6 +90,23 @@ def main() -> None:
         + "\n\n## Warnings\n"
         + ("\n".join(warnings) if warnings else "- none")
         + "\n",
+        encoding="utf-8",
+    )
+    rewrite_queue = {
+        "created_at": iso_now(),
+        "source": "run_prompt_qa",
+        "failure_type": "semantic_prompt_rewrite",
+        "items": [],
+    }
+    seen_targets: set[str] = set()
+    for target in rewrite_targets:
+        scene_id = target["scene_id"]
+        if scene_id in seen_targets:
+            continue
+        seen_targets.add(scene_id)
+        rewrite_queue["items"].append(target)
+    Path(project["prompts"]["rewrite_queue_path"]).write_text(
+        json.dumps(rewrite_queue, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
 

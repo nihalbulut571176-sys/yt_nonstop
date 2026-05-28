@@ -12,6 +12,8 @@ from collections import deque
 from pathlib import Path
 from typing import Any
 
+from llm_pipeline_contracts import classify_generation_error, iso_now
+
 
 ROOT = "https://googler.fast-gen.ai"
 STORAGE = "https://storage.fast-gen.ai"
@@ -19,12 +21,6 @@ ENV_PATH = Path(r"C:\Users\MIKE\Documents\Codex\YT\.env")
 DEFAULT_PROMPTS = Path(r"C:\Users\MIKE\Documents\Codex\YT\deliverables\sentence_visual_prompts_generator_ready.md")
 DEFAULT_REFS = Path(r"C:\Users\MIKE\Documents\Codex\YT\deliverables\fastgen_ref_paths.json")
 DEFAULT_WORKDIR = Path(r"C:\Users\MIKE\Documents\Codex\YT\fastgen_run")
-
-
-def iso_now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-
-
 def stable_hash(payload: object) -> str:
     data = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return __import__("hashlib").sha256(data.encode("utf-8")).hexdigest()
@@ -241,6 +237,8 @@ def mark_failed(
         "index": item["index"],
         "refs": item["refs"],
         "output": item["output"],
+        "timestamp": iso_now(),
+        "error_type": classify_generation_error(exc),
         "error": str(exc),
     }
     append_jsonl(failed_path, failure)
@@ -283,6 +281,7 @@ def save_success(
         "beat_priority": item["beat_priority"],
         "refs": item["refs"],
         "operation_id": item["operation_id"],
+        "created_at": iso_now(),
         "status": status["status"],
         "provider": status.get("provider"),
         "output_file": str(target_path),

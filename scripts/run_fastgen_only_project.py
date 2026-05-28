@@ -31,12 +31,20 @@ def stage_done(project: dict, stage: str) -> bool:
         return scene_map_path.exists() and "\"semantic_units\"" in scene_map_path.read_text(encoding="utf-8")
     if stage == "expand_storyboard":
         return Path(project["planning"]["storyboard_path"]).exists()
+    if stage == "build_reference_prompt_pack":
+        return Path(project["prompts"]["reference_prompt_pack_path"]).exists()
+    if stage == "generate_reference_images":
+        return Path(project["prompts"]["reference_generation_manifest_path"]).exists()
+    if stage == "build_subject_registry":
+        return Path(project["prompts"]["subject_registry_path"]).exists()
     if stage == "build_continuity_map":
         return Path(project["planning"]["continuity_map_json_path"]).exists()
     if stage == "allocate_frames":
         return Path(project["scene_plan"]["scene_plan_path"]).exists()
     if stage == "build_frame_briefs":
         return Path(project["planning"]["frame_briefs_json_path"]).exists()
+    if stage == "attach_reference_assets":
+        return Path(project["planning"]["reference_binding_report_path"]).exists()
     if stage == "generate_fastgen_prompt_drafts":
         return Path(project["prompts"]["final_scene_plan_path"]).exists()
     if stage == "generation_lock":
@@ -90,9 +98,28 @@ def build_stage_command(project: dict, project_json: Path, stage: str, args: arg
         "ingest_srt": [sys.executable, str(ROOT / "scripts" / "ingest_srt.py"), "--project-json", str(project_json)],
         "build_scene_map": [sys.executable, str(ROOT / "scripts" / "build_scene_map.py"), "--project-json", str(project_json)],
         "expand_storyboard": [sys.executable, str(ROOT / "scripts" / "expand_storyboard.py"), "--project-json", str(project_json)],
+        "build_reference_prompt_pack": [sys.executable, str(ROOT / "scripts" / "build_reference_prompt_pack.py"), "--project-json", str(project_json)],
+        "generate_reference_images": [
+            sys.executable,
+            str(ROOT / "scripts" / "generate_reference_images.py"),
+            "--project-json",
+            str(project_json),
+            "--size",
+            args.reference_image_size,
+            "--aspect-ratio",
+            args.reference_aspect_ratio,
+            "--poll-seconds",
+            str(args.poll_seconds),
+            "--max-polls",
+            str(args.max_polls),
+            "--concurrency",
+            str(args.reference_concurrency),
+        ],
+        "build_subject_registry": [sys.executable, str(ROOT / "scripts" / "build_subject_registry.py"), "--project-json", str(project_json)],
         "build_continuity_map": [sys.executable, str(ROOT / "scripts" / "build_project_continuity_bible.py"), "--project-json", str(project_json)],
         "allocate_frames": [sys.executable, str(ROOT / "scripts" / "allocate_frames.py"), "--project-json", str(project_json)],
         "build_frame_briefs": [sys.executable, str(ROOT / "scripts" / "build_frame_briefs.py"), "--project-json", str(project_json)],
+        "attach_reference_assets": [sys.executable, str(ROOT / "scripts" / "attach_reference_assets.py"), "--project-json", str(project_json)],
         "generate_fastgen_prompt_drafts": [sys.executable, str(ROOT / "scripts" / "apply_llm_prompt_drafts.py"), "--project-json", str(project_json)],
         "generation_lock": [sys.executable, str(ROOT / "scripts" / "generation_lock.py"), "--project-json", str(project_json)],
         "quality_assurance": [sys.executable, str(ROOT / "scripts" / "validate_project.py"), "--project-json", str(project_json), "--stage", "quality_assurance"],
@@ -164,7 +191,17 @@ def post_stage_update(project_json: Path, stage: str) -> None:
     elif stage == "cleanup_transcript_from_source":
         project["current_stage"] = "ingest_srt"
     elif stage == "build_continuity_map":
+        project["current_stage"] = "build_reference_prompt_pack"
+    elif stage == "build_reference_prompt_pack":
+        project["current_stage"] = "generate_reference_images"
+    elif stage == "generate_reference_images":
+        project["current_stage"] = "build_subject_registry"
+    elif stage == "build_subject_registry":
         project["current_stage"] = "allocate_frames"
+    elif stage == "build_frame_briefs":
+        project["current_stage"] = "attach_reference_assets"
+    elif stage == "attach_reference_assets":
+        project["current_stage"] = "generate_fastgen_prompt_drafts"
     elif stage == "generate_fastgen_prompt_drafts":
         project["current_stage"] = "generation_lock"
     elif stage == "generation_lock":
@@ -224,7 +261,10 @@ def main() -> None:
     )
     parser.add_argument("--require-filled-prompts", action="store_true")
     parser.add_argument("--image-size", default="1024x1024")
+    parser.add_argument("--reference-image-size", default="1024x1536")
+    parser.add_argument("--reference-aspect-ratio", default="2:3")
     parser.add_argument("--concurrency", type=int, default=10)
+    parser.add_argument("--reference-concurrency", type=int, default=10)
     parser.add_argument("--poll-seconds", type=float, default=3.0)
     parser.add_argument("--max-polls", type=int, default=120)
     parser.add_argument("--width", type=int, default=1920)
@@ -249,9 +289,13 @@ def main() -> None:
         "ingest_srt": "ingest_srt",
         "build_scene_map": "build_scene_map",
         "expand_storyboard": "expand_storyboard",
+        "build_reference_prompt_pack": "build_reference_prompt_pack",
+        "generate_reference_images": "generate_reference_images",
+        "build_subject_registry": "build_subject_registry",
         "build_continuity_map": "build_continuity_map",
         "allocate_frames": "allocate_frames",
         "build_frame_briefs": "build_frame_briefs",
+        "attach_reference_assets": "attach_reference_assets",
         "generate_fastgen_prompt_drafts": "generate_fastgen_prompt_drafts",
         "generation_lock": "generation_lock",
         "export_montage_map": "export_montage_map",

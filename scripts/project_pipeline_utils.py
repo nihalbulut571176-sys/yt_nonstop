@@ -11,8 +11,12 @@ STAGE_SEQUENCE = [
     "build_scene_map",
     "expand_storyboard",
     "build_continuity_map",
+    "build_reference_prompt_pack",
+    "generate_reference_images",
+    "build_subject_registry",
     "allocate_frames",
     "build_frame_briefs",
+    "attach_reference_assets",
     "generate_fastgen_prompt_drafts",
     "generation_lock",
     "quality_assurance",
@@ -28,9 +32,32 @@ STAGE_SEQUENCE = [
     "render",
 ]
 
+V2_STAGE_SEQUENCE = [
+    "parse_srt",
+    "build_scenes",
+    "build_subscenes",
+    "build_storyboard",
+    "directors_cut",
+    "write_prompts",
+    "qc",
+    "rewrite_flagged",
+    "export_generator_queue",
+    "export_edit_timeline",
+]
+
 STAGE_ALIASES = {
     "generate_fastgen_prompts": "generate_fastgen_prompt_drafts",
     "scene_context_pack": "generate_fastgen_prompt_drafts",
+    "parse-srt": "parse_srt",
+    "build-scenes": "build_scenes",
+    "build-subscenes": "build_subscenes",
+    "build-storyboard": "build_storyboard",
+    "directors-cut": "directors_cut",
+    "write-prompts": "write_prompts",
+    "rewrite-flagged": "rewrite_flagged",
+    "export-generator-queue": "export_generator_queue",
+    "export-edit-timeline": "export_edit_timeline",
+    "make-test-batch": "make_test_batch",
 }
 
 
@@ -120,6 +147,10 @@ def load_project(project_json: Path) -> dict[str, Any]:
         prompts.get("prompt_package_path"),
         project_root / "prompts" / "prompt_package.json",
     )
+    prompts["reference_mapping_path"] = project_local_path(
+        prompts.get("reference_mapping_path"),
+        project_root / "prompts" / "fastgen_ref_paths.json",
+    )
     prompts["final_scene_plan_path"] = project_local_path(
         prompts.get("final_scene_plan_path"),
         project_root / "prompts" / "final_scene_plan.json",
@@ -143,6 +174,30 @@ def load_project(project_json: Path) -> dict[str, Any]:
     prompts["generation_locked_csv_path"] = project_local_path(
         prompts.get("generation_locked_csv_path"),
         project_root / "prompts" / "generation_locked_frames.csv",
+    )
+    prompts["directors_cut_review_path"] = project_local_path(
+        prompts.get("directors_cut_review_path"),
+        project_root / "prompts" / "directors_cut_review.json",
+    )
+    prompts["rewrite_queue_path"] = project_local_path(
+        prompts.get("rewrite_queue_path"),
+        project_root / "prompts" / "rewrite_queue.json",
+    )
+    prompts["subject_registry_path"] = project_local_path(
+        prompts.get("subject_registry_path"),
+        project_root / "prompts" / "subject_registry.json",
+    )
+    prompts["reference_assets_manifest_path"] = project_local_path(
+        prompts.get("reference_assets_manifest_path"),
+        project_root / "prompts" / "reference_assets.json",
+    )
+    prompts["reference_prompt_pack_path"] = project_local_path(
+        prompts.get("reference_prompt_pack_path"),
+        project_root / "prompts" / "reference_prompt_pack.json",
+    )
+    prompts["reference_generation_manifest_path"] = project_local_path(
+        prompts.get("reference_generation_manifest_path"),
+        project_root / "prompts" / "reference_generation_manifest.json",
     )
     prompts.setdefault("global_style_summary", None)
     prompts.setdefault("quality_mode", "standard")
@@ -192,6 +247,43 @@ def load_project(project_json: Path) -> dict[str, Any]:
     planning["sentence_blocks_txt_path"] = project_local_path(
         planning.get("sentence_blocks_txt_path"),
         project_root / "planning" / "sentence_blocks.txt",
+    )
+    planning["global_scene_plan_path"] = project_local_path(
+        planning.get("global_scene_plan_path"),
+        project_root / "planning" / "global_scene_plan.json",
+    )
+    planning["subscene_plan_path"] = project_local_path(
+        planning.get("subscene_plan_path"),
+        project_root / "planning" / "subscene_plan.json",
+    )
+    planning["storyboard_frames_path"] = project_local_path(
+        planning.get("storyboard_frames_path"),
+        project_root / "planning" / "storyboard_frames.json",
+    )
+    planning["v2_project_skeleton_path"] = project_local_path(
+        planning.get("v2_project_skeleton_path"),
+        project_root / "planning" / "canonical_project.json",
+    )
+    planning["reference_binding_report_path"] = project_local_path(
+        planning.get("reference_binding_report_path"),
+        project_root / "planning" / "reference_binding_report.json",
+    )
+    planning.setdefault("v2_target_scene_count", 15)
+    planning.setdefault("v2_chunk_size", 30)
+
+    project.setdefault("assets", {})
+    assets = project["assets"]
+    assets["references_root"] = project_local_path(
+        assets.get("references_root"),
+        project_root / "assets" / "references",
+    )
+    assets["character_references_root"] = project_local_path(
+        assets.get("character_references_root"),
+        project_root / "assets" / "references" / "characters",
+    )
+    assets["reference_generation_run_root"] = project_local_path(
+        assets.get("reference_generation_run_root"),
+        project_root / "assets" / "references" / "fastgen_run",
     )
 
     project.setdefault("motion", {})
@@ -292,6 +384,38 @@ def load_project(project_json: Path) -> dict[str, Any]:
         project_root / "exports" / "montage_timing_map.xlsx",
     )
 
+    exports["generator_queue_csv_path"] = project_local_path(
+        exports.get("generator_queue_csv_path"),
+        project_root / "exports" / "generator_queue.csv",
+    )
+    exports["edit_timeline_csv_path"] = project_local_path(
+        exports.get("edit_timeline_csv_path"),
+        project_root / "exports" / "edit_timeline.csv",
+    )
+    exports["frame_timing_srt_path"] = project_local_path(
+        exports.get("frame_timing_srt_path"),
+        project_root / "exports" / "frame_timing.srt",
+    )
+    exports["thumbnails_json_path"] = project_local_path(
+        exports.get("thumbnails_json_path"),
+        project_root / "exports" / "thumbnails.json",
+    )
+
+    project.setdefault("reports", {})
+    reports = project["reports"]
+    reports["qc_report_md_path"] = project_local_path(
+        reports.get("qc_report_md_path"),
+        project_root / "reports" / "qc_report.md",
+    )
+    reports["duplicate_report_csv_path"] = project_local_path(
+        reports.get("duplicate_report_csv_path"),
+        project_root / "reports" / "duplicate_report.csv",
+    )
+    reports["weak_frames_csv_path"] = project_local_path(
+        reports.get("weak_frames_csv_path"),
+        project_root / "reports" / "weak_frames.csv",
+    )
+
     return project
 
 
@@ -329,9 +453,13 @@ def mark_stage(project: dict[str, Any], stage: str, status: str, current_stage: 
         "ingest_srt": "planning",
         "build_scene_map": "planning",
         "expand_storyboard": "planning",
+        "build_reference_prompt_pack": "planning",
+        "generate_reference_images": "planning",
+        "build_subject_registry": "planning",
         "build_continuity_map": "planning",
         "allocate_frames": "scene_plan",
         "build_frame_briefs": "planning",
+        "attach_reference_assets": "planning",
         "generate_fastgen_prompt_drafts": "prompts",
         "generation_lock": "prompts",
         "quality_assurance": "qc",
@@ -345,6 +473,17 @@ def mark_stage(project: dict[str, Any], stage: str, status: str, current_stage: 
         "normalize_images": "images",
         "timeline": "render",
         "render": "render",
+        "parse_srt": "planning",
+        "build_scenes": "planning",
+        "build_subscenes": "planning",
+        "build_storyboard": "planning",
+        "directors_cut": "prompts",
+        "write_prompts": "prompts",
+        "qc": "qc",
+        "rewrite_flagged": "prompts",
+        "export_generator_queue": "exports",
+        "export_edit_timeline": "exports",
+        "make_test_batch": "exports",
     }
     section = stage_to_section.get(stage)
     if section:

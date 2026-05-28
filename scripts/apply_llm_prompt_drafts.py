@@ -1,6 +1,7 @@
 import argparse
 from pathlib import Path
 
+from llm_pipeline_contracts import validate_scene_prompt_drafts_payload
 from project_pipeline_utils import load_json, load_project, save_json, save_project
 from prompt_safety import lint_prompt_observability
 
@@ -38,28 +39,26 @@ def main() -> None:
     if not drafts_path.exists():
         raise FileNotFoundError(f"LLM prompt drafts file not found: {drafts_path}")
 
-    drafts_payload = load_json(drafts_path)
-    if not isinstance(drafts_payload, list):
-        raise RuntimeError("LLM prompt drafts must be a JSON array")
-
     prompt_package = load_json(prompt_package_path)
     scene_plan = load_json(scene_plan_path)
+    drafts_payload = load_json(drafts_path)
+    expected_scene_ids = [item["scene_id"] for item in prompt_package.get("items", [])]
+    validation_errors, _validation_warnings = validate_scene_prompt_drafts_payload(
+        drafts_payload,
+        expected_scene_ids=expected_scene_ids,
+    )
+    if validation_errors:
+        raise RuntimeError("Invalid LLM prompt drafts:\n" + "\n".join(validation_errors))
 
     drafts_by_scene = {}
-    validation_errors: list[str] = []
     for record in drafts_payload:
         scene_id = str(record.get("scene_id", "")).strip()
         if not scene_id:
-            validation_errors.append("Draft record missing scene_id")
             continue
         record_errors = validate_record(record)
         if record_errors:
-            validation_errors.extend(f"{scene_id}: {msg}" for msg in record_errors)
             continue
         drafts_by_scene[scene_id] = record
-
-    if validation_errors:
-        raise RuntimeError("Invalid LLM prompt drafts:\n" + "\n".join(validation_errors))
 
     package_items = prompt_package.get("items", [])
     scene_records = {scene["scene_id"]: scene for scene in scene_plan.get("scenes", [])}

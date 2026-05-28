@@ -396,6 +396,7 @@ def build_visual_bible(project: dict, records: list[dict]) -> dict:
 
     return {
         "project_id": project["project_id"],
+        "contract_type": "visual_bible.v1",
         "main_subject": subject,
         "subject_type": theme,
         "visual_world": (

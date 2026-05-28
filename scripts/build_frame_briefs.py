@@ -25,6 +25,44 @@ def choose_style_meta(scene: dict, index: int) -> dict:
     }
 
 
+def infer_subject_fields(scene: dict, storyboard_item: dict, continuity_segment: dict) -> dict:
+    mentioned_subject_ids = list(
+        dict.fromkeys(
+            scene.get("mentioned_subject_ids")
+            or continuity_segment.get("active_entities", [])
+            or []
+        )
+    )
+    primary_subject_id = scene.get("primary_subject_id")
+    if not primary_subject_id and mentioned_subject_ids:
+        primary_subject_id = mentioned_subject_ids[0]
+
+    visible_subject_ids = list(scene.get("visible_subject_ids") or [])
+    if not visible_subject_ids and primary_subject_id:
+        visual_role = str(storyboard_item.get("visual_role", "")).lower()
+        scene_type = str(scene.get("scene_type", "")).lower()
+        primary_subject = str(scene.get("primary_subject", "")).strip()
+        should_show = any(
+            marker in f"{visual_role} {scene_type} {primary_subject}".lower()
+            for marker in ("human", "portrait", "operator", "guard", "worker", "customer", "person")
+        ) or bool(primary_subject)
+        if should_show:
+            visible_subject_ids = [primary_subject_id]
+
+    subject_ids = list(dict.fromkeys(scene.get("subject_ids") or mentioned_subject_ids or visible_subject_ids))
+    subject_visible = bool(scene.get("subject_visible")) or bool(visible_subject_ids)
+    continuity_strength = str(scene.get("subject_continuity_strength") or ("medium" if subject_visible and primary_subject_id else "none"))
+
+    return {
+        "mentioned_subject_ids": mentioned_subject_ids,
+        "visible_subject_ids": visible_subject_ids,
+        "subject_ids": subject_ids,
+        "primary_subject_id": primary_subject_id,
+        "subject_visible": subject_visible,
+        "subject_continuity_strength": continuity_strength,
+    }
+
+
 def legacy_prompt_package_item(scene: dict, frame_brief: dict) -> dict:
     item = dict(scene)
     item["frame_id"] = frame_brief["frame_id"]
@@ -50,6 +88,13 @@ def legacy_prompt_package_item(scene: dict, frame_brief: dict) -> dict:
     item["srt_text"] = frame_brief["srt_text"]
     item["plan"] = frame_brief["plan"]
     item["global_style"] = frame_brief["global_style"]
+    item["mentioned_subject_ids"] = frame_brief["mentioned_subject_ids"]
+    item["visible_subject_ids"] = frame_brief["visible_subject_ids"]
+    item["subject_ids"] = frame_brief["subject_ids"]
+    item["primary_subject_id"] = frame_brief["primary_subject_id"]
+    item["subject_visible"] = frame_brief["subject_visible"]
+    item["subject_continuity_strength"] = frame_brief["subject_continuity_strength"]
+    item["reference_bindings"] = frame_brief["reference_bindings"]
     return item
 
 
@@ -79,6 +124,11 @@ def main() -> None:
     for index, scene in enumerate(scene_plan.get("scenes", []), start=1):
         storyboard_item = storyboard_by_segment.get(int(scene["source_segment_id"]), {})
         style_meta = choose_style_meta(scene, index)
+        subject_meta = infer_subject_fields(
+            scene,
+            storyboard_item,
+            continuity_by_segment.get(str(scene["source_segment_id"]), {}),
+        )
         continuity_tags = list(
             dict.fromkeys(
                 [
@@ -109,6 +159,13 @@ def main() -> None:
             screen_action=str(storyboard_item.get("on_screen_action") or scene.get("visual_idea") or scene["voice_text"]),
             plan=str(scene.get("composition") or storyboard_item.get("composition_progression") or "documentary still"),
             camera_storyboard=str(storyboard_item.get("camera_storyboard") or scene.get("camera") or "documentary framing"),
+            mentioned_subject_ids=subject_meta["mentioned_subject_ids"],
+            visible_subject_ids=subject_meta["visible_subject_ids"],
+            subject_ids=subject_meta["subject_ids"],
+            primary_subject_id=subject_meta["primary_subject_id"],
+            subject_visible=subject_meta["subject_visible"],
+            subject_continuity_strength=subject_meta["subject_continuity_strength"],
+            reference_bindings=list(scene.get("reference_bindings", [])),
             continuity_tags=continuity_tags,
             global_style=str(project["prompts"].get("global_style_summary") or project["prompts"]["style_preset"]),
             hard_constraints=["no logos", "no readable text", "no fake UI words"],
@@ -142,6 +199,13 @@ def main() -> None:
         scene["shot_id"] = frame_dict["shot_id"]
         scene["visual_role"] = frame_dict["visual_role"]
         scene["shot_function"] = frame_dict["shot_function"]
+        scene["mentioned_subject_ids"] = frame_dict["mentioned_subject_ids"]
+        scene["visible_subject_ids"] = frame_dict["visible_subject_ids"]
+        scene["subject_ids"] = frame_dict["subject_ids"]
+        scene["primary_subject_id"] = frame_dict["primary_subject_id"]
+        scene["subject_visible"] = frame_dict["subject_visible"]
+        scene["subject_continuity_strength"] = frame_dict["subject_continuity_strength"]
+        scene["reference_bindings"] = frame_dict["reference_bindings"]
         legacy_items.append(legacy_prompt_package_item(scene, frame_dict))
 
     frame_briefs_json_path = Path(project["planning"]["frame_briefs_json_path"])
@@ -167,7 +231,7 @@ def main() -> None:
 
     project["planning"]["status"] = "frame_briefs_built"
     project["prompts"]["status"] = "package_built"
-    project["current_stage"] = "generate_fastgen_prompt_drafts"
+    project["current_stage"] = "attach_reference_assets"
     save_project(project_json, project)
     print(frame_briefs_json_path)
 

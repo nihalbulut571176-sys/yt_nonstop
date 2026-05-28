@@ -6,6 +6,11 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+try:
+    from rapidfuzz import fuzz as rapidfuzz_fuzz
+except ImportError:  # pragma: no cover - exercised through fallback path
+    rapidfuzz_fuzz = None
+
 
 BRAND_TERMS = {
     "telegram",
@@ -35,6 +40,17 @@ TEXT_CONFLICT_NEGATIVE = {
     "without readable text",
     "without text",
     "no subtitles",
+}
+
+FORBIDDEN_PROMPT_TERMS = {
+    "subtitle",
+    "subtitles",
+    "caption",
+    "captions",
+    "watermark",
+    "fake ui",
+    "readable text",
+    "cyrillic",
 }
 
 
@@ -82,6 +98,13 @@ class FrameBrief:
     screen_action: str
     plan: str
     camera_storyboard: str
+    mentioned_subject_ids: list[str] = field(default_factory=list)
+    visible_subject_ids: list[str] = field(default_factory=list)
+    subject_ids: list[str] = field(default_factory=list)
+    primary_subject_id: str | None = None
+    subject_visible: bool = False
+    subject_continuity_strength: str = "none"
+    reference_bindings: list[dict[str, Any]] = field(default_factory=list)
     continuity_tags: list[str] = field(default_factory=list)
     global_style: str = ""
     hard_constraints: list[str] = field(default_factory=list)
@@ -115,6 +138,59 @@ class GenerationLockedFrame:
     llm_model_id: str = "codex-gpt-5"
     llm_prompt_template_version: str = "fastgen-frame-brief-v1"
     generation_lock_version: str = "lock-v1"
+
+
+@dataclass
+class V2StoryboardFrame:
+    frame_id: str
+    scene_id: str
+    subscene_id: str
+    global_scene_id: str
+    start_time: str
+    end_time: str
+    duration_sec: float
+    voice_text: str
+    visual_function: str
+    mini_world: str
+    scene_meaning: str
+    main_subject: str
+    why_this_frame_exists: str
+    director_prompt: dict[str, Any] = field(default_factory=dict)
+    image_prompt_final: str = ""
+    negative_prompt: str = ""
+    dc_status: str = "pending"
+    qc_flags: list[str] = field(default_factory=list)
+
+
+@dataclass
+class SubjectProfile:
+    subject_id: str
+    display_name: str
+    subject_type: str
+    narrative_role: str
+    visual_markers: list[str] = field(default_factory=list)
+    reference_policy: str = "optional"
+    reference_asset_ids: list[str] = field(default_factory=list)
+    continuity_prompt: str = ""
+    forbidden_variation: list[str] = field(default_factory=list)
+
+
+@dataclass
+class ReferenceAsset:
+    reference_asset_id: str
+    subject_id: str
+    path: str
+    usage: str
+    strength: str
+    allowed_segments: list[str] = field(default_factory=list)
+
+
+@dataclass
+class ReferenceBinding:
+    subject_id: str
+    reference_asset_ids: list[str] = field(default_factory=list)
+    usage: str = "identity_and_wardrobe"
+    strength: str = "medium"
 
 
 def stable_hash(payload: object) -> str:
@@ -249,3 +325,56 @@ def build_reference_prefix(reference_ids: list[str]) -> str:
     if len(reference_ids) == 1:
         return f"Use reference image: {reference_ids[0]}."
     return f"Use reference images: {', '.join(reference_ids)}."
+
+
+def format_srt_timestamp(seconds: float) -> str:
+    total_ms = max(0, int(round(float(seconds) * 1000)))
+    hours, rem = divmod(total_ms, 3_600_000)
+    minutes, rem = divmod(rem, 60_000)
+    secs, ms = divmod(rem, 1000)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d},{ms:03d}"
+
+
+def has_cyrillic(text: str) -> bool:
+    return bool(re.search(r"[\u0400-\u04FF]", text or ""))
+
+
+def contains_forbidden_terms(text: str, forbidden_terms: set[str] | None = None) -> list[str]:
+    normalized = normalize_text_lower(text)
+    terms = forbidden_terms or FORBIDDEN_PROMPT_TERMS
+    return sorted(term for term in terms if term in normalized)
+
+
+def similarity_score(text_a: str, text_b: str) -> int:
+    if rapidfuzz_fuzz is not None:
+        return int(rapidfuzz_fuzz.token_set_ratio(text_a or "", text_b or ""))
+    tokens_a = set(normalize_text_lower(text_a).split())
+    tokens_b = set(normalize_text_lower(text_b).split())
+    if not tokens_a and not tokens_b:
+        return 100
+    union = tokens_a | tokens_b
+    if not union:
+        return 0
+    return int(round((len(tokens_a & tokens_b) / len(union)) * 100))
+
+
+def prompt_length_ok(prompt: str, max_length: int = 650) -> bool:
+    return len(normalize_text(prompt)) <= max_length
+
+
+def count_pattern_breaks(frames: list[dict[str, Any]], seconds_window: float = 30.0) -> int:
+    breaks = 0
+    last_world = None
+    window_start = None
+    for frame in frames:
+        start = float(frame.get("start", frame.get("timeline_in", 0)) or 0)
+        world = normalize_text_lower(frame.get("mini_world", ""))
+        if last_world is None:
+            last_world = world
+            window_start = start
+            continue
+        if world != last_world and window_start is not None and start - window_start <= seconds_window:
+            breaks += 1
+            window_start = start
+        last_world = world
+    return breaks

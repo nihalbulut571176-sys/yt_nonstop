@@ -4,7 +4,20 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from pipeline_contracts import normalize_text_lower, request_spec_from_project
+from llm_pipeline_contracts import (
+    validate_generation_manifest,
+    validate_scene_prompt_drafts_payload,
+    validate_visual_bible_payload,
+)
+from pipeline_contracts import (
+    contains_forbidden_terms,
+    count_pattern_breaks,
+    has_cyrillic,
+    normalize_text_lower,
+    prompt_length_ok,
+    request_spec_from_project,
+    similarity_score,
+)
 from project_pipeline_utils import load_json, load_project, normalize_stage_name, save_json, save_project
 
 
@@ -14,9 +27,13 @@ STAGE_CHOICES = [
     "ingest_srt",
     "build_scene_map",
     "expand_storyboard",
+    "build_reference_prompt_pack",
+    "generate_reference_images",
+    "build_subject_registry",
     "build_continuity_map",
     "allocate_frames",
     "build_frame_briefs",
+    "attach_reference_assets",
     "generate_fastgen_prompt_drafts",
     "generation_lock",
     "quality_assurance",
@@ -31,6 +48,16 @@ STAGE_CHOICES = [
     "render",
     "generate_fastgen_prompts",
     "scene_context_pack",
+    "parse_srt",
+    "build_scenes",
+    "build_subscenes",
+    "build_storyboard",
+    "directors_cut",
+    "write_prompts",
+    "qc",
+    "rewrite_flagged",
+    "export_generator_queue",
+    "export_edit_timeline",
     "all",
 ]
 
@@ -67,6 +94,12 @@ def probe_media_duration(path: Path) -> float | None:
         return float(result.stdout.strip())
     except ValueError:
         return None
+
+
+def _parse_dot_timestamp(value: str) -> float:
+    hh, mm, rest = value.split(":")
+    ss, ms = rest.split(".")
+    return int(hh) * 3600 + int(mm) * 60 + int(ss) + int(ms) / 1000.0
 
 
 def validate_transcription(project: dict[str, Any]) -> tuple[list[str], list[str]]:
@@ -141,6 +174,170 @@ def validate_scene_plan(project: dict[str, Any]) -> tuple[list[str], list[str]]:
     return errors, warnings
 
 
+def validate_parse_srt(project: dict[str, Any]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    path = file_must_exist(project["planning"].get("v2_project_skeleton_path"), "planning.v2_project_skeleton_path", errors)
+    if not path:
+        return errors, warnings
+    payload = load_json(path)
+    if not isinstance(payload.get("sentence_blocks"), list) or not payload.get("sentence_blocks"):
+        errors.append("canonical_project.json has no sentence_blocks")
+    return errors, warnings
+
+
+def validate_build_scenes(project: dict[str, Any]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    path = file_must_exist(project["planning"].get("global_scene_plan_path"), "planning.global_scene_plan_path", errors)
+    if not path:
+        return errors, warnings
+    payload = load_json(path)
+    scenes = payload.get("scenes", [])
+    if not scenes:
+        errors.append("global_scene_plan has no scenes")
+        return errors, warnings
+    seen_ids = set()
+    previous_end = -1.0
+    for scene in scenes:
+        scene_id = str(scene.get("scene_id", "")).strip()
+        if not scene_id:
+            errors.append("global scene missing scene_id")
+            continue
+        if scene_id in seen_ids:
+            errors.append(f"duplicate global scene_id: {scene_id}")
+        seen_ids.add(scene_id)
+        start = float(scene.get("start", 0) or 0)
+        end = float(scene.get("end", 0) or 0)
+        if end <= start:
+            errors.append(f"{scene_id} has invalid timing")
+        if previous_end > start + 0.02:
+            errors.append(f"{scene_id} overlaps previous global scene")
+        previous_end = end
+        if int(scene.get("target_frame_count", 0) or 0) <= 0:
+            errors.append(f"{scene_id} has invalid target_frame_count")
+    return errors, warnings
+
+
+def validate_build_subscenes(project: dict[str, Any]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    path = file_must_exist(project["planning"].get("subscene_plan_path"), "planning.subscene_plan_path", errors)
+    global_path = file_must_exist(project["planning"].get("global_scene_plan_path"), "planning.global_scene_plan_path", errors)
+    if not path or not global_path:
+        return errors, warnings
+    payload = load_json(path)
+    subscenes = payload.get("subscenes", [])
+    if not subscenes:
+        errors.append("subscene_plan has no subscenes")
+        return errors, warnings
+    parent_scene_ids = {scene["scene_id"] for scene in load_json(global_path).get("scenes", [])}
+    seen_ids = set()
+    for subscene in subscenes:
+        subscene_id = str(subscene.get("subscene_id", "")).strip()
+        if not subscene_id:
+            errors.append("subscene missing subscene_id")
+            continue
+        if subscene_id in seen_ids:
+            errors.append(f"duplicate subscene_id: {subscene_id}")
+        seen_ids.add(subscene_id)
+        if subscene.get("scene_id") not in parent_scene_ids:
+            errors.append(f"{subscene_id} points to unknown global scene")
+        for field in ("function", "visual_conflict", "transition_to_next"):
+            if not str(subscene.get(field, "")).strip():
+                errors.append(f"{subscene_id} missing `{field}`")
+    return errors, warnings
+
+
+def validate_build_storyboard(project: dict[str, Any]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    path = file_must_exist(project["planning"].get("storyboard_frames_path"), "planning.storyboard_frames_path", errors)
+    scene_plan_path = file_must_exist(project["scene_plan"].get("scene_plan_path"), "scene_plan.scene_plan_path", errors)
+    if not path or not scene_plan_path:
+        return errors, warnings
+    frames = load_json(path).get("frames", [])
+    scenes = load_json(scene_plan_path).get("scenes", [])
+    if len(frames) != len(scenes):
+        errors.append("storyboard_frames count does not match canonical scene_plan count")
+    canonical = {
+        item["scene_id"]: (float(item["start"]), float(item["end"]), float(item["duration"]))
+        for item in scenes
+    }
+    seen_ids = set()
+    for frame in frames:
+        frame_id = str(frame.get("frame_id", "")).strip()
+        if not frame_id:
+            errors.append("storyboard frame missing frame_id")
+            continue
+        if frame_id in seen_ids:
+            errors.append(f"duplicate frame_id: {frame_id}")
+        seen_ids.add(frame_id)
+        scene_id = frame.get("scene_id")
+        if scene_id not in canonical:
+            errors.append(f"{frame_id} points to unknown scene_id")
+            continue
+        start, end, duration = canonical[scene_id]
+        if abs(_parse_dot_timestamp(frame.get("start_time", "00:00:00.000")) - start) > 0.05:
+            errors.append(f"{frame_id} changed canonical start timing")
+        if abs(_parse_dot_timestamp(frame.get("end_time", "00:00:00.000")) - end) > 0.05:
+            errors.append(f"{frame_id} changed canonical end timing")
+        if abs(float(frame.get("duration_sec", 0) or 0) - duration) > 0.05:
+            errors.append(f"{frame_id} changed canonical duration")
+        for field in ("subscene_id", "mini_world", "why_this_frame_exists"):
+            if not str(frame.get(field, "")).strip():
+                errors.append(f"{frame_id} missing `{field}`")
+    return errors, warnings
+
+
+def validate_directors_cut(project: dict[str, Any]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    review_path = file_must_exist(project["prompts"].get("directors_cut_review_path"), "prompts.directors_cut_review_path", errors)
+    storyboard_path = file_must_exist(project["planning"].get("storyboard_frames_path"), "planning.storyboard_frames_path", errors)
+    if not review_path or not storyboard_path:
+        return errors, warnings
+    review_frames = load_json(review_path).get("frames", [])
+    storyboard_frames = load_json(storyboard_path).get("frames", [])
+    if len(review_frames) != len(storyboard_frames):
+        errors.append("directors_cut review count does not match storyboard frame count")
+    valid_statuses = {"approved", "rewrite", "revised", "pending"}
+    for record in review_frames:
+        if record.get("dc_status") not in valid_statuses:
+            errors.append(f"{record.get('frame_id', '<unknown>')} has invalid dc_status")
+    return errors, warnings
+
+
+def validate_write_prompts(project: dict[str, Any]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    storyboard_path = file_must_exist(project["planning"].get("storyboard_frames_path"), "planning.storyboard_frames_path", errors)
+    prompt_package_path = file_must_exist(project["prompts"].get("prompt_package_path"), "prompts.prompt_package_path", errors)
+    final_scene_plan_path = file_must_exist(project["prompts"].get("final_scene_plan_path"), "prompts.final_scene_plan_path", errors)
+    if not storyboard_path or not prompt_package_path or not final_scene_plan_path:
+        return errors, warnings
+    frames = load_json(storyboard_path).get("frames", [])
+    items = load_json(prompt_package_path).get("items", [])
+    if len(items) != len(frames):
+        errors.append("prompt_package item count does not match storyboard frame count")
+    for frame in frames:
+        frame_id = frame.get("frame_id", "<unknown>")
+        prompt = str(frame.get("image_prompt_final", "")).strip()
+        if not prompt:
+            errors.append(f"{frame_id} missing image_prompt_final")
+            continue
+        if has_cyrillic(prompt):
+            errors.append(f"{frame_id} contains Cyrillic in image_prompt_final")
+        if not prompt_length_ok(prompt):
+            errors.append(f"{frame_id} exceeds prompt length limit")
+        forbidden = contains_forbidden_terms(prompt)
+        if forbidden:
+            warnings.append(f"{frame_id} contains forbidden terms: {', '.join(forbidden)}")
+        if not str(frame.get("negative_prompt", "")).strip():
+            errors.append(f"{frame_id} missing negative_prompt")
+    return errors, warnings
+
+
 def validate_ingest_srt(project: dict[str, Any]) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -193,6 +390,95 @@ def validate_expand_storyboard(project: dict[str, Any]) -> tuple[list[str], list
     return errors, warnings
 
 
+def validate_build_reference_prompt_pack(project: dict[str, Any]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    pack_path = file_must_exist(project["prompts"].get("reference_prompt_pack_path"), "prompts.reference_prompt_pack_path", errors)
+    if not pack_path:
+        return errors, warnings
+    payload = load_json(pack_path)
+    items = payload.get("items", [])
+    if not isinstance(items, list) or not items:
+        errors.append("reference_prompt_pack has no items")
+        return errors, warnings
+    seen_ids = set()
+    for item in items:
+        asset_id = str(item.get("reference_asset_id", "")).strip()
+        if not asset_id:
+            errors.append("reference prompt item missing reference_asset_id")
+            continue
+        if asset_id in seen_ids:
+            errors.append(f"duplicate reference_asset_id: {asset_id}")
+        seen_ids.add(asset_id)
+        if has_cyrillic(str(item.get("prompt", ""))):
+            errors.append(f"{asset_id} contains Cyrillic in reference prompt")
+        if not str(item.get("output_path", "")).strip():
+            errors.append(f"{asset_id} missing output_path")
+    return errors, warnings
+
+
+def validate_generate_reference_images(project: dict[str, Any]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    manifest_path = file_must_exist(
+        project["prompts"].get("reference_generation_manifest_path"),
+        "prompts.reference_generation_manifest_path",
+        errors,
+    )
+    pack_path = file_must_exist(project["prompts"].get("reference_prompt_pack_path"), "prompts.reference_prompt_pack_path", errors)
+    if not manifest_path or not pack_path:
+        return errors, warnings
+    manifest = load_json(manifest_path)
+    items = manifest.get("items", [])
+    if not isinstance(items, list):
+        errors.append("reference_generation_manifest items must be a list")
+        return errors, warnings
+    failed = [item for item in items if item.get("status") == "failed"]
+    if failed:
+        warnings.append(f"reference generation failures present: {len(failed)}")
+    for item in items:
+        status = str(item.get("status", "")).strip()
+        if status in {"generated", "existing"}:
+            output_path = item.get("output_path")
+            if not output_path or not Path(output_path).exists():
+                errors.append(f"missing generated reference output: {output_path}")
+    return errors, warnings
+
+
+def validate_build_subject_registry(project: dict[str, Any]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    registry_path = file_must_exist(project["prompts"].get("subject_registry_path"), "prompts.subject_registry_path", errors)
+    assets_path = file_must_exist(project["prompts"].get("reference_assets_manifest_path"), "prompts.reference_assets_manifest_path", errors)
+    mapping_path = file_must_exist(project["prompts"].get("reference_mapping_path"), "prompts.reference_mapping_path", errors)
+    if not registry_path or not assets_path or not mapping_path:
+        return errors, warnings
+    registry = load_json(registry_path)
+    assets = load_json(assets_path)
+    subjects = registry.get("subjects", [])
+    if not isinstance(subjects, list):
+        errors.append("subject_registry subjects must be a list")
+        return errors, warnings
+    subject_ids = set()
+    for subject in subjects:
+        subject_id = str(subject.get("subject_id", "")).strip()
+        if not subject_id:
+            errors.append("subject profile missing subject_id")
+            continue
+        if subject_id in subject_ids:
+            errors.append(f"duplicate subject_id: {subject_id}")
+        subject_ids.add(subject_id)
+    for asset in assets.get("reference_assets", []):
+        if asset.get("subject_id") not in subject_ids:
+            errors.append(f"reference asset points to unknown subject_id: {asset.get('subject_id')}")
+    mapping = load_json(mapping_path)
+    for asset in assets.get("reference_assets", []):
+        asset_id = asset.get("reference_asset_id")
+        if asset_id and asset_id not in mapping:
+            errors.append(f"reference mapping missing asset id: {asset_id}")
+    return errors, warnings
+
+
 def validate_build_continuity_map(project: dict[str, Any]) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -234,10 +520,50 @@ def validate_build_frame_briefs(project: dict[str, Any]) -> tuple[list[str], lis
         for field in required_fields:
             if not str(record.get(field, "")).strip():
                 errors.append(f"{frame_id} missing required field `{field}`")
+        if record.get("subject_visible") and not record.get("primary_subject_id"):
+            errors.append(f"{frame_id} subject_visible but no primary_subject_id")
     if not storyboard_path and request_spec_from_project(project).is_sequence and not request_spec_from_project(project).skip_storyboard_allowed:
         errors.append("Sequence workflow cannot build frame briefs without storyboard")
     if draft_scene_ids != package_scene_ids:
         errors.append("frame_briefs scene coverage does not match prompt_package")
+    return errors, warnings
+
+
+def validate_attach_reference_assets(project: dict[str, Any]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    briefs_path = file_must_exist(project["planning"].get("frame_briefs_json_path"), "planning.frame_briefs_json_path", errors)
+    report_path = file_must_exist(project["planning"].get("reference_binding_report_path"), "planning.reference_binding_report_path", errors)
+    registry_path = file_must_exist(project["prompts"].get("subject_registry_path"), "prompts.subject_registry_path", errors)
+    if not briefs_path or not report_path or not registry_path:
+        return errors, warnings
+    frame_briefs = load_json(briefs_path)
+    registry = load_json(registry_path)
+    known_subject_ids = {item["subject_id"] for item in registry.get("subjects", [])}
+    for frame in frame_briefs:
+        frame_id = frame.get("frame_id", "<unknown>")
+        visible = bool(frame.get("subject_visible"))
+        primary_subject_id = frame.get("primary_subject_id")
+        mentioned_subject_ids = frame.get("mentioned_subject_ids", [])
+        visible_subject_ids = frame.get("visible_subject_ids", [])
+        reference_bindings = frame.get("reference_bindings", [])
+        reference_images = frame.get("reference_images", [])
+        if primary_subject_id and primary_subject_id not in known_subject_ids:
+            errors.append(f"unknown_subject_id: {frame_id}:{primary_subject_id}")
+        if visible and not primary_subject_id:
+            errors.append(f"subject_visible_but_no_subject_id: {frame_id}")
+        if not visible and reference_bindings:
+            errors.append(f"reference_attached_without_visible_subject: {frame_id}")
+        if frame.get("subject_continuity_strength") == "strict" and not reference_images:
+            errors.append(f"strict_subject_without_reference: {frame_id}")
+        if len(reference_images) > 3:
+            errors.append(f"too_many_references_on_frame: {frame_id}")
+        if mentioned_subject_ids and not visible_subject_ids and reference_bindings:
+            errors.append(f"subject_mentioned_but_not_marked_visible: {frame_id}")
+        for binding in reference_bindings:
+            for asset_path in frame.get("reference_images", []):
+                if not Path(asset_path).exists():
+                    errors.append(f"reference_asset_file_missing: {frame_id}:{asset_path}")
     return errors, warnings
 
 
@@ -259,18 +585,23 @@ def validate_generate_fastgen_prompt_drafts(project: dict[str, Any]) -> tuple[li
     errors: list[str] = []
     warnings: list[str] = []
     drafts_path = file_must_exist(project["prompts"].get("llm_prompt_drafts_path"), "prompts.llm_prompt_drafts_path", errors)
+    visual_bible_path = file_must_exist(project["prompts"].get("visual_bible_path"), "prompts.visual_bible_path", errors)
     final_scene_plan_path = file_must_exist(project["prompts"].get("final_scene_plan_path"), "prompts.final_scene_plan_path", errors)
-    if not drafts_path or not final_scene_plan_path:
+    prompt_package_path = file_must_exist(project["prompts"].get("prompt_package_path"), "prompts.prompt_package_path", errors)
+    if not drafts_path or not final_scene_plan_path or not prompt_package_path or not visual_bible_path:
         return errors, warnings
     drafts = load_json(drafts_path)
-    if not isinstance(drafts, list) or not drafts:
-        errors.append("llm_prompt_drafts is empty or not a JSON array")
-    for record in drafts:
-        for field in ("scene_id", "visual_goal", "final_prompt"):
-            if not str(record.get(field, "")).strip():
-                errors.append(f"{record.get('scene_id', '<unknown>')} missing required field `{field}`")
-        if record.get("active_entity_ids") and not record.get("continuity_cast"):
-            warnings.append(f"{record.get('scene_id', '<unknown>')} has active entities but no continuity_cast")
+    prompt_package = load_json(prompt_package_path)
+    visual_bible = load_json(visual_bible_path)
+    draft_errors, draft_warnings = validate_scene_prompt_drafts_payload(
+        drafts,
+        expected_scene_ids=[item["scene_id"] for item in prompt_package.get("items", [])],
+    )
+    bible_errors, bible_warnings = validate_visual_bible_payload(visual_bible)
+    errors.extend(draft_errors)
+    errors.extend(bible_errors)
+    warnings.extend(draft_warnings)
+    warnings.extend(bible_warnings)
     return errors, warnings
 
 
@@ -398,6 +729,83 @@ def validate_export_generation_batches(project: dict[str, Any]) -> tuple[list[st
     return errors, warnings
 
 
+def validate_qc(project: dict[str, Any]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    storyboard_path = file_must_exist(project["planning"].get("storyboard_frames_path"), "planning.storyboard_frames_path", errors)
+    rewrite_path = file_must_exist(project["prompts"].get("rewrite_queue_path"), "prompts.rewrite_queue_path", errors)
+    report_path = file_must_exist(project["reports"].get("qc_report_md_path"), "reports.qc_report_md_path", errors)
+    duplicates_path = file_must_exist(project["reports"].get("duplicate_report_csv_path"), "reports.duplicate_report_csv_path", errors)
+    weak_frames_path = file_must_exist(project["reports"].get("weak_frames_csv_path"), "reports.weak_frames_csv_path", errors)
+    if not storyboard_path or not rewrite_path or not report_path or not duplicates_path or not weak_frames_path:
+        return errors, warnings
+    frames = load_json(storyboard_path).get("frames", [])
+    rewrite_items = load_json(rewrite_path).get("frames_to_rewrite", [])
+    pattern_breaks = count_pattern_breaks(frames, seconds_window=30.0)
+    if len(frames) >= 6 and pattern_breaks <= 0:
+        warnings.append("No pattern break detected within 30-second windows")
+    for frame in frames:
+        frame_id = frame.get("frame_id", "<unknown>")
+        prompt = frame.get("image_prompt_final", "")
+        if has_cyrillic(prompt):
+            errors.append(f"{frame_id} contains Cyrillic in generator prompt")
+        if not prompt_length_ok(prompt):
+            errors.append(f"{frame_id} exceeds prompt length limit")
+        if not str(frame.get("negative_prompt", "")).strip():
+            errors.append(f"{frame_id} missing negative_prompt")
+    previous = None
+    for frame in frames:
+        if previous is not None and similarity_score(previous.get("image_prompt_final", ""), frame.get("image_prompt_final", "")) >= 85:
+            errors.append(f"possible_duplicate_prompt: {frame.get('frame_id', '<unknown>')}")
+        previous = frame
+    if not rewrite_items and any(frame.get("dc_status") == "rewrite" for frame in frames):
+        errors.append("rewrite_queue missing Director's Cut rewrite targets")
+    return errors, warnings
+
+
+def validate_rewrite_flagged(project: dict[str, Any]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    storyboard_path = file_must_exist(project["planning"].get("storyboard_frames_path"), "planning.storyboard_frames_path", errors)
+    if not storyboard_path:
+        return errors, warnings
+    frames = load_json(storyboard_path).get("frames", [])
+    for frame in frames:
+        if frame.get("dc_status") == "revised" and "possible_duplicate_prompt" in frame.get("qc_flags", []):
+            errors.append(f"{frame.get('frame_id', '<unknown>')} still marked duplicate after rewrite")
+    return errors, warnings
+
+
+def validate_export_generator_queue(project: dict[str, Any]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    queue_path = file_must_exist(project["exports"].get("generator_queue_csv_path"), "exports.generator_queue_csv_path", errors)
+    storyboard_path = file_must_exist(project["planning"].get("storyboard_frames_path"), "planning.storyboard_frames_path", errors)
+    if not queue_path or not storyboard_path:
+        return errors, warnings
+    row_count = max(0, len(queue_path.read_text(encoding="utf-8").splitlines()) - 1)
+    frame_count = len(load_json(storyboard_path).get("frames", []))
+    if row_count != frame_count:
+        errors.append("generator_queue row count does not match storyboard frame count")
+    return errors, warnings
+
+
+def validate_export_edit_timeline(project: dict[str, Any]) -> tuple[list[str], list[str]]:
+    errors: list[str] = []
+    warnings: list[str] = []
+    timeline_path = file_must_exist(project["exports"].get("edit_timeline_csv_path"), "exports.edit_timeline_csv_path", errors)
+    srt_path = file_must_exist(project["exports"].get("frame_timing_srt_path"), "exports.frame_timing_srt_path", errors)
+    thumbs_path = file_must_exist(project["exports"].get("thumbnails_json_path"), "exports.thumbnails_json_path", errors)
+    if not timeline_path or not srt_path or not thumbs_path:
+        return errors, warnings
+    if " --> " not in srt_path.read_text(encoding="utf-8"):
+        errors.append("frame_timing.srt does not contain valid cue separators")
+    candidates = load_json(thumbs_path).get("candidates", [])
+    if not candidates:
+        warnings.append("thumbnails.json contains no candidates")
+    return errors, warnings
+
+
 def validate_report(project: dict[str, Any]) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -446,15 +854,9 @@ def validate_images(project: dict[str, Any]) -> tuple[list[str], list[str]]:
     if not manifest_path or not raw_dir:
         return errors, warnings
     manifest = load_json(manifest_path)
-    records = manifest.get("generated_images", []) if isinstance(manifest, dict) else manifest
-    if not records:
-        errors.append("Image manifest contains no generated image records")
-        return errors, warnings
-    missing_assets = [record.get("scene_id", "<unknown>") for record in records if not record.get("image_path") or not Path(record["image_path"]).exists()]
-    if missing_assets:
-        errors.append(f"Missing generated image file for {len(missing_assets)} scenes")
-    if int(manifest.get("failed_count", 0) or 0) > 0:
-        warnings.append(f"Image generation recorded {manifest['failed_count']} failed scenes")
+    manifest_errors, manifest_warnings = validate_generation_manifest(manifest)
+    errors.extend(manifest_errors)
+    warnings.extend(manifest_warnings)
     return errors, warnings
 
 
@@ -516,18 +918,32 @@ def validate_render(project: dict[str, Any]) -> tuple[list[str], list[str]]:
 VALIDATORS = {
     "transcription": validate_transcription,
     "transcript_quality": validate_transcript_quality,
+    "parse_srt": validate_parse_srt,
     "ingest_srt": validate_ingest_srt,
     "build_scene_map": validate_build_scene_map,
+    "build_scenes": validate_build_scenes,
+    "build_subscenes": validate_build_subscenes,
+    "build_storyboard": validate_build_storyboard,
     "expand_storyboard": validate_expand_storyboard,
+    "build_reference_prompt_pack": validate_build_reference_prompt_pack,
+    "generate_reference_images": validate_generate_reference_images,
+    "build_subject_registry": validate_build_subject_registry,
     "build_continuity_map": validate_build_continuity_map,
     "allocate_frames": validate_scene_plan,
     "build_frame_briefs": validate_build_frame_briefs,
+    "attach_reference_assets": validate_attach_reference_assets,
     "scene_context_pack": validate_scene_context_pack,
+    "directors_cut": validate_directors_cut,
+    "write_prompts": validate_write_prompts,
     "generate_fastgen_prompt_drafts": validate_generate_fastgen_prompt_drafts,
     "generate_fastgen_prompts": validate_generate_fastgen_prompt_drafts,
     "generation_lock": validate_generation_lock,
+    "qc": validate_qc,
     "quality_assurance": validate_quality_assurance,
+    "rewrite_flagged": validate_rewrite_flagged,
     "export_montage_map": validate_export_montage_map,
+    "export_generator_queue": validate_export_generator_queue,
+    "export_edit_timeline": validate_export_edit_timeline,
     "export_generation_batches": validate_export_generation_batches,
     "report": validate_report,
     "motion_plan": validate_motion_plan,

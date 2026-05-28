@@ -11,6 +11,7 @@ if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
 from fastgen_openai_v4_generate import parse_prompt_blocks, validate_prompt_export  # noqa: E402
+from llm_pipeline_contracts import validate_scene_prompt_drafts_payload  # noqa: E402
 from prompt_continuity import (  # noqa: E402
     build_continuity_bundle,
     build_scene_prompt,
@@ -191,6 +192,33 @@ class PromptPipelineTests(unittest.TestCase):
         self.assertEqual(qa["status"], "failed")
         self.assertTrue(any("adjacent-shot diversity too low" in issue for issue in qa["issues"]))
         self.assertTrue(any("prompt missing section" in issue for issue in qa["issues"]))
+
+    def test_scene_prompt_draft_contract_rejects_python_owned_fields(self):
+        drafts = [
+            {
+                "scene_id": "scene_0001",
+                "visual_goal": "Show the guarded boutique entry as a controlled threshold.",
+                "final_prompt": "Premium documentary still of the guarded boutique threshold.",
+                "start": 0.0,
+                "image_path": "C:/fake/output.png",
+            }
+        ]
+        errors, _warnings = validate_scene_prompt_drafts_payload(drafts, expected_scene_ids=["scene_0001"])
+        self.assertTrue(any("Python-owned fields" in item for item in errors))
+
+    def test_scene_prompt_draft_contract_fails_fast_on_missing_scene(self):
+        drafts = [
+            {
+                "scene_id": "scene_0001",
+                "visual_goal": "Show the guarded boutique entry as a controlled threshold.",
+                "final_prompt": "Premium documentary still of the guarded boutique threshold.",
+            }
+        ]
+        errors, _warnings = validate_scene_prompt_drafts_payload(
+            drafts,
+            expected_scene_ids=["scene_0001", "scene_0002"],
+        )
+        self.assertTrue(any("Missing LLM prompt drafts" in item for item in errors))
 
 
 if __name__ == "__main__":

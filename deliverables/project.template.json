@@ -75,7 +75,14 @@
     "continuity_map_json_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\config\\continuity_entities.json",
     "continuity_bible_md_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\config\\continuity_bible.md",
     "sentence_blocks_json_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\planning\\sentence_blocks.json",
-    "sentence_blocks_txt_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\planning\\sentence_blocks.txt"
+    "sentence_blocks_txt_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\planning\\sentence_blocks.txt",
+    "global_scene_plan_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\planning\\global_scene_plan.json",
+    "subscene_plan_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\planning\\subscene_plan.json",
+    "storyboard_frames_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\planning\\storyboard_frames.json",
+    "v2_project_skeleton_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\planning\\canonical_project.json",
+    "reference_binding_report_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\planning\\reference_binding_report.json",
+    "v2_target_scene_count": 15,
+    "v2_chunk_size": 30
   },
   "prompts": {
     "status": "pending",
@@ -88,7 +95,7 @@
     "visual_bible_review_path": null,
     "global_style_summary": null,
     "quality_mode": "standard",
-    "reference_mapping_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\deliverables\\fastgen_ref_paths.json",
+    "reference_mapping_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\prompts\\fastgen_ref_paths.json",
     "scene_context_pack_path": null,
     "visual_shot_plan_path": null,
     "visual_shot_plan_status": "pending",
@@ -102,7 +109,18 @@
     "generator_ready_path": null,
     "prompt_review_path": null,
     "generation_locked_json_path": null,
-    "generation_locked_csv_path": null
+    "generation_locked_csv_path": null,
+    "directors_cut_review_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\prompts\\directors_cut_review.json",
+    "rewrite_queue_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\prompts\\rewrite_queue.json",
+    "subject_registry_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\prompts\\subject_registry.json",
+    "reference_assets_manifest_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\prompts\\reference_assets.json",
+    "reference_prompt_pack_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\prompts\\reference_prompt_pack.json",
+    "reference_generation_manifest_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\prompts\\reference_generation_manifest.json"
+  },
+  "assets": {
+    "references_root": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\assets\\references",
+    "character_references_root": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\assets\\references\\characters",
+    "reference_generation_run_root": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\assets\\references\\fastgen_run"
   },
   "motion": {
     "status": "pending",
@@ -142,7 +160,16 @@
   "exports": {
     "montage_timing_map_json_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\exports\\montage_timing_map.json",
     "montage_timing_map_csv_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\exports\\montage_timing_map.csv",
-    "montage_timing_map_xlsx_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\exports\\montage_timing_map.xlsx"
+    "montage_timing_map_xlsx_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\exports\\montage_timing_map.xlsx",
+    "generator_queue_csv_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\exports\\generator_queue.csv",
+    "edit_timeline_csv_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\exports\\edit_timeline.csv",
+    "frame_timing_srt_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\exports\\frame_timing.srt",
+    "thumbnails_json_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\exports\\thumbnails.json"
+  },
+  "reports": {
+    "qc_report_md_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\reports\\qc_report.md",
+    "duplicate_report_csv_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\reports\\duplicate_report.csv",
+    "weak_frames_csv_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\reports\\weak_frames.csv"
   },
   "publishing": {
     "status": "pending",

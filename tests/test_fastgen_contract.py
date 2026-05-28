@@ -12,6 +12,7 @@ if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
 from generation_lock import lock_record  # noqa: E402
+from llm_pipeline_contracts import classify_generation_error, validate_generation_manifest  # noqa: E402
 from pipeline_contracts import prompt_has_text_conflict, prompt_restates_srt, stable_hash  # noqa: E402
 from validate_project import validate_export_generation_batches, validate_quality_assurance  # noqa: E402
 
@@ -297,6 +298,275 @@ class FastGenContractTests(unittest.TestCase):
             export_path.write_text("block-one\n\nblock-two\n", encoding="utf-8")
             errors, _warnings = validate_export_generation_batches(project)
             self.assertEqual(errors, [])
+
+    def test_generation_lock_carries_reference_binding_fields(self):
+        frame_brief = {
+            "frame_id": "F0002",
+            "srt_text": "A security guard watches the boutique entrance.",
+            "continuity_tags": ["security_guard_01"],
+            "frame_brief_hash": stable_hash({"frame_id": "F0002"}),
+            "prompt_contract_version": "v1",
+            "llm_model_id": "codex-gpt-5",
+            "llm_prompt_template_version": "fastgen-frame-brief-v1",
+            "generation_lock_version": "lock-v1",
+            "motion_treatment": "slow_push_in",
+            "camera_storyboard": "entrance coverage",
+            "screen_action": "guard visible near the door",
+            "reference_bindings": [
+                {
+                    "subject_id": "security_guard_01",
+                    "reference_asset_ids": ["ref_guard_front"],
+                    "usage": "identity_and_wardrobe",
+                    "strength": "strict",
+                }
+            ],
+            "subject_continuity_strength": "strict",
+        }
+        scene = {
+            "final_prompt": "Premium documentary still of a boutique guard near the entrance.",
+            "negative_prompt": "logos, text",
+            "continuity_notes": "Keep the same guard profile.",
+            "reference_images": ["C:/refs/security_guard_01/front.jpg"],
+        }
+        locked, errors, warnings = lock_record(frame_brief, scene, "")
+        self.assertEqual(errors, [])
+        self.assertIn("too_generic", warnings)
+        self.assertEqual(locked["reference_ids"], ["ref_guard_front"])
+        self.assertEqual(locked["reference_images"], ["C:/refs/security_guard_01/front.jpg"])
+        self.assertEqual(locked["reference_strength"], "strict")
+        self.assertEqual(locked["reference_usage"], "identity_and_wardrobe")
+
+    def test_generation_error_classifier_keeps_runtime_failures_technical(self):
+        self.assertEqual(classify_generation_error("Operation polling timed out: op_123"), "timeout")
+        self.assertEqual(classify_generation_error("File not found for ref_guard_front"), "filesystem_error")
+        self.assertEqual(classify_generation_error("May violate our content policies"), "policy_violation")
+
+    def test_validate_generation_manifest_rejects_success_without_real_file(self):
+        manifest = {
+            "job_id": "job-123",
+            "generated_images": [
+                {
+                    "job_id": "job-123",
+                    "scene_id": "scene_0001",
+                    "source_prompt_index": 1,
+                    "prompt_hash": "abc",
+                    "generator_profile": "fastgen",
+                    "created_at": "2026-05-28T00:00:00Z",
+                    "status": "success",
+                    "image_path": "C:/definitely/missing/file.png",
+                }
+            ],
+            "failed_count": 0,
+        }
+        errors, _warnings = validate_generation_manifest(manifest)
+        self.assertTrue(any("marked success but image file is missing" in item for item in errors))
+
+    def test_attach_reference_assets_populates_visible_subject_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_root = root / "project"
+            (project_root / "planning").mkdir(parents=True, exist_ok=True)
+            (project_root / "prompts").mkdir(parents=True, exist_ok=True)
+            (project_root / "assets" / "references" / "characters" / "security_guard_01").mkdir(parents=True, exist_ok=True)
+            (project_root / "assets" / "references" / "characters" / "security_guard_01" / "front.jpg").write_bytes(b"fake")
+            frame_briefs_path = project_root / "planning" / "frame_briefs.json"
+            scene_plan_path = project_root / "planning" / "scene_plan.json"
+            subject_registry_path = project_root / "prompts" / "subject_registry.json"
+            assets_manifest_path = project_root / "prompts" / "reference_assets.json"
+            report_path = project_root / "planning" / "reference_binding_report.json"
+            project_json = project_root / "project.json"
+            frame_briefs_path.write_text(
+                json.dumps(
+                    [
+                        {
+                            "frame_id": "F0001",
+                            "scene_id": "scene_0001",
+                            "primary_subject_id": "security_guard_01",
+                            "subject_visible": True,
+                            "mentioned_subject_ids": ["security_guard_01"],
+                            "visible_subject_ids": ["security_guard_01"],
+                            "subject_continuity_strength": "strict",
+                            "reference_bindings": [],
+                        },
+                        {
+                            "frame_id": "F0002",
+                            "scene_id": "scene_0002",
+                            "primary_subject_id": "security_guard_01",
+                            "subject_visible": False,
+                            "mentioned_subject_ids": ["security_guard_01"],
+                            "visible_subject_ids": [],
+                            "subject_continuity_strength": "strict",
+                            "reference_bindings": [],
+                        },
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            scene_plan_path.write_text(
+                json.dumps({"scenes": [{"scene_id": "scene_0001"}, {"scene_id": "scene_0002"}]}),
+                encoding="utf-8",
+            )
+            subject_registry_path.write_text(
+                json.dumps(
+                    {
+                        "subjects": [
+                            {
+                                "subject_id": "security_guard_01",
+                                "reference_policy": "strict",
+                                "reference_asset_ids": ["ref_security_guard_01_front"],
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            assets_manifest_path.write_text(
+                json.dumps(
+                    {
+                        "reference_assets": [
+                            {
+                                "reference_asset_id": "ref_security_guard_01_front",
+                                "subject_id": "security_guard_01",
+                                "path": str(project_root / "assets" / "references" / "characters" / "security_guard_01" / "front.jpg"),
+                                "usage": "face",
+                                "strength": "strict",
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            project_json.write_text(
+                json.dumps(
+                    {
+                        "project_id": "attach_refs_test",
+                        "meta": {"project_root": str(project_root)},
+                        "planning": {
+                            "frame_briefs_json_path": str(frame_briefs_path),
+                            "reference_binding_report_path": str(report_path),
+                        },
+                        "scene_plan": {"scene_plan_path": str(scene_plan_path)},
+                        "prompts": {
+                            "subject_registry_path": str(subject_registry_path),
+                            "reference_assets_manifest_path": str(assets_manifest_path),
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                [sys.executable, str(SCRIPTS / "attach_reference_assets.py"), "--project-json", str(project_json)],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            self.assertTrue(result.stdout.strip())
+            updated = json.loads(frame_briefs_path.read_text(encoding="utf-8"))
+            self.assertEqual(updated[0]["reference_ids"], ["ref_security_guard_01_front"])
+            self.assertEqual(len(updated[0]["reference_images"]), 1)
+            self.assertEqual(updated[1]["reference_ids"], [])
+            self.assertEqual(updated[1]["reference_bindings"], [])
+
+    def test_build_reference_prompt_pack_creates_generator_inputs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_root = root / "project"
+            (project_root / "config").mkdir(parents=True, exist_ok=True)
+            (project_root / "prompts").mkdir(parents=True, exist_ok=True)
+            continuity_path = project_root / "config" / "continuity_entities.json"
+            pack_path = project_root / "prompts" / "reference_prompt_pack.json"
+            project_json = project_root / "project.json"
+            continuity_path.write_text(
+                json.dumps(
+                    {
+                        "character_profiles": [
+                            {
+                                "entity_id": "security_guard_01",
+                                "role": "security guard",
+                                "profile": "a security guard in his forties, dark navy suit, coiled earpiece, alert posture, black gloves",
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            project_json.write_text(
+                json.dumps(
+                    {
+                        "project_id": "reference_prompt_pack_test",
+                        "meta": {"project_root": str(project_root)},
+                        "planning": {"continuity_map_json_path": str(continuity_path)},
+                        "assets": {"character_references_root": str(project_root / "assets" / "references" / "characters")},
+                        "prompts": {
+                            "reference_prompt_pack_path": str(pack_path),
+                        },
+                        "logs": {"generation_report_path": str(project_root / "logs" / "generation_report.md")},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            subprocess.run(
+                [sys.executable, str(SCRIPTS / "build_reference_prompt_pack.py"), "--project-json", str(project_json)],
+                check=True,
+            )
+            payload = json.loads(pack_path.read_text(encoding="utf-8"))
+            self.assertEqual(len(payload["items"]), 1)
+            self.assertEqual(payload["items"][0]["shot_kind"], "identity_sheet")
+            self.assertIn("single wide 16:9 frame", payload["items"][0]["prompt"])
+            self.assertIn("front-facing chest-up portrait", payload["items"][0]["prompt"])
+            self.assertIn("close-up of hands and sleeves", payload["items"][0]["prompt"])
+            self.assertIn("full-body wardrobe view", payload["items"][0]["prompt"])
+
+    def test_build_subject_registry_writes_reference_mapping(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_root = root / "project"
+            subject_dir = project_root / "assets" / "references" / "characters" / "security_guard_01"
+            (project_root / "config").mkdir(parents=True, exist_ok=True)
+            (project_root / "prompts").mkdir(parents=True, exist_ok=True)
+            subject_dir.mkdir(parents=True, exist_ok=True)
+            (subject_dir / "identity_sheet.png").write_bytes(b"fake")
+            continuity_path = project_root / "config" / "continuity_entities.json"
+            registry_path = project_root / "prompts" / "subject_registry.json"
+            assets_path = project_root / "prompts" / "reference_assets.json"
+            mapping_path = project_root / "prompts" / "fastgen_ref_paths.json"
+            project_json = project_root / "project.json"
+            continuity_path.write_text(
+                json.dumps(
+                    {
+                        "character_profiles": [
+                            {
+                                "entity_id": "security_guard_01",
+                                "role": "security guard",
+                                "profile": "a security guard in his forties, dark navy suit, alert posture",
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            project_json.write_text(
+                json.dumps(
+                    {
+                        "project_id": "subject_registry_mapping_test",
+                        "meta": {"project_root": str(project_root)},
+                        "planning": {"continuity_map_json_path": str(continuity_path)},
+                        "assets": {"character_references_root": str(project_root / "assets" / "references" / "characters")},
+                        "prompts": {
+                            "subject_registry_path": str(registry_path),
+                            "reference_assets_manifest_path": str(assets_path),
+                            "reference_mapping_path": str(mapping_path),
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            subprocess.run(
+                [sys.executable, str(SCRIPTS / "build_subject_registry.py"), "--project-json", str(project_json)],
+                check=True,
+            )
+            mapping = json.loads(mapping_path.read_text(encoding="utf-8"))
+            self.assertIn("ref_security_guard_01_identity_sheet", mapping)
 
 
 if __name__ == "__main__":
