@@ -156,7 +156,13 @@ def load_existing_manifest_source_indices(run_manifest_path: Path) -> list[int]:
         return []
     payload = load_json(run_manifest_path)
     indices = []
-    for item in payload.get("generated_images", []):
+    if isinstance(payload, dict):
+        rows = payload.get("generated_images", [])
+    elif isinstance(payload, list):
+        rows = payload
+    else:
+        rows = []
+    for item in rows:
         value = int(item.get("source_prompt_index", 0) or 0)
         if value > 0:
             indices.append(value)

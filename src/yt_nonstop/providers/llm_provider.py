@@ -26,6 +26,7 @@ from yt_nonstop.utils.json_io import save_json
 
 
 DEFAULT_OPENAI_COMPATIBLE_URL = "https://api.openai.com/v1/chat/completions"
+FAST_GEN_OPENAI_COMPATIBLE_URL = "https://googler.fast-gen.ai/v1/chat/completions"
 
 
 class LLMProviderError(Exception):
@@ -54,6 +55,8 @@ def _normalize_openai_url(base_url: str | None) -> str:
     if not base_url:
         return DEFAULT_OPENAI_COMPATIBLE_URL
     url = str(base_url).rstrip("/")
+    if url in {"https://fast-gen.ai", "https://fast-gen.ai/v1"}:
+        return FAST_GEN_OPENAI_COMPATIBLE_URL
     if url.endswith("/chat/completions"):
         return url
     if url.endswith("/v1"):

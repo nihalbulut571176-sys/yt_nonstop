@@ -465,6 +465,62 @@ def build_visual_bible(project: dict, records: list[dict]) -> dict:
     }
 
 
+def compact_text(value: object, limit: int = 600) -> str:
+    text = clean_text(value if isinstance(value, str) else "")
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1].rstrip() + "..."
+
+
+def coerce_visual_bible(project: dict, records: list[dict], payload: object) -> dict:
+    fallback = build_visual_bible(project, records)
+    if not isinstance(payload, dict):
+        return fallback
+
+    creative_intent = payload.get("creative_intent", {}) if isinstance(payload.get("creative_intent"), dict) else {}
+    visual_world = payload.get("visual_world", {}) if isinstance(payload.get("visual_world"), dict) else {}
+    motifs = payload.get("recurring_motifs")
+    if not isinstance(motifs, list) or not motifs:
+        motifs = (
+            visual_world.get("world_metaphors")
+            or payload.get("sound_implied_visuals", {}).get("rhythm_keywords")
+            or fallback["recurring_motifs"]
+        )
+    continuity_rules = payload.get("continuity_rules")
+    if not isinstance(continuity_rules, list) or not continuity_rules:
+        continuity_rules = fallback["continuity_rules"]
+
+    main_subject = (
+        compact_text(payload.get("main_subject"))
+        or compact_text(creative_intent.get("logline"))
+        or compact_text(fallback["main_subject"])
+    )
+    visual_world_summary = compact_text(payload.get("visual_world"))
+    if not visual_world_summary:
+        visual_world_summary = compact_text(creative_intent.get("core_theme"))
+    if not visual_world_summary:
+        visual_world_summary = fallback["visual_world"]
+
+    coerced = dict(fallback)
+    coerced.update(
+        {
+            "project_id": payload.get("project_id") or fallback["project_id"],
+            "main_subject": main_subject,
+            "subject_type": payload.get("subject_type") or fallback["subject_type"],
+            "visual_world": visual_world_summary,
+            "style_summary": compact_text(payload.get("style_summary")) or fallback["style_summary"],
+            "prompt_language": payload.get("prompt_language") or "English",
+            "recurring_motifs": motifs if isinstance(motifs, list) else fallback["recurring_motifs"],
+            "continuity_rules": continuity_rules,
+            "forbidden_mistakes": payload.get("forbidden_mistakes") if isinstance(payload.get("forbidden_mistakes"), list) else fallback["forbidden_mistakes"],
+            "scene_role_taxonomy": payload.get("scene_role_taxonomy") if isinstance(payload.get("scene_role_taxonomy"), list) else fallback["scene_role_taxonomy"],
+            "visual_blocks": payload.get("visual_blocks") if isinstance(payload.get("visual_blocks"), list) else fallback["visual_blocks"],
+            "global_negative_prompt": payload.get("global_negative_prompt") if isinstance(payload.get("global_negative_prompt"), list) else fallback["global_negative_prompt"],
+        }
+    )
+    return coerced
+
+
 def build_visual_bible_context(project: dict, records: list[dict]) -> dict:
     compact_records = []
     for record in records:
@@ -520,7 +576,17 @@ def build_prompt_authoring_context(project: dict, records: list[dict], visual_bi
         "task": "author_scene_prompt_drafts",
         "project_id": project.get("project_id"),
         "language": project.get("meta", {}).get("language"),
-        "visual_bible": visual_bible,
+        "visual_bible": {
+            "project_id": visual_bible.get("project_id"),
+            "main_subject": visual_bible.get("main_subject"),
+            "subject_type": visual_bible.get("subject_type"),
+            "visual_world": visual_bible.get("visual_world"),
+            "style_summary": visual_bible.get("style_summary"),
+            "prompt_language": visual_bible.get("prompt_language"),
+            "recurring_motifs": visual_bible.get("recurring_motifs", []),
+            "continuity_rules": visual_bible.get("continuity_rules", []),
+            "global_negative_prompt": visual_bible.get("global_negative_prompt", []),
+        },
         "scene_records": compact_records,
         "requirements": [
             "Return JSON only.",
@@ -529,6 +595,51 @@ def build_prompt_authoring_context(project: dict, records: list[dict], visual_bi
             "Do not include file paths, statuses, or runtime fields.",
         ],
     }
+
+
+def pilot_authoring_records(project: dict, records: list[dict]) -> list[dict]:
+    limit = int(project.get("runtime", {}).get("limit_frames", 0) or 0)
+    if limit <= 0:
+        return records
+    return records[:limit]
+
+
+def sampled_visual_bible_records(records: list[dict], sample_size: int = 8) -> list[dict]:
+    if len(records) <= sample_size:
+        return records
+    last_index = len(records) - 1
+    chosen_indices = {0, last_index}
+    for step in range(1, sample_size - 1):
+        chosen_indices.add(round((last_index * step) / (sample_size - 1)))
+    return [records[index] for index in sorted(chosen_indices)]
+
+
+def batched_records(records: list[dict], batch_size: int = 10) -> list[list[dict]]:
+    size = max(1, int(batch_size or 1))
+    return [records[index : index + size] for index in range(0, len(records), size)]
+
+
+def coerce_prompt_drafts(batch: list[dict], drafts_payload: object) -> list[dict]:
+    if not isinstance(drafts_payload, list):
+        return []
+    batch_by_scene = {
+        str(record.get("scene_id", "")).strip(): record
+        for record in batch
+        if str(record.get("scene_id", "")).strip()
+    }
+    coerced: list[dict] = []
+    for record in drafts_payload:
+        if not isinstance(record, dict):
+            continue
+        scene_id = str(record.get("scene_id", "")).strip()
+        source = batch_by_scene.get(scene_id, {})
+        merged = dict(record)
+        merged.setdefault("frame_id", source.get("frame_id"))
+        merged.setdefault("beat_id", source.get("beat_id"))
+        merged.setdefault("visualized_claim", source.get("spoken_claim") or source.get("voice_text") or merged.get("visual_goal", ""))
+        merged.setdefault("must_show", source.get("must_show", []))
+        coerced.append(merged)
+    return coerced
 
 
 def main() -> None:
@@ -545,6 +656,7 @@ def main() -> None:
     drafts_path = Path(project["prompts"]["llm_prompt_drafts_path"])
 
     records = load_json(context_path)
+    authoring_records = pilot_authoring_records(project, records)
     provider_config = provider_from_project(
         project,
         stage_name="auto_author_llm_prompts",
@@ -552,12 +664,12 @@ def main() -> None:
         input_json_path=str(Path(args.input_json).resolve()) if args.input_json else None,
     )
     if provider_config.mode == "disabled":
-        visual_bible = build_visual_bible(project, records)
+        visual_bible = build_visual_bible(project, authoring_records)
         theme = visual_bible["subject_type"]
-        drafts = [build_prompt(record, theme, visual_bible) for record in records]
+        subset_drafts = [build_prompt(record, theme, visual_bible) for record in authoring_records]
     else:
         provider = LLMProvider(provider_config)
-        vb_context = build_visual_bible_context(project, records)
+        vb_context = build_visual_bible_context(project, sampled_visual_bible_records(authoring_records))
         vb_response = provider.invoke(
             LLMRequest(
                 stage_name="auto_author_llm_prompts",
@@ -576,35 +688,52 @@ def main() -> None:
             visual_bible = vb_response.payload["visual_bible"]
         else:
             visual_bible = vb_response.payload
-        if isinstance(visual_bible, dict):
-            visual_bible.setdefault("project_id", project.get("project_id"))
+        visual_bible = coerce_visual_bible(project, authoring_records, visual_bible)
         vb_errors, _ = validate_visual_bible_payload(visual_bible)
         if vb_errors:
             raise RuntimeError("Invalid visual_bible from provider:\n" + "\n".join(vb_errors))
-        prompt_context = build_prompt_authoring_context(project, records, visual_bible)
-        prompt_response = provider.invoke(
-            LLMRequest(
-                stage_name="auto_author_llm_prompts",
-                task="author_scene_prompt_drafts",
-                contract_name="llm_prompt_drafts.v1",
-                system_prompt="You are a prompt author for a narrated silent-image film pipeline. Return JSON only.",
-                user_prompt=build_json_only_prompt(
-                    instruction="Author the scene prompt drafts from this context.",
+        subset_drafts = []
+        for batch in batched_records(authoring_records, batch_size=3):
+            prompt_context = build_prompt_authoring_context(project, batch, visual_bible)
+            prompt_response = provider.invoke(
+                LLMRequest(
+                    stage_name="auto_author_llm_prompts",
+                    task="author_scene_prompt_drafts",
+                    contract_name="llm_prompt_drafts.v1",
+                    system_prompt="You are a prompt author for a narrated silent-image film pipeline. Return JSON only.",
+                    user_prompt=build_json_only_prompt(
+                        instruction="Author the scene prompt drafts from this context.",
+                        context=prompt_context,
+                    ),
                     context=prompt_context,
-                ),
-                context=prompt_context,
-                response_key="llm_prompt_drafts",
+                    response_key="llm_prompt_drafts",
+                )
             )
-        )
-        if provider_config.mode == "file" and isinstance(prompt_response.payload, dict):
-            drafts_payload = prompt_response.payload.get("llm_prompt_drafts") or prompt_response.payload.get("drafts") or prompt_response.payload
-        else:
-            drafts_payload = prompt_response.payload
-        drafts = drafts_payload if isinstance(drafts_payload, list) else []
-        expected_scene_ids = [str(record.get("scene_id")) for record in records if record.get("scene_id")]
-        draft_errors, _ = validate_scene_prompt_drafts_payload(drafts, expected_scene_ids=expected_scene_ids)
-        if draft_errors:
-            raise RuntimeError("Invalid llm_prompt_drafts from provider:\n" + "\n".join(draft_errors))
+            if provider_config.mode == "file" and isinstance(prompt_response.payload, dict):
+                drafts_payload = prompt_response.payload.get("llm_prompt_drafts") or prompt_response.payload.get("drafts") or prompt_response.payload
+            elif isinstance(prompt_response.payload, dict):
+                drafts_payload = prompt_response.payload.get("llm_prompt_drafts") or prompt_response.payload.get("drafts") or prompt_response.payload
+            else:
+                drafts_payload = prompt_response.payload
+            batch_drafts = coerce_prompt_drafts(batch, drafts_payload)
+            expected_scene_ids = [str(record.get("scene_id")) for record in batch if record.get("scene_id")]
+            draft_errors, _ = validate_scene_prompt_drafts_payload(batch_drafts, expected_scene_ids=expected_scene_ids)
+            if draft_errors:
+                raise RuntimeError("Invalid llm_prompt_drafts from provider:\n" + "\n".join(draft_errors))
+            subset_drafts.extend(batch_drafts)
+
+    existing_drafts = load_json(drafts_path) if drafts_path.exists() else []
+    drafts_by_scene = {
+        str(record.get("scene_id", "")).strip(): record
+        for record in existing_drafts
+        if isinstance(record, dict) and str(record.get("scene_id", "")).strip()
+    }
+    for record in subset_drafts:
+        scene_id = str(record.get("scene_id", "")).strip()
+        if scene_id:
+            drafts_by_scene[scene_id] = record
+    scene_order = [str(record.get("scene_id", "")).strip() for record in records if str(record.get("scene_id", "")).strip()]
+    drafts = [drafts_by_scene[scene_id] for scene_id in scene_order if scene_id in drafts_by_scene]
 
     save_json(visual_bible_path, visual_bible)
     save_json(drafts_path, drafts)

@@ -11,9 +11,11 @@ from yt_nonstop.providers.llm_provider import (
     LLMProviderConfig,
     LLMProviderNotConfiguredError,
     LLMProviderResponseError,
+    _normalize_openai_url,
     complete_json,
     extract_json_payload,
 )
+from yt_nonstop.providers.provider_config import provider_from_environment, provider_from_project
 
 
 def write_json(path: Path, payload: object) -> None:
@@ -41,6 +43,10 @@ def test_extract_json_payload_raises_on_invalid_json() -> None:
 def test_extract_json_payload_rejects_top_level_array() -> None:
     with pytest.raises(ValueError, match="Top-level JSON array"):
         extract_json_payload('[{"ok": true}]')
+
+
+def test_normalize_openai_url_maps_fastgen_site_to_googler_endpoint() -> None:
+    assert _normalize_openai_url("https://fast-gen.ai/v1") == "https://googler.fast-gen.ai/v1/chat/completions"
 
 
 def test_file_provider_reads_json_and_validates_required_keys() -> None:
@@ -138,3 +144,56 @@ def test_repair_loop_raises_after_exhaustion() -> None:
             max_repair_attempts=1,
             provider_config=config,
         )
+
+
+def test_provider_from_project_reads_llm_defaults_from_dotenv(monkeypatch: pytest.MonkeyPatch) -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        dotenv_path = tmp_path / ".env"
+        dotenv_path.write_text(
+            "\n".join(
+                [
+                    "YT_NONSTOP_LLM_PROVIDER_MODE=openai_compatible",
+                    "YT_NONSTOP_LLM_PROVIDER_API_KEY=fastgen-test-key",
+                    "YT_NONSTOP_LLM_PROVIDER_BASE_URL=https://fast-gen.ai/v1",
+                    "YT_NONSTOP_LLM_PROVIDER_MODEL=openai/gpt-4o",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setattr("yt_nonstop.providers.provider_config.ENV_PATH", dotenv_path)
+        monkeypatch.delenv("YT_NONSTOP_LLM_PROVIDER_MODE", raising=False)
+        monkeypatch.delenv("YT_NONSTOP_LLM_PROVIDER_API_KEY", raising=False)
+        monkeypatch.delenv("YT_NONSTOP_LLM_PROVIDER_BASE_URL", raising=False)
+        monkeypatch.delenv("YT_NONSTOP_LLM_PROVIDER_MODEL", raising=False)
+
+        project = {
+            "meta": {"project_root": str(tmp_path / "project")},
+            "providers": {"llm_provider": {}},
+            "prompts": {"prompt_authoring_llm": {"mode": "openai_compatible"}},
+        }
+
+        config = provider_from_project(project, stage_name="auto_author_llm_prompts")
+        assert config.mode == "openai_compatible"
+        assert config.api_key == "fastgen-test-key"
+        assert config.base_url == "https://fast-gen.ai/v1"
+        assert config.model == "openai/gpt-4o"
+
+
+def test_provider_from_environment_reads_dotenv_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        dotenv_path = tmp_path / ".env"
+        dotenv_path.write_text(
+            "YT_NONSTOP_LLM_PROVIDER_MODE=openai_compatible\n"
+            "YT_NONSTOP_LLM_PROVIDER_API_KEY=fastgen-test-key\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setattr("yt_nonstop.providers.provider_config.ENV_PATH", dotenv_path)
+        monkeypatch.delenv("YT_NONSTOP_LLM_PROVIDER_MODE", raising=False)
+        monkeypatch.delenv("YT_NONSTOP_LLM_PROVIDER_API_KEY", raising=False)
+
+        config = provider_from_environment(stage_name="auto_author_llm_prompts")
+        assert config.mode == "openai_compatible"
+        assert config.api_key == "fastgen-test-key"

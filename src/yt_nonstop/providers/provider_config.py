@@ -8,6 +8,7 @@ from typing import Any
 
 ALLOWED_LLM_PROVIDER_MODES = {"disabled", "file", "command", "http", "openai_compatible"}
 GENERAL_LLM_ENV_PREFIX = "YT_NONSTOP_LLM_PROVIDER"
+ENV_PATH = Path(__file__).resolve().parents[3] / ".env"
 
 DEFAULT_STAGE_CONFIG: dict[str, dict[str, Any]] = {
     "author_narration_beats": {
@@ -118,7 +119,30 @@ def _env_value(field: str, *, alias_prefixes: list[str]) -> str | None:
             value = os.environ.get(f"{prefix}_{suffix}")
             if value not in {None, ""}:
                 return value
+            dotenv_value = _dotenv_value(f"{prefix}_{suffix}")
+            if dotenv_value not in {None, ""}:
+                return dotenv_value
     return None
+
+
+def _load_dotenv_map() -> dict[str, str]:
+    if not ENV_PATH.exists():
+        return {}
+    values: dict[str, str] = {}
+    for raw_line in ENV_PATH.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if not key:
+            continue
+        values[key] = value.strip()
+    return values
+
+
+def _dotenv_value(key: str) -> str | None:
+    return _load_dotenv_map().get(key)
 
 
 def provider_from_project(
@@ -182,14 +206,24 @@ def provider_from_project(
 
 def provider_from_environment(*, stage_name: str = "") -> LLMProviderConfig:
     return LLMProviderConfig(
-        provider_mode=normalize_provider_mode(os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_MODE") or "disabled"),
-        model=os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_MODEL"),
-        api_key=os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_API_KEY"),
-        base_url=os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_BASE_URL"),
-        command=os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_COMMAND"),
-        input_json_path=os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_INPUT_JSON"),
-        timeout_seconds=_int_from_any(os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_TIMEOUT_SECONDS"), 120),
-        max_tokens=_int_from_any(os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_MAX_TOKENS"), 7000),
+        provider_mode=normalize_provider_mode(
+            os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_MODE")
+            or _dotenv_value(f"{GENERAL_LLM_ENV_PREFIX}_MODE")
+            or "disabled"
+        ),
+        model=os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_MODEL") or _dotenv_value(f"{GENERAL_LLM_ENV_PREFIX}_MODEL"),
+        api_key=os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_API_KEY") or _dotenv_value(f"{GENERAL_LLM_ENV_PREFIX}_API_KEY"),
+        base_url=os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_BASE_URL") or _dotenv_value(f"{GENERAL_LLM_ENV_PREFIX}_BASE_URL"),
+        command=os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_COMMAND") or _dotenv_value(f"{GENERAL_LLM_ENV_PREFIX}_COMMAND"),
+        input_json_path=os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_INPUT_JSON") or _dotenv_value(f"{GENERAL_LLM_ENV_PREFIX}_INPUT_JSON"),
+        timeout_seconds=_int_from_any(
+            os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_TIMEOUT_SECONDS") or _dotenv_value(f"{GENERAL_LLM_ENV_PREFIX}_TIMEOUT_SECONDS"),
+            120,
+        ),
+        max_tokens=_int_from_any(
+            os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_MAX_TOKENS") or _dotenv_value(f"{GENERAL_LLM_ENV_PREFIX}_MAX_TOKENS"),
+            7000,
+        ),
         stage_name=stage_name,
         env_prefix=GENERAL_LLM_ENV_PREFIX,
         log_dir=None,
