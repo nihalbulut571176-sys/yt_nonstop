@@ -281,6 +281,8 @@ def build_project_status(project_json: Path, *, stage: str = "generate_images", 
                 run_manifest_payload = _read_json(candidate, [])
                 break
     generated_rows = _normalize_generation_manifest(run_manifest_payload if run_manifest_payload is not None else [])
+    limited_pilot = bool(run_manifest_payload.get("limited_pilot")) if isinstance(run_manifest_payload, dict) else False
+    partial_pilot = bool(run_manifest_payload.get("partial_pilot")) if isinstance(run_manifest_payload, dict) else False
     generated_success = sum(1 for row in generated_rows if _clean(row.get("status")).lower() == "success")
     generated_failed = sum(1 for row in generated_rows if _clean(row.get("status")).lower() not in {"", "success", "skipped_existing"})
 
@@ -305,6 +307,7 @@ def build_project_status(project_json: Path, *, stage: str = "generate_images", 
     final_video = Path(str(project.get("render", {}).get("final_video_path", "")))
     render_status = _clean(project.get("render", {}).get("status") or render_report.get("status") or "pending") or "pending"
     render_ready = bool(render_status == "completed" and final_video.exists()) or bool(isinstance(render_report, dict) and render_report.get("dry_run"))
+    calibration_report_path = Path(str(project.get("reports", {}).get("visual_calibration_report_md_path", ""))) if project.get("reports", {}).get("visual_calibration_report_md_path") else None
 
     state_db_path, state_db_exists, state_summary, failed_frames, stage_state_summary, stage_states, stale_stages = _state_payload(
         project_json, project, stage, state_db_override
@@ -340,6 +343,15 @@ def build_project_status(project_json: Path, *, stage: str = "generate_images", 
         info.append("selected images exist; timeline/render can continue when blockers are cleared")
     if render_ready:
         info.append("render is ready or already completed")
+    if limited_pilot:
+        warnings.append(
+            "limited pilot run is active"
+            + (f"; {int(run_manifest_payload.get('skipped_due_to_limit_count', 0) or 0)} frame(s) were deferred by the pilot cap" if isinstance(run_manifest_payload, dict) else "")
+        )
+    if partial_pilot:
+        warnings.append("project is currently a partial pilot subset, not a full production render")
+    if calibration_report_path and calibration_report_path.exists():
+        info.append(f"visual calibration report available: {calibration_report_path}")
     if not blocked and not warnings:
         info.append("no blocking status issues detected")
     next_stage = _resolve_next_stage(

@@ -1,0 +1,14 @@
+{
+  "profile_id": "technical_fastgen_pilot",
+  "schema_version": "draft-1",
+  "description": "Operator-only technical FastGen pilot. LLM and VLM stay off by default. Real FastGen requires an explicit flag and a capped batch.",
+  "pilot": {
+    "auto_author_llm": false,
+    "image_semantic_qc_mode": "disabled",
+    "allow_real_generation": true,
+    "render_dry_run": true,
+    "default_limit_frames": 15,
+    "default_image_retry_rounds": 1,
+    "strict_visual_calibration": false
+  }
+}

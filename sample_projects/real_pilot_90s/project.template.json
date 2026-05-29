@@ -1,0 +1,63 @@
+{
+  "profile_id": "no_vlm_production",
+  "schema_version": "draft-1",
+  "meta": {
+    "project_root": ".",
+    "language": "auto"
+  },
+  "workflow": {
+    "profile": "no_vlm_production",
+    "is_sequence": true,
+    "skip_storyboard_allowed": false,
+    "strict_generation_lock": false,
+    "render_dry_run": true,
+    "image_generation_enabled": false
+  },
+  "providers": {
+    "llm_provider": {
+      "mode": "disabled"
+    }
+  },
+  "planning": {
+    "visual_allocation_provider": "disabled",
+    "narration_beats_llm": {
+      "mode": "disabled"
+    },
+    "visual_allocation_llm": {
+      "mode": "disabled"
+    }
+  },
+  "prompts": {
+    "prompt_authoring_llm": {
+      "mode": "disabled"
+    },
+    "prompt_repair_llm": {
+      "mode": "disabled"
+    }
+  },
+  "generation": {
+    "provider_mode": "disabled",
+    "image_generation_mode": "disabled",
+    "key_beat_variants": 1,
+    "normal_beat_variants": 1,
+    "allow_regeneration": true,
+    "max_regeneration_attempts": 2
+  },
+  "qc": {
+    "image_semantic_qc_mode": "disabled",
+    "allow_manual_review_without_vlm": true
+  },
+  "images": {
+    "provider": "disabled",
+    "route": "disabled"
+  },
+  "animation": {
+    "status": "skipped",
+    "policy_name": "disabled",
+    "provider": "disabled"
+  },
+  "render": {
+    "render_strategy": "images_only",
+    "render_mode": "dry_run"
+  }
+}

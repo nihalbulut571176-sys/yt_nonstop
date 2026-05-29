@@ -20,6 +20,15 @@ def load_json_if_exists(path: Path, fallback: Any) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def partial_pilot_mode(project: dict[str, Any]) -> bool:
+    manifest_path = Path(project["images"].get("run_manifest_path", ""))
+    if manifest_path.exists():
+        payload = load_json_if_exists(manifest_path, {})
+        if isinstance(payload, dict) and (payload.get("partial_pilot") or payload.get("limited_pilot")):
+            return True
+    return str(project.get("images", {}).get("status", "")).strip().lower() in {"partial", "pilot_partial"}
+
+
 def resolve_scene_image(scene: dict, selected_row: dict, montage_row: dict, previous_image: str | None) -> str:
     image_path_str = (
         scene.get("render_asset_path")
@@ -77,7 +86,9 @@ def main() -> None:
 
     prepared_scenes = []
     skipped_by_review = []
+    skipped_unavailable = []
     previous_image: str | None = None
+    allow_partial_pilot = partial_pilot_mode(project)
 
     for index, scene in enumerate(scenes):
         montage_row = montage_by_frame.get(scene.get("frame_id", ""), {})
@@ -102,9 +113,29 @@ def main() -> None:
 
         image_path_str = resolve_scene_image(scene, selected_row, montage_row, previous_image)
         if not image_path_str:
+            if allow_partial_pilot:
+                skipped_unavailable.append(
+                    {
+                        "scene_id": scene["scene_id"],
+                        "frame_id": scene.get("frame_id", ""),
+                        "visual_slot_id": scene.get("visual_slot_id", ""),
+                        "reason": "pilot_image_not_generated",
+                    }
+                )
+                continue
             raise FileNotFoundError(f"Scene {scene.get('scene_id')} has no still image path")
         image_path = Path(image_path_str)
         if not image_path.exists():
+            if allow_partial_pilot:
+                skipped_unavailable.append(
+                    {
+                        "scene_id": scene["scene_id"],
+                        "frame_id": scene.get("frame_id", ""),
+                        "visual_slot_id": scene.get("visual_slot_id", ""),
+                        "reason": f"pilot_image_missing:{image_path}",
+                    }
+                )
+                continue
             raise FileNotFoundError(f"Missing image for scene {scene.get('scene_id')}: {image_path}")
         previous_image = str(image_path)
         prepared_scenes.append(
@@ -199,6 +230,8 @@ def main() -> None:
                 "edl": edit_decision_list,
                 "skipped_by_human_review": skipped_by_review,
                 "skipped_by_review": skipped_by_review,
+                "skipped_unavailable_for_pilot": skipped_unavailable,
+                "partial_pilot": allow_partial_pilot and bool(skipped_unavailable),
             },
             ensure_ascii=False,
             indent=2,
@@ -211,6 +244,8 @@ def main() -> None:
     project["render"]["slideshow_timeline_path"] = str(timeline_json_path)
     project["render"]["edit_decision_list_path"] = str(edit_decision_list_path)
     project["render"]["timeline_skipped_by_human_review"] = skipped_by_review
+    project["render"]["timeline_skipped_unavailable_for_pilot"] = skipped_unavailable
+    project["render"]["partial_pilot"] = allow_partial_pilot and bool(skipped_unavailable)
     project["render"]["status"] = "timeline_built"
     project["current_stage"] = "render"
     save_project(project_json, project)

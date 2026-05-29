@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from yt_nonstop.pipeline.artifact_paths import STAGE_SEQUENCE, normalize_stage_name, stage_index
+from yt_nonstop.pipeline.pilot_profiles import active_profile_name, apply_runtime_profile, effective_limit_frames, resolve_runtime_profile
 from yt_nonstop.pipeline.project_config import append_event, append_log, load_project, mark_stage, save_project
 from yt_nonstop.state.pipeline_state import (
     connect as connect_state_db,
@@ -336,6 +337,22 @@ def build_stage_command(project: dict[str, Any], project_json: Path, stage: str,
             cmd.append("--retry-failed-only")
         if args.state_db:
             cmd.extend(["--state-db", args.state_db])
+        if getattr(args, "profile", ""):
+            cmd.extend(["--profile", args.profile])
+        if getattr(args, "real_generation", False):
+            cmd.append("--real-generation")
+        if int(getattr(args, "limit_frames", 0) or 0) > 0:
+            cmd.extend(["--limit-frames", str(args.limit_frames)])
+        return cmd
+    if stage == "render":
+        cmd = [
+            sys.executable,
+            str(ROOT / "scripts" / "render_project_slideshow_video.py"),
+            "--project-json",
+            str(project_json),
+        ]
+        if getattr(args, "render_dry_run", False) or bool(project.get("workflow", {}).get("render_dry_run")):
+            cmd.append("--dry-run")
         return cmd
     return command_map[stage]
 
@@ -399,9 +416,14 @@ def post_stage_update(project_json: Path, stage: str) -> None:
     elif stage == "timeline":
         project["current_stage"] = "render"
     elif stage == "render":
-        project["render"]["status"] = "completed"
-        project["status"] = "completed"
-        project["current_stage"] = "done"
+        render_status = str(project.get("render", {}).get("status", "")).strip().lower()
+        if render_status == "dry_run":
+            project["status"] = "in_progress"
+            project["current_stage"] = "production_report"
+        else:
+            project["render"]["status"] = "completed"
+            project["status"] = "completed"
+            project["current_stage"] = "done"
     save_project(project_json, project)
 
 
@@ -454,11 +476,13 @@ VALIDATION_MAP = {
 def run_pipeline(args: argparse.Namespace) -> int:
     project_json = Path(args.project_json).resolve()
     project = load_project(project_json)
+    active_profile = resolve_runtime_profile(active_profile_name(project, getattr(args, "profile", "")))
+    resolved_limit_frames = effective_limit_frames(project, getattr(args, "limit_frames", 0), active_profile)
+    args.limit_frames = int(resolved_limit_frames or 0)
     state_db_path = resolve_state_db_path(project_json, project, args.state_db or None)
-    project.setdefault("state", {})["pipeline_state_path"] = str(state_db_path)
-    save_project(project_json, project)
     conn = connect_state_db(state_db_path)
     project_id = str(project.get("project_id", ""))
+    requested_to_stage = str(args.to_stage or "")
     try:
         start_stage = normalize_stage_name(args.from_stage) if args.from_stage else (next_resume_stage(project) if args.resume else STAGE_SEQUENCE[0])
         end_stage = normalize_stage_name(args.to_stage)
@@ -483,6 +507,14 @@ def run_pipeline(args: argparse.Namespace) -> int:
                 append_log(project, f"Skipping completed fresh stage during resume: {stage}")
                 print(f"SKIP: {stage} (completed and fresh)")
                 continue
+
+            apply_runtime_profile(project, args)
+            project.setdefault("state", {})["pipeline_state_path"] = str(state_db_path)
+            if getattr(args, "profile", ""):
+                project.setdefault("runtime", {})["cli_profile"] = args.profile
+            project.setdefault("runtime", {})["real_generation"] = bool(getattr(args, "real_generation", False))
+            project["runtime"]["limit_frames"] = int(getattr(args, "limit_frames", 0) or 0)
+            project["runtime"]["render_dry_run"] = bool(getattr(args, "render_dry_run", False))
 
             if stage == "generate_fastgen_prompt_drafts":
                 context_cmd = [sys.executable, str(ROOT / "scripts" / "build_scene_context_pack.py"), "--project-json", str(project_json)]
@@ -518,6 +550,19 @@ def run_pipeline(args: argparse.Namespace) -> int:
                 if validation_stage:
                     validate_stage(project_json, validation_stage, args.dry_run)
 
+                if requested_to_stage == "production_report" and stage == "image_qc":
+                    extra_commands = [
+                        [sys.executable, str(ROOT / "scripts" / "build_regeneration_plan.py"), "--project-json", str(project_json)],
+                        [sys.executable, str(ROOT / "scripts" / "build_review_package.py"), "--project-json", str(project_json)],
+                    ]
+                    for extra_cmd in extra_commands:
+                        append_log(project, f"Running production-report prerequisite: {' '.join(extra_cmd)}")
+                        append_event(project, {"kind": "stage_dispatch", "stage": "production_report_prerequisite", "command": extra_cmd})
+                        if args.dry_run:
+                            print("DRY-RUN:", " ".join(extra_cmd))
+                        else:
+                            subprocess.run(extra_cmd, check=True)
+
                 refreshed_project = load_project(project_json)
                 output_hash, _ = compute_stage_output_hash(refreshed_project, stage)
                 mark_stage_completed(
@@ -540,6 +585,15 @@ def run_pipeline(args: argparse.Namespace) -> int:
                 raise
 
         project = load_project(project_json)
+        if requested_to_stage == "production_report":
+            report_cmd = [sys.executable, str(ROOT / "scripts" / "build_production_report.py"), "--project-json", str(project_json)]
+            append_log(project, f"Running post-render production report: {' '.join(report_cmd)}")
+            append_event(project, {"kind": "stage_dispatch", "stage": "production_report", "command": report_cmd})
+            if args.dry_run:
+                print("DRY-RUN:", " ".join(report_cmd))
+            else:
+                subprocess.run(report_cmd, check=True)
+            project = load_project(project_json)
         append_event(project, {"kind": "pipeline_end", "status": "success"})
         append_log(project, "Package pipeline run completed successfully")
         save_project(project_json, project)
@@ -558,13 +612,17 @@ def run_pipeline(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("--project-json", required=True)
-    stage_choices = STAGE_SEQUENCE + ["generate_fastgen_prompts", "scene_context_pack"]
+    stage_choices = STAGE_SEQUENCE + ["generate_fastgen_prompts", "scene_context_pack", "production_report"]
     parser.add_argument("--from", dest="from_stage", choices=stage_choices)
     parser.add_argument("--to", dest="to_stage", choices=stage_choices, default="render")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--retry-failed-only", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--render-dry-run", action="store_true")
     parser.add_argument("--state-db", default="")
+    parser.add_argument("--profile", default="")
+    parser.add_argument("--real-generation", action="store_true")
+    parser.add_argument("--limit-frames", type=int, default=0)
     parser.add_argument("--auto-author-llm", dest="auto_author_llm", action="store_true")
     parser.add_argument("--no-auto-author-llm", dest="auto_author_llm", action="store_false")
     parser.add_argument("--require-filled-prompts", action="store_true")

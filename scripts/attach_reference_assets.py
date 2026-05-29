@@ -5,54 +5,80 @@ from pipeline_contracts import ReferenceBinding
 from project_pipeline_utils import load_json, load_project, save_json, save_project
 
 
+def candidate_subject_ids(frame: dict) -> list[str]:
+    ordered: list[str] = []
+    for value in frame.get("visible_subject_ids", []) or []:
+        subject_id = str(value or "").strip()
+        if subject_id and subject_id not in ordered:
+            ordered.append(subject_id)
+    primary_subject_id = str(frame.get("primary_subject_id") or "").strip()
+    if primary_subject_id and primary_subject_id not in ordered:
+        ordered.append(primary_subject_id)
+    for entity in frame.get("entity_locks", []) or []:
+        if not isinstance(entity, dict):
+            continue
+        policy = str(entity.get("reference_policy") or entity.get("identity_lock") or "").strip().lower()
+        if policy not in {"required", "strict"}:
+            continue
+        subject_id = str(entity.get("entity_id") or "").strip()
+        if subject_id and subject_id not in ordered:
+            ordered.append(subject_id)
+    return ordered
+
+
 def resolve_reference_bindings(frame: dict, subject_map: dict, asset_map: dict) -> tuple[list[dict], list[str]]:
     flags: list[str] = []
-    if not frame.get("subject_visible"):
+    has_required_lock = any(
+        isinstance(entity, dict)
+        and str(entity.get("reference_policy") or entity.get("identity_lock") or "").strip().lower() in {"required", "strict"}
+        for entity in frame.get("entity_locks", []) or []
+    )
+    if not frame.get("subject_visible") and not has_required_lock:
         return [], flags
 
-    primary_subject_id = frame.get("primary_subject_id")
-    if not primary_subject_id:
+    subject_ids = candidate_subject_ids(frame)
+    if not subject_ids:
         flags.append("subject_visible_but_no_subject_id")
         return [], flags
 
-    subject = subject_map.get(primary_subject_id)
-    if not subject:
-        flags.append("unknown_subject_id")
-        return [], flags
-
-    policy = str(subject.get("reference_policy", "optional"))
-    asset_ids = list(subject.get("reference_asset_ids", []))
-    if policy in {"required", "strict"} and not asset_ids:
-        flags.append("missing_reference_for_required_subject")
-    if not asset_ids:
-        return [], flags
-
-    valid_asset_ids = []
-    for asset_id in asset_ids[:3]:
-        asset = asset_map.get(asset_id)
-        if not asset:
-            flags.append("reference_asset_file_missing")
+    bindings: list[dict] = []
+    for subject_id in subject_ids:
+        subject = subject_map.get(subject_id)
+        if not subject:
+            flags.append(f"unknown_subject_id:{subject_id}")
             continue
-        if not Path(asset["path"]).exists():
-            flags.append("reference_asset_file_missing")
+
+        policy = str(subject.get("reference_policy", "optional")).strip().lower()
+        asset_ids = list(subject.get("reference_asset_ids", []))
+        if policy in {"required", "strict"} and not asset_ids:
+            flags.append(f"missing_reference_for_required_subject:{subject_id}")
+        if not asset_ids:
             continue
-        valid_asset_ids.append(asset_id)
 
-    if policy == "strict" and not valid_asset_ids:
-        flags.append("strict_subject_without_reference")
-    if len(valid_asset_ids) > 3:
-        flags.append("too_many_references_on_frame")
+        valid_asset_ids: list[str] = []
+        for asset_id in asset_ids[:3]:
+            asset = asset_map.get(asset_id)
+            if not asset or not Path(asset["path"]).exists():
+                flags.append(f"reference_asset_file_missing:{subject_id}")
+                continue
+            valid_asset_ids.append(asset_id)
 
-    if not valid_asset_ids:
-        return [], flags
+        if policy == "strict" and not valid_asset_ids:
+            flags.append(f"strict_subject_without_reference:{subject_id}")
+        if len(valid_asset_ids) > 3:
+            flags.append(f"too_many_references_on_frame:{subject_id}")
+        if not valid_asset_ids:
+            continue
 
-    binding = ReferenceBinding(
-        subject_id=primary_subject_id,
-        reference_asset_ids=valid_asset_ids,
-        usage="identity_and_wardrobe",
-        strength="strict" if policy == "strict" else str(frame.get("subject_continuity_strength") or "medium"),
-    )
-    return [binding.__dict__], flags
+        binding = ReferenceBinding(
+            subject_id=subject_id,
+            reference_asset_ids=valid_asset_ids,
+            usage="identity_and_wardrobe",
+            strength="strict" if policy == "strict" else str(frame.get("subject_continuity_strength") or "medium"),
+        )
+        bindings.append(binding.__dict__)
+
+    return bindings, sorted(set(flags))
 
 
 def main() -> None:

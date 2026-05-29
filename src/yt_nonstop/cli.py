@@ -43,8 +43,9 @@ def _validate_command(args: argparse.Namespace) -> int:
 def _render_command(args: argparse.Namespace) -> int:
     project = load_project(Path(args.project_json).resolve())
     from_stage = args.from_stage or ("timeline" if project.get("render", {}).get("status") not in {"timeline_built", "completed"} else "render")
-    run_args = build_run_parser().parse_args(
+    run_args = build_parser().parse_args(
         [
+            "run",
             "--project-json",
             args.project_json,
             "--from",
@@ -82,14 +83,18 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     run_parser = subparsers.add_parser("run", help="Run pipeline stages through the package orchestrator.")
-    stage_choices = STAGE_SEQUENCE + ["generate_fastgen_prompts", "scene_context_pack"]
+    stage_choices = STAGE_SEQUENCE + ["generate_fastgen_prompts", "scene_context_pack", "production_report"]
     run_parser.add_argument("--project-json", required=True)
     run_parser.add_argument("--from", dest="from_stage", choices=stage_choices)
     run_parser.add_argument("--to", dest="to_stage", choices=stage_choices, default="render")
     run_parser.add_argument("--resume", action="store_true")
     run_parser.add_argument("--retry-failed-only", action="store_true")
     run_parser.add_argument("--dry-run", action="store_true")
+    run_parser.add_argument("--render-dry-run", action="store_true")
     run_parser.add_argument("--state-db", default="")
+    run_parser.add_argument("--profile", default="")
+    run_parser.add_argument("--real-generation", action="store_true")
+    run_parser.add_argument("--limit-frames", type=int, default=0)
     run_parser.add_argument("--auto-author-llm", dest="auto_author_llm", action="store_true")
     run_parser.add_argument("--no-auto-author-llm", dest="auto_author_llm", action="store_false")
     run_parser.add_argument("--require-filled-prompts", action="store_true")

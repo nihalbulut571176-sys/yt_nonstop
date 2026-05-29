@@ -31,11 +31,18 @@ def main() -> None:
     parser.add_argument("--compute-type", default="int8")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--output-dir", required=True)
+    parser.add_argument("--initial-prompt-file", default="")
     args = parser.parse_args()
 
     audio_path = Path(args.audio_path)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    initial_prompt = ""
+    if str(args.initial_prompt_file).strip():
+        prompt_path = Path(args.initial_prompt_file)
+        if prompt_path.exists():
+            initial_prompt = prompt_path.read_text(encoding="utf-8-sig").strip()
 
     model = WhisperModel(args.model, device=args.device, compute_type=args.compute_type)
     segments_iter, info = model.transcribe(
@@ -44,6 +51,7 @@ def main() -> None:
         vad_filter=True,
         beam_size=5,
         word_timestamps=False,
+        initial_prompt=initial_prompt or None,
     )
 
     segments = []

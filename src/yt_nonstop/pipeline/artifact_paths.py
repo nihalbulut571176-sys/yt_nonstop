@@ -49,6 +49,7 @@ V2_STAGE_SEQUENCE = [
 STAGE_ALIASES = {
     "generate_fastgen_prompts": "generate_fastgen_prompt_drafts",
     "scene_context_pack": "generate_fastgen_prompt_drafts",
+    "production_report": "render",
     "parse-srt": "parse_srt",
     "build-scenes": "build_scenes",
     "build-subscenes": "build_subscenes",

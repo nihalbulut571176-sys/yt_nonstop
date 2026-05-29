@@ -37,6 +37,7 @@ def main() -> None:
     edl = load_payload(project.get("render", {}).get("edit_decision_list_path"), {}).get("edl", [])
     render_report = load_payload(project.get("render", {}).get("render_report_json_path"), {})
     allocation = load_payload(project.get("planning", {}).get("visual_allocation_plan_path"), {})
+    run_manifest = load_payload(project.get("images", {}).get("run_manifest_path"), {})
     allocation_metrics = allocation.get("metrics", {}) if isinstance(allocation, dict) else {}
     visual_slots = allocation.get("visual_slots", []) if isinstance(allocation, dict) else []
 
@@ -50,6 +51,12 @@ def main() -> None:
     final_video = Path(project.get("render", {}).get("final_video_path", ""))
     render_status = project.get("render", {}).get("status", "unknown")
     render_ready = bool(render_status == "completed" and final_video.exists()) or bool(render_report.get("dry_run"))
+    planned_generative_frames = int(run_manifest.get("planned_generative_frames_count", 0) or 0)
+    completed_images = int(run_manifest.get("completed_count", 0) or 0)
+    skipped_existing_success_count = int(run_manifest.get("skipped_existing_success_count", 0) or 0)
+    limited_pilot = bool(run_manifest.get("limited_pilot"))
+    partial_pilot = bool(run_manifest.get("partial_pilot"))
+    pilot_generated_or_reused = completed_images + skipped_existing_success_count
 
     review_policy = summarize_review_blockers(project, selected, regen_tasks)
 
@@ -87,10 +94,18 @@ def main() -> None:
         "render_blocking_selected_count": review_policy["render_blocking_count"],
         "manual_review_render_allowed": review_policy["manual_review_render_allowed"],
         "regeneration_blocking": review_policy["regeneration_blocking"],
+        "limited_pilot": limited_pilot,
+        "partial_pilot": partial_pilot,
+        "pilot_limit_frames": int(run_manifest.get("limit_frames", 0) or 0),
+        "planned_generative_frames_count": planned_generative_frames,
+        "pilot_generated_or_reused_frames": pilot_generated_or_reused,
+        "pilot_skipped_due_to_limit_count": int(run_manifest.get("skipped_due_to_limit_count", 0) or 0),
     }
     status = "ready"
     if metrics["continuity_error_count"] or review_policy["render_blocking_count"] or review_policy["regeneration_blocking"]:
         status = "blocked"
+    elif partial_pilot:
+        status = "pilot_partial"
     elif manual_review or len(regen_tasks) or semantic_flagged or continuity_status == "warn":
         status = "needs_review"
     payload = {"project_id": project.get("project_id"), "created_at": iso_now(), "status": status, "metrics": metrics}
@@ -114,6 +129,19 @@ def main() -> None:
         lines.extend(["", "## Continuity warnings"])
         for warning in continuity.get("warnings", [])[:30]:
             lines.append(f"- {warning}")
+    if partial_pilot:
+        lines.extend(
+            [
+                "",
+                "## Pilot mode",
+                f"- limited_pilot: {str(limited_pilot).lower()}",
+                f"- partial_pilot: {str(partial_pilot).lower()}",
+                f"- planned_generative_frames_count: {planned_generative_frames}",
+                f"- pilot_generated_or_reused_frames: {pilot_generated_or_reused}",
+                f"- pilot_limit_frames: {metrics['pilot_limit_frames']}",
+                f"- pilot_skipped_due_to_limit_count: {metrics['pilot_skipped_due_to_limit_count']}",
+            ]
+        )
     md_path.parent.mkdir(parents=True, exist_ok=True)
     md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 

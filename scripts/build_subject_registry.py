@@ -24,6 +24,9 @@ def policy_for_subject(entity_id: str, profile: dict) -> str:
 
 
 def subject_type_for(entity_id: str, profile: dict) -> str:
+    declared_type = str(profile.get("entity_type") or "").strip().lower()
+    if declared_type in {"object", "location", "character"}:
+        return declared_type
     lowered = f"{entity_id} {profile.get('profile', '')}".lower()
     if "hand" in lowered:
         return "hands"
@@ -116,7 +119,11 @@ def main() -> None:
 
     profiles = []
     assets = []
-    for profile in continuity.get("character_profiles", []):
+    all_profiles = []
+    for key in ("character_profiles", "object_profiles", "location_profiles"):
+        all_profiles.extend(continuity.get(key, []))
+
+    for profile in all_profiles:
         subject_id = str(profile.get("entity_id", "")).strip()
         if not subject_id:
             continue
@@ -151,7 +158,7 @@ def main() -> None:
             "entities": [
                 {
                     "entity_id": profile["subject_id"],
-                    "entity_type": "character",
+                    "entity_type": profile["subject_type"],
                     "recurring": True,
                     "identity_lock": "required" if profile["reference_policy"] == "required" else "optional",
                     "reference_policy": profile["reference_policy"],

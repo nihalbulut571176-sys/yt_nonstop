@@ -1,0 +1,14 @@
+{
+  "profile_id": "full_creative_pilot",
+  "schema_version": "draft-1",
+  "description": "Operator-only creative FastGen pilot. LLM authoring is enabled, VLM stays off by default, and real FastGen still requires an explicit flag and capped batch.",
+  "pilot": {
+    "auto_author_llm": true,
+    "image_semantic_qc_mode": "disabled",
+    "allow_real_generation": true,
+    "render_dry_run": true,
+    "default_limit_frames": 15,
+    "default_image_retry_rounds": 1,
+    "strict_visual_calibration": false
+  }
+}

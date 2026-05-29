@@ -62,6 +62,7 @@ V2_STAGE_SEQUENCE = [
 STAGE_ALIASES = {
     "generate_fastgen_prompts": "generate_fastgen_prompt_drafts",
     "scene_context_pack": "generate_fastgen_prompt_drafts",
+    "production_report": "render",
     "parse-srt": "parse_srt",
     "build-scenes": "build_scenes",
     "build-subscenes": "build_subscenes",
@@ -543,6 +544,14 @@ def load_project(project_json: Path) -> dict[str, Any]:
     reports["generation_estimate_md_path"] = project_local_path(
         reports.get("generation_estimate_md_path"),
         project_root / "reports" / "generation_estimate.md",
+    )
+    reports["visual_calibration_report_json_path"] = project_local_path(
+        reports.get("visual_calibration_report_json_path"),
+        project_root / "reports" / "visual_calibration_report.json",
+    )
+    reports["visual_calibration_report_md_path"] = project_local_path(
+        reports.get("visual_calibration_report_md_path"),
+        project_root / "reports" / "visual_calibration_report.md",
     )
 
     project.setdefault("qc", {})

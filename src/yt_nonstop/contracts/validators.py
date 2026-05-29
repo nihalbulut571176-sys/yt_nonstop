@@ -1153,13 +1153,19 @@ def validate_normalized_images(project: dict[str, Any]) -> tuple[list[str], list
     if not normalized_dir:
         return errors, warnings
     scene_plan = load_json(scene_plan_path)
+    manifest_path = Path(project["images"].get("run_manifest_path", ""))
+    manifest = load_json(manifest_path) if manifest_path.exists() else {}
+    partial_pilot = bool(manifest.get("partial_pilot")) or str(project.get("images", {}).get("status", "")).strip().lower() in {"partial", "pilot_partial"}
     missing_assets = []
     for scene in scene_plan.get("scenes", []):
         asset_path = scene.get("render_asset_path") or scene.get("still_image_path")
         if not asset_path or not Path(asset_path).exists():
             missing_assets.append(scene.get("scene_id", "<unknown>"))
     if missing_assets:
-        errors.append(f"Missing normalized render assets for {len(missing_assets)} scenes")
+        if partial_pilot:
+            warnings.append(f"Partial pilot has no normalized render assets for {len(missing_assets)} scenes")
+        else:
+            errors.append(f"Missing normalized render assets for {len(missing_assets)} scenes")
     return errors, warnings
 
 
@@ -1174,10 +1180,14 @@ def validate_timeline(project: dict[str, Any]) -> tuple[list[str], list[str]]:
     timeline = load_json(timeline_path)
     edl_payload = load_json(edl_path)
     edl = edl_payload.get("edl", [])
+    partial_pilot = bool(edl_payload.get("partial_pilot")) or bool(project.get("render", {}).get("partial_pilot"))
     total_duration = sum(float(item.get("duration", 0) or 0) for item in timeline)
     audio_duration = float(project["inputs"].get("audio_duration_seconds") or 0)
     if audio_duration > 0 and abs(total_duration - audio_duration) > 0.2:
-        errors.append(f"Timeline duration differs from audio by {abs(total_duration - audio_duration):.3f}s")
+        if partial_pilot:
+            warnings.append(f"Partial pilot timeline duration differs from audio by {abs(total_duration - audio_duration):.3f}s")
+        else:
+            errors.append(f"Timeline duration differs from audio by {abs(total_duration - audio_duration):.3f}s")
     if "ffconcat version 1.0" not in ffconcat_path.read_text(encoding="utf-8"):
         errors.append("ffconcat header is missing")
     previous_end = None
@@ -1205,6 +1215,11 @@ def validate_timeline(project: dict[str, Any]) -> tuple[list[str], list[str]]:
 def validate_render(project: dict[str, Any]) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
+    render_report_path = Path(project["render"].get("render_report_json_path", ""))
+    if render_report_path.exists():
+        render_report = load_json(render_report_path)
+        if render_report.get("dry_run"):
+            return errors, warnings
     final_video_path = file_must_exist(project["render"].get("final_video_path"), "render.final_video_path", errors)
     if not final_video_path:
         return errors, warnings
