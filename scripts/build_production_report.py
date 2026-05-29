@@ -56,7 +56,7 @@ def main() -> None:
     skipped_existing_success_count = int(run_manifest.get("skipped_existing_success_count", 0) or 0)
     limited_pilot = bool(run_manifest.get("limited_pilot"))
     partial_pilot = bool(run_manifest.get("partial_pilot"))
-    pilot_generated_or_reused = completed_images + skipped_existing_success_count
+    pilot_generated_or_reused = completed_images if completed_images > 0 else skipped_existing_success_count
 
     review_policy = summarize_review_blockers(project, selected, regen_tasks)
 
@@ -149,6 +149,7 @@ def main() -> None:
     project["reports"]["production_report_md_path"] = str(md_path)
     project["reports"]["production_report_status"] = status
     project["current_stage"] = "done"
+    project["status"] = status
     if status == "ready" and project.get("render", {}).get("status") == "completed":
         project["status"] = "completed"
     save_project(project_json, project)

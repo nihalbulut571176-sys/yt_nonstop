@@ -151,6 +151,47 @@ def build_subset_prompt_export(
     return subset_path
 
 
+def load_existing_manifest_source_indices(run_manifest_path: Path) -> list[int]:
+    if not run_manifest_path.exists():
+        return []
+    payload = load_json(run_manifest_path)
+    indices = []
+    for item in payload.get("generated_images", []):
+        value = int(item.get("source_prompt_index", 0) or 0)
+        if value > 0:
+            indices.append(value)
+    return sorted(set(indices))
+
+
+def load_touched_state_source_indices(
+    *,
+    state_db_path: Path,
+    project_id: str,
+    prompt_file: Path,
+    stage: str = DEFAULT_STAGE,
+) -> list[int]:
+    meta = load_prompt_meta(prompt_file)
+    touched: list[int] = []
+    conn = connect_state_db(state_db_path)
+    try:
+        for source_index, meta_row in enumerate(meta, start=1):
+            frame_id = str(meta_row.get("frame_id") or "")
+            if not frame_id:
+                continue
+            state = get_frame_state(
+                conn,
+                project_id=project_id,
+                frame_id=frame_id,
+                visual_slot_id=str(meta_row.get("visual_slot_id") or ""),
+                stage=stage,
+            )
+            if state and state.status != "pending":
+                touched.append(source_index)
+    finally:
+        conn.close()
+    return sorted(set(touched))
+
+
 def existing_image_path(workdir: Path, scene_id: str, variant_count: int) -> Path | None:
     for variant_index in range(1, max(1, variant_count) + 1):
         candidate = workdir / "images" / f"{scene_id}_V{variant_index:02d}.png"
@@ -451,31 +492,53 @@ def main() -> None:
         if pending_like == 0 or selection["pending_candidates_count"] == 0:
             prompt_package = load_json(prompt_package_path)
             scene_plan = load_json(scene_plan_path)
-            _, scene_map = build_scene_lookup(prompt_file, scene_plan, prompt_package)
             job_id = build_generation_job_id(project["project_id"])
             created_at = iso_now()
+            run_manifest_path = Path(project["images"]["run_manifest_path"])
+            manifest_source_indices = sorted(
+                set(
+                    load_existing_manifest_source_indices(run_manifest_path)
+                    + load_touched_state_source_indices(
+                        state_db_path=state_db_path,
+                        project_id=project["project_id"],
+                        prompt_file=prompt_file,
+                    )
+                    + selected_source_indices
+                )
+            )
+            manifest_prompt_file = build_subset_prompt_export(
+                prompt_file=prompt_file,
+                selected_source_indices=manifest_source_indices,
+            ) if manifest_source_indices else prompt_file
+            _, scene_map = build_scene_lookup(manifest_prompt_file, scene_plan, prompt_package)
             enriched_manifest = build_enriched_manifest_from_state(
                 state_db_path=state_db_path,
                 project=project,
                 project_id=project["project_id"],
                 job_id=job_id,
                 created_at=created_at,
-                prompt_file=prompt_file,
+                prompt_file=manifest_prompt_file,
                 workdir=workdir,
                 prompt_profile=prompt_profile,
                 scene_plan=scene_plan,
                 scene_map=scene_map,
                 failed_lookup={},
             )
-            run_manifest_path = Path(project["images"]["run_manifest_path"])
+            manifest_touched_count = len(manifest_source_indices)
+            deferred_due_limit_count = int(selection["skipped_due_to_limit_count"] or 0)
+            if limited_pilot and deferred_due_limit_count == 0:
+                deferred_due_limit_count = max(0, int(selection["planned_generative_frames_count"] or 0) - manifest_touched_count)
+            effective_manifest_limit = int(effective_limit or 0)
+            if args.retry_failed_only and not args.limit_frames and manifest_touched_count > 0:
+                effective_manifest_limit = manifest_touched_count
             enriched_manifest["limited_pilot"] = limited_pilot
             enriched_manifest["partial_pilot"] = bool(limited_pilot and selection["planned_generative_frames_count"] > enriched_manifest["completed_count"])
             enriched_manifest["real_generation"] = bool(args.real_generation)
             enriched_manifest["profile"] = runtime_profile.name if runtime_profile else active_profile_name(project, args.profile)
-            enriched_manifest["limit_frames"] = int(effective_limit or 0)
+            enriched_manifest["limit_frames"] = effective_manifest_limit
             enriched_manifest["generated_count"] = int(enriched_manifest["completed_count"])
             enriched_manifest["skipped_existing_success_count"] = int(selection["skipped_existing_success_count"])
-            enriched_manifest["skipped_due_to_limit_count"] = int(selection["skipped_due_to_limit_count"])
+            enriched_manifest["skipped_due_to_limit_count"] = deferred_due_limit_count
             enriched_manifest["non_generative_slots_count"] = int(selection["non_generative_slots_count"])
             enriched_manifest["provider"] = "fastgen_openai_v4"
             enriched_manifest["started_at"] = started_at
@@ -605,7 +668,22 @@ def main() -> None:
     run_summary = load_json(run_summary_path) if run_summary_path.exists() else {"done": 0, "skipped": 0, "failed": 0, "filtered": 0}
     prompt_package = load_json(prompt_package_path)
     scene_plan = load_json(scene_plan_path)
-    _, scene_map = build_scene_lookup(execution_prompt_file, scene_plan, prompt_package)
+    manifest_source_indices = sorted(
+        set(
+            load_existing_manifest_source_indices(run_manifest_path)
+            + load_touched_state_source_indices(
+                state_db_path=state_db_path,
+                project_id=project["project_id"],
+                prompt_file=prompt_file,
+            )
+            + selected_source_indices
+        )
+    )
+    manifest_prompt_file = build_subset_prompt_export(
+        prompt_file=prompt_file,
+        selected_source_indices=manifest_source_indices,
+    ) if manifest_source_indices else execution_prompt_file
+    _, scene_map = build_scene_lookup(manifest_prompt_file, scene_plan, prompt_package)
     failed_lookup = build_failed_lookup(last_failed_records)
 
     enriched_manifest = build_enriched_manifest_from_state(
@@ -614,23 +692,30 @@ def main() -> None:
         project_id=project["project_id"],
         job_id=job_id,
         created_at=created_at,
-        prompt_file=execution_prompt_file,
+        prompt_file=manifest_prompt_file,
         workdir=workdir,
         prompt_profile=prompt_profile,
         scene_plan=scene_plan,
         scene_map=scene_map,
         failed_lookup=failed_lookup,
     )
+    manifest_touched_count = len(manifest_source_indices)
+    deferred_due_limit_count = int(selection["skipped_due_to_limit_count"] or 0)
+    if limited_pilot and deferred_due_limit_count == 0:
+        deferred_due_limit_count = max(0, int(selection["planned_generative_frames_count"] or 0) - manifest_touched_count)
+    effective_manifest_limit = int(effective_limit or 0)
+    if args.retry_failed_only and not args.limit_frames and manifest_touched_count > 0:
+        effective_manifest_limit = manifest_touched_count
     enriched_manifest["skipped_count"] = int(run_summary.get("skipped", 0) or 0)
     enriched_manifest["filtered_count"] = int(run_summary.get("filtered", 0) or 0)
     enriched_manifest["retry_rounds_used"] = retry_rounds
     enriched_manifest["limited_pilot"] = limited_pilot
     enriched_manifest["real_generation"] = bool(args.real_generation)
     enriched_manifest["profile"] = runtime_profile.name if runtime_profile else active_profile_name(project, args.profile)
-    enriched_manifest["limit_frames"] = int(effective_limit or 0)
+    enriched_manifest["limit_frames"] = effective_manifest_limit
     enriched_manifest["generated_count"] = int(enriched_manifest["completed_count"])
     enriched_manifest["skipped_existing_success_count"] = int(selection["skipped_existing_success_count"])
-    enriched_manifest["skipped_due_to_limit_count"] = int(selection["skipped_due_to_limit_count"])
+    enriched_manifest["skipped_due_to_limit_count"] = deferred_due_limit_count
     enriched_manifest["non_generative_slots_count"] = int(selection["non_generative_slots_count"])
     enriched_manifest["provider"] = "fastgen_openai_v4"
     enriched_manifest["started_at"] = started_at

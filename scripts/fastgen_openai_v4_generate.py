@@ -12,7 +12,22 @@ from collections import deque
 from pathlib import Path
 from typing import Any
 
-from llm_pipeline_contracts import classify_generation_error, iso_now
+from llm_pipeline_contracts import classify_generation_error, compute_prompt_hash, iso_now
+
+import sys
+
+SRC = Path(__file__).resolve().parents[1] / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
+
+from pipeline_state import (  # noqa: E402
+    DEFAULT_STAGE,
+    connect as connect_state_db,
+    get_frame_state,
+    mark_frame_failed as mark_state_failed,
+    mark_frame_running,
+    mark_frame_success as mark_state_success,
+)
 
 
 ROOT = "https://googler.fast-gen.ai"
@@ -22,6 +37,8 @@ ENV_PATH = REPO_ROOT / ".env"
 DEFAULT_PROMPTS = REPO_ROOT / "deliverables" / "sentence_visual_prompts_generator_ready.md"
 DEFAULT_REFS = REPO_ROOT / "deliverables" / "fastgen_ref_paths.json"
 DEFAULT_WORKDIR = REPO_ROOT / "fastgen_run"
+
+
 def stable_hash(payload: object) -> str:
     data = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return __import__("hashlib").sha256(data.encode("utf-8")).hexdigest()
@@ -233,6 +250,9 @@ def mark_failed(
     run_summary: dict[str, int],
     live_log_path: Path,
     live_jsonl_path: Path,
+    state_conn=None,
+    project_id: str = "",
+    state_stage: str = DEFAULT_STAGE,
 ) -> None:
     failure = {
         "index": item["index"],
@@ -244,6 +264,17 @@ def mark_failed(
     }
     append_jsonl(failed_path, failure)
     run_summary["failed"] += 1
+    if state_conn is not None and project_id and item.get("frame_id"):
+        mark_state_failed(
+            state_conn,
+            project_id=project_id,
+            frame_id=str(item["frame_id"]),
+            visual_slot_id=str(item.get("visual_slot_id") or ""),
+            stage=state_stage,
+            prompt_hash=str(item.get("prompt_hash") or ""),
+            provider_job_id=str(item.get("operation_id") or ""),
+            error_message=str(exc),
+        )
     append_live_log(
         live_log_path,
         live_jsonl_path,
@@ -269,6 +300,9 @@ def save_success(
     run_summary: dict[str, int],
     live_log_path: Path,
     live_jsonl_path: Path,
+    state_conn=None,
+    project_id: str = "",
+    state_stage: str = DEFAULT_STAGE,
 ) -> None:
     result = status["result"]
     if not isinstance(result, list) or not result:
@@ -291,6 +325,17 @@ def save_success(
     meta_path.write_text(json.dumps(meta_record, ensure_ascii=False, indent=2), encoding="utf-8")
     append_jsonl(success_log_path, meta_record)
     run_summary["done"] += 1
+    if state_conn is not None and project_id and item.get("frame_id"):
+        mark_state_success(
+            state_conn,
+            project_id=project_id,
+            frame_id=str(item["frame_id"]),
+            visual_slot_id=str(item.get("visual_slot_id") or ""),
+            stage=state_stage,
+            prompt_hash=str(item.get("prompt_hash") or ""),
+            image_path=str(target_path),
+            provider_job_id=str(item.get("operation_id") or ""),
+        )
     append_live_log(
         live_log_path,
         live_jsonl_path,
@@ -323,6 +368,12 @@ def main() -> None:
     parser.add_argument("--images-dir", default="")
     parser.add_argument("--stop-on-error", action="store_true")
     parser.add_argument("--max-consecutive-failures", type=int, default=5)
+    parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--retry-failed-only", action="store_true")
+    parser.add_argument("--frame-id", action="append", default=[])
+    parser.add_argument("--state-db", default="")
+    parser.add_argument("--project-id", default="")
+    parser.add_argument("--state-stage", default=DEFAULT_STAGE)
     args = parser.parse_args()
 
     prompts_path = Path(args.prompts)
@@ -339,15 +390,18 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     meta_dir.mkdir(parents=True, exist_ok=True)
 
-    api_key = load_env_key()
     prompt_items = parse_prompt_blocks(prompts_path)
     validate_prompt_export(prompts_path, prompt_items)
     export_meta = load_export_meta(prompts_path)
     end = args.end if args.end > 0 else len(prompt_items)
     prompt_items = [item for item in prompt_items if args.start <= item["index"] <= end]
-
-    ref_map = load_reference_map(refs_path)
-    ref_cache = load_or_create_ref_cache(api_key, ref_map, workdir / "ref_cache.json")
+    prompt_profile = {
+        "provider": "fastgen_openai_v4",
+        "size": args.size,
+        "aspect_ratio": args.aspect_ratio,
+    }
+    requested_frame_ids = {str(item).strip() for item in args.frame_id if str(item).strip()}
+    state_conn = connect_state_db(Path(args.state_db)) if args.state_db and args.project_id else None
 
     package_items = {item["scene_id"]: item for item in export_meta.get("package_items", []) if item.get("scene_id")}
     manifest = []
@@ -355,6 +409,8 @@ def main() -> None:
         prompt_meta = export_meta.get("package_items", [])
         prompt_item_meta = prompt_meta[item["index"] - 1] if item["index"] - 1 < len(prompt_meta) else {}
         scene_id = prompt_item_meta.get("scene_id", f"scene_{item['index']:04d}")
+        frame_id = str(prompt_item_meta.get("frame_id") or "")
+        visual_slot_id = str(prompt_item_meta.get("visual_slot_id") or "")
         variant_count = max(1, int(prompt_item_meta.get("variant_count", 1) or 1))
         for variant_index in range(1, variant_count + 1):
             output_index = args.index_offset + len(manifest) + 1
@@ -362,6 +418,8 @@ def main() -> None:
                 {
                     "index": output_index,
                     "scene_id": scene_id,
+                    "frame_id": frame_id,
+                    "visual_slot_id": visual_slot_id,
                     "variant_index": variant_index,
                     "variant_label": f"V{variant_index:02d}",
                     "source_prompt_index": item["index"],
@@ -370,6 +428,7 @@ def main() -> None:
                     "variant_count": variant_count,
                     "refs": item["refs"],
                     "prompt": item["prompt"],
+                    "prompt_hash": compute_prompt_hash(prompt=item["prompt"], refs=item["refs"], settings=prompt_profile),
                     "output": f"{scene_id}_V{variant_index:02d}.png",
                     "selection_required": bool(prompt_item_meta.get("key_beat")) or variant_count > 1,
                 }
@@ -386,63 +445,190 @@ def main() -> None:
         },
     )
 
-    run_summary = {"done": 0, "skipped": 0, "failed": 0}
+    run_summary = {"done": 0, "skipped": 0, "failed": 0, "filtered": 0}
     consecutive_failures = 0
     recent_failures: list[dict[str, Any]] = []
     pending = deque()
-    for item in manifest:
-        target_path = out_dir / item["output"]
-        if target_path.exists():
-            print(f"skip {item['index']:03d}")
-            run_summary["skipped"] += 1
-            append_live_log(
-                live_log_path,
-                live_jsonl_path,
-                {
-                    "timestamp": iso_now(),
-                    "level": "INFO",
-                    "event": f"skip_{item['index']:03d}",
-                    "details": str(target_path),
-                    "index": item["index"],
-                },
-            )
-            continue
-        pending.append(item)
+    try:
+        for item in manifest:
+            if requested_frame_ids and item.get("frame_id") not in requested_frame_ids:
+                run_summary["filtered"] += 1
+                continue
 
-    active: dict[str, dict[str, Any]] = {}
-
-    while pending or active:
-        while pending and len(active) < max(1, args.concurrency):
-            item = pending.popleft()
             target_path = out_dir / item["output"]
-            try:
-                ref_hashes = [ref_cache[ref_id]["file_hash"] for ref_id in item["refs"]]
-                created = create_operation(api_key, item["prompt"], ref_hashes, args.size, args.aspect_ratio)
-                op_id = created["operation_id"]
-                item["operation_id"] = op_id
-                item["target_path"] = str(target_path)
-                item["poll_count"] = 0
-                active[op_id] = item
+            state = None
+            if state_conn is not None and item.get("frame_id"):
+                state = get_frame_state(
+                    state_conn,
+                    project_id=args.project_id,
+                    frame_id=str(item["frame_id"]),
+                    visual_slot_id=str(item.get("visual_slot_id") or ""),
+                    stage=args.state_stage,
+                )
+
+            if args.retry_failed_only and not (state and state.status in {"failed", "missing"}):
+                run_summary["filtered"] += 1
+                continue
+
+            state_success = bool(state and state.status == "success" and state.image_path and Path(state.image_path).exists())
+            if target_path.exists() or (args.resume and state_success):
+                image_path = str(target_path if target_path.exists() else Path(state.image_path))
+                print(f"skip {item['index']:03d}")
+                run_summary["skipped"] += 1
+                if state_conn is not None and args.project_id and item.get("frame_id"):
+                    mark_state_success(
+                        state_conn,
+                        project_id=args.project_id,
+                        frame_id=str(item["frame_id"]),
+                        visual_slot_id=str(item.get("visual_slot_id") or ""),
+                        stage=args.state_stage,
+                        prompt_hash=str(item.get("prompt_hash") or ""),
+                        image_path=image_path,
+                        provider_job_id=str(state.provider_job_id if state else ""),
+                    )
                 append_live_log(
                     live_log_path,
                     live_jsonl_path,
                     {
                         "timestamp": iso_now(),
                         "level": "INFO",
-                        "event": f"queued_{item['index']:03d}",
-                        "details": op_id,
+                        "event": f"skip_{item['index']:03d}",
+                        "details": image_path,
                         "index": item["index"],
-                        "refs": item["refs"],
                     },
                 )
-                print(f"queued {item['index']:03d} -> {op_id}")
-            except Exception as exc:
-                mark_failed(item, exc, failed_path, run_summary, live_log_path, live_jsonl_path)
-                if not is_policy_error(exc):
-                    consecutive_failures += 1
-                    recent_failures.append({"index": item["index"], "stage": "queue", "error": str(exc)})
-                    recent_failures = recent_failures[-args.max_consecutive_failures :]
-                    if consecutive_failures >= args.max_consecutive_failures:
+                continue
+
+            pending.append(item)
+
+        ref_cache: dict[str, dict[str, str]] = {}
+        api_key = ""
+        if pending:
+            api_key = load_env_key()
+            ref_map = load_reference_map(refs_path)
+            ref_cache = load_or_create_ref_cache(api_key, ref_map, workdir / "ref_cache.json")
+
+        active: dict[str, dict[str, Any]] = {}
+
+        while pending or active:
+            while pending and len(active) < max(1, args.concurrency):
+                item = pending.popleft()
+                target_path = out_dir / item["output"]
+                try:
+                    ref_hashes = [ref_cache[ref_id]["file_hash"] for ref_id in item["refs"]]
+                    created = create_operation(api_key, item["prompt"], ref_hashes, args.size, args.aspect_ratio)
+                    op_id = created["operation_id"]
+                    item["operation_id"] = op_id
+                    item["target_path"] = str(target_path)
+                    item["poll_count"] = 0
+                    if state_conn is not None and args.project_id and item.get("frame_id"):
+                        mark_frame_running(
+                            state_conn,
+                            project_id=args.project_id,
+                            frame_id=str(item["frame_id"]),
+                            visual_slot_id=str(item.get("visual_slot_id") or ""),
+                            stage=args.state_stage,
+                            prompt_hash=str(item.get("prompt_hash") or ""),
+                            provider_job_id=op_id,
+                        )
+                    active[op_id] = item
+                    append_live_log(
+                        live_log_path,
+                        live_jsonl_path,
+                        {
+                            "timestamp": iso_now(),
+                            "level": "INFO",
+                            "event": f"queued_{item['index']:03d}",
+                            "details": op_id,
+                            "index": item["index"],
+                            "refs": item["refs"],
+                        },
+                    )
+                    print(f"queued {item['index']:03d} -> {op_id}")
+                except Exception as exc:
+                    mark_failed(
+                        item,
+                        exc,
+                        failed_path,
+                        run_summary,
+                        live_log_path,
+                        live_jsonl_path,
+                        state_conn=state_conn,
+                        project_id=args.project_id,
+                        state_stage=args.state_stage,
+                    )
+                    if not is_policy_error(exc):
+                        consecutive_failures += 1
+                        recent_failures.append({"index": item["index"], "stage": "queue", "error": str(exc)})
+                        recent_failures = recent_failures[-args.max_consecutive_failures :]
+                        if consecutive_failures >= args.max_consecutive_failures:
+                            fatal_payload = {
+                                "timestamp": iso_now(),
+                                "reason": "max_consecutive_failures_reached",
+                                "threshold": args.max_consecutive_failures,
+                                "recent_failures": recent_failures,
+                            }
+                            fatal_report_path.write_text(json.dumps(fatal_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+                            append_live_log(
+                                live_log_path,
+                                live_jsonl_path,
+                                {
+                                    "timestamp": iso_now(),
+                                    "level": "FATAL",
+                                    "event": "run_aborted_consecutive_failures",
+                                    "details": json.dumps(fatal_payload, ensure_ascii=False),
+                                },
+                            )
+                            raise RuntimeError(f"Aborted after {args.max_consecutive_failures} consecutive failures. See {fatal_report_path}")
+                    if args.stop_on_error:
+                        raise
+
+            if not active:
+                continue
+
+            finished_ops: list[str] = []
+            for op_id, item in list(active.items()):
+                try:
+                    status = get_operation_status(api_key, op_id)
+                    item["poll_count"] += 1
+                    if status["status"] == "success":
+                        save_success(
+                            item=item,
+                            status=status,
+                            target_path=Path(item["target_path"]),
+                            meta_dir=meta_dir,
+                            success_log_path=success_log_path,
+                            run_summary=run_summary,
+                            live_log_path=live_log_path,
+                            live_jsonl_path=live_jsonl_path,
+                            state_conn=state_conn,
+                            project_id=args.project_id,
+                            state_stage=args.state_stage,
+                        )
+                        consecutive_failures = 0
+                        finished_ops.append(op_id)
+                    elif status["status"] == "error":
+                        raise RuntimeError(json.dumps(status, ensure_ascii=False))
+                    elif item["poll_count"] >= args.max_polls:
+                        raise TimeoutError(f"Operation polling timed out: {op_id}")
+                except Exception as exc:
+                    mark_failed(
+                        item,
+                        exc,
+                        failed_path,
+                        run_summary,
+                        live_log_path,
+                        live_jsonl_path,
+                        state_conn=state_conn,
+                        project_id=args.project_id,
+                        state_stage=args.state_stage,
+                    )
+                    if not is_policy_error(exc):
+                        consecutive_failures += 1
+                        recent_failures.append({"index": item["index"], "stage": "poll", "error": str(exc)})
+                        recent_failures = recent_failures[-args.max_consecutive_failures :]
+                    finished_ops.append(op_id)
+                    if not is_policy_error(exc) and consecutive_failures >= args.max_consecutive_failures:
                         fatal_payload = {
                             "timestamp": iso_now(),
                             "reason": "max_consecutive_failures_reached",
@@ -461,68 +647,17 @@ def main() -> None:
                             },
                         )
                         raise RuntimeError(f"Aborted after {args.max_consecutive_failures} consecutive failures. See {fatal_report_path}")
-                if args.stop_on_error:
-                    raise
+                    if args.stop_on_error:
+                        raise
 
-        if not active:
-            continue
+            for op_id in finished_ops:
+                active.pop(op_id, None)
 
-        finished_ops: list[str] = []
-        for op_id, item in list(active.items()):
-            try:
-                status = get_operation_status(api_key, op_id)
-                item["poll_count"] += 1
-                if status["status"] == "success":
-                    save_success(
-                        item=item,
-                        status=status,
-                        target_path=Path(item["target_path"]),
-                        meta_dir=meta_dir,
-                        success_log_path=success_log_path,
-                        run_summary=run_summary,
-                        live_log_path=live_log_path,
-                        live_jsonl_path=live_jsonl_path,
-                    )
-                    consecutive_failures = 0
-                    finished_ops.append(op_id)
-                elif status["status"] == "error":
-                    raise RuntimeError(json.dumps(status, ensure_ascii=False))
-                elif item["poll_count"] >= args.max_polls:
-                    raise TimeoutError(f"Operation polling timed out: {op_id}")
-            except Exception as exc:
-                mark_failed(item, exc, failed_path, run_summary, live_log_path, live_jsonl_path)
-                if not is_policy_error(exc):
-                    consecutive_failures += 1
-                    recent_failures.append({"index": item["index"], "stage": "poll", "error": str(exc)})
-                    recent_failures = recent_failures[-args.max_consecutive_failures :]
-                finished_ops.append(op_id)
-                if not is_policy_error(exc) and consecutive_failures >= args.max_consecutive_failures:
-                    fatal_payload = {
-                        "timestamp": iso_now(),
-                        "reason": "max_consecutive_failures_reached",
-                        "threshold": args.max_consecutive_failures,
-                        "recent_failures": recent_failures,
-                    }
-                    fatal_report_path.write_text(json.dumps(fatal_payload, ensure_ascii=False, indent=2), encoding="utf-8")
-                    append_live_log(
-                        live_log_path,
-                        live_jsonl_path,
-                        {
-                            "timestamp": iso_now(),
-                            "level": "FATAL",
-                            "event": "run_aborted_consecutive_failures",
-                            "details": json.dumps(fatal_payload, ensure_ascii=False),
-                        },
-                    )
-                    raise RuntimeError(f"Aborted after {args.max_consecutive_failures} consecutive failures. See {fatal_report_path}")
-                if args.stop_on_error:
-                    raise
-
-        for op_id in finished_ops:
-            active.pop(op_id, None)
-
-        if active:
-            time.sleep(args.poll_seconds)
+            if active:
+                time.sleep(args.poll_seconds)
+    finally:
+        if state_conn is not None:
+            state_conn.close()
 
     generation_report_path = workdir / "generation_report.md"
     generation_report_lines = [
@@ -535,6 +670,7 @@ def main() -> None:
         f"Generated: {run_summary['done']}",
         f"Skipped: {run_summary['skipped']}",
         f"Failed: {run_summary['failed']}",
+        f"Filtered: {run_summary['filtered']}",
         f"Realtime log: {live_log_path}",
         f"Realtime JSONL: {live_jsonl_path}",
         f"Max consecutive failures: {args.max_consecutive_failures}",

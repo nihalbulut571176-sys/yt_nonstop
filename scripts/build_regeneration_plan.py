@@ -43,6 +43,17 @@ def action_for_selection(selection: dict[str, Any], max_attempts: int) -> tuple[
     return "regenerate_variant", reasons
 
 
+def semantic_relaxed_for_review(project: dict[str, Any], selection: dict[str, Any]) -> bool:
+    qc = project.get("qc", {})
+    if normalize_text_lower(qc.get("image_semantic_qc_mode")) != "disabled":
+        return False
+    if not bool(qc.get("allow_manual_review_without_vlm", False)):
+        return False
+    selection_status = normalize_text_lower(selection.get("selection_status"))
+    human_review_status = normalize_text_lower(selection.get("human_review_status"))
+    return selection_status == "manual_review" or human_review_status == "approve"
+
+
 def prompt_rewrite_hint(selection: dict[str, Any]) -> str:
     must_show = "; ".join(str(item) for item in selection.get("must_show", []) if str(item).strip())
     claim = str(selection.get("visualized_claim", "")).strip()
@@ -81,6 +92,19 @@ def main() -> None:
     for selection in selected_rows:
         scene_id = str(selection.get("scene_id", "")).strip()
         action, reasons = action_for_selection(selection, max_attempts if allow_regeneration else 0)
+        if semantic_relaxed_for_review(project, selection):
+            semantic_only_reasons = {
+                "manual_review_selected",
+                "coverage_not_pass",
+                "must_show_not_grounded_in_prompt",
+                "missing_visualized_claim",
+                "missing_must_show",
+                "abstract_must_show",
+                "abstract_visualized_claim",
+            }
+            if reasons and set(reasons).issubset(semantic_only_reasons):
+                action = "accept"
+                reasons = []
         if action == "accept":
             accepted += 1
             continue

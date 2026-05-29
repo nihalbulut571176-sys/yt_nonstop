@@ -88,6 +88,39 @@ def test_timeline_blocks_manual_review_when_policy_disallows():
         assert "not timeline-eligible" in (result.stderr or result.stdout)
 
 
+def test_timeline_allows_manual_review_when_semantic_qc_disabled_and_policy_allows():
+    with tempfile.TemporaryDirectory() as tmp:
+        project_json = build_project_fixture(Path(tmp), allow_manual_review_without_vlm=True)
+        project_root = project_json.parent
+        project = json.loads(project_json.read_text(encoding="utf-8"))
+        project["qc"]["image_semantic_qc_mode"] = "disabled"
+        write_json(project_json, project)
+        write_json(
+            project_root / "qc" / "selected_images_manifest.json",
+            {
+                "selected_images": [
+                    {
+                        "scene_id": "scene_0001",
+                        "frame_id": "F0001",
+                        "beat_id": "beat_0001",
+                        "voice_text": "voice",
+                        "visualized_claim": "claim",
+                        "selection_status": "manual_review",
+                        "coverage_status": "fail",
+                        "selected_image_path": str(project_root / "renders" / "frame.png"),
+                    }
+                ]
+            },
+        )
+        subprocess.run(
+            [sys.executable, str(SCRIPTS / "build_project_slideshow_timeline.py"), "--project-json", str(project_json)],
+            check=True,
+            timeout=30,
+            env=cli_env(),
+        )
+        assert (project_root / "renders" / "edit_decision_list.json").exists()
+
+
 def test_production_report_and_dashboard_block_regeneration_tasks():
     with tempfile.TemporaryDirectory() as tmp:
         project_json = build_project_fixture(Path(tmp), allow_manual_review_without_vlm=True)
@@ -106,6 +139,46 @@ def test_production_report_and_dashboard_block_regeneration_tasks():
         assert report["status"] == "blocked"
         dashboard = build_project_status(project_json)
         assert any("regeneration/review task" in item for item in dashboard.blocked)
+
+
+def test_regeneration_plan_skips_semantic_only_manual_review_when_disabled_and_approved():
+    with tempfile.TemporaryDirectory() as tmp:
+        project_json = build_project_fixture(Path(tmp), allow_manual_review_without_vlm=True)
+        project_root = project_json.parent
+        project = json.loads(project_json.read_text(encoding="utf-8"))
+        project["workflow"]["profile"] = "technical_fastgen_pilot"
+        project["qc"]["image_semantic_qc_mode"] = "disabled"
+        write_json(project_json, project)
+        write_json(
+            project_root / "qc" / "selected_images_manifest.json",
+            {
+                "selected_images": [
+                    {
+                        "scene_id": "scene_0001",
+                        "frame_id": "F0001",
+                        "beat_id": "beat_0001",
+                        "voice_text": "voice",
+                        "visualized_claim": "claim",
+                        "selection_status": "use",
+                        "selection_status_before_human_review": "manual_review",
+                        "human_review_status": "approve",
+                        "coverage_status": "fail",
+                        "semantic_flags": ["must_show_not_grounded_in_prompt"],
+                        "selected_image_path": str(project_root / "renders" / "frame.png"),
+                    }
+                ]
+            },
+        )
+        subprocess.run(
+            [sys.executable, str(SCRIPTS / "build_regeneration_plan.py"), "--project-json", str(project_json)],
+            check=True,
+            timeout=30,
+            env=cli_env(),
+        )
+        plan = json.loads((project_root / "qc" / "regeneration_plan.json").read_text(encoding="utf-8"))
+        assert plan["accepted_count"] == 1
+        assert plan["needs_action_count"] == 0
+        assert plan["tasks"] == []
 
 
 def test_cli_review_runs_apply_and_reports_blockers():

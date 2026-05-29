@@ -22,6 +22,10 @@ def allow_manual_review_for_render(project: dict[str, Any]) -> bool:
     return bool(project.get("qc", {}).get("allow_manual_review_without_vlm", False))
 
 
+def semantic_qc_disabled(project: dict[str, Any]) -> bool:
+    return clean(project.get("qc", {}).get("image_semantic_qc_mode")).lower() == "disabled"
+
+
 def selection_status_for_review(status: str, previous_status: str) -> str:
     if status == "approve":
         return "use" if previous_status in RENDER_BLOCKING_SELECTION_STATUSES or previous_status == "manual_review" else (previous_status or "use")
@@ -49,6 +53,9 @@ def selection_is_render_blocking(project: dict[str, Any], row: dict[str, Any]) -
     if selection_status == "manual_review" and not allow_manual_review_for_render(project):
         return True
     if row.get("coverage_status") != "pass":
+        if allow_manual_review_for_render(project) and semantic_qc_disabled(project):
+            if selection_status == "manual_review" or human_review_status == "approve":
+                return False
         return True
     return False
 

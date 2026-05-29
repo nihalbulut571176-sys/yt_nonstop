@@ -977,6 +977,8 @@ def validate_image_qc(project: dict[str, Any]) -> tuple[list[str], list[str]]:
     selected_payload = load_json(selected_path)
     qc_rows = qc_payload.get("images", [])
     selected_rows = selected_payload.get("selected_images", [])
+    semantic_qc_mode = str(project.get("qc", {}).get("image_semantic_qc_mode") or "").strip().lower()
+    allow_manual_review_without_vlm = bool(project.get("qc", {}).get("allow_manual_review_without_vlm", False))
     if not isinstance(qc_rows, list) or not qc_rows:
         errors.append("image_qc_report has no image rows")
         return errors, warnings
@@ -996,12 +998,26 @@ def validate_image_qc(project: dict[str, Any]) -> tuple[list[str], list[str]]:
             errors.append(f"{scene_id} selected image missing voice_text")
         if not str(row.get("visualized_claim", "")).strip():
             errors.append(f"{scene_id} selected image missing visualized_claim")
-        if str(row.get("selection_status", "")).strip() not in {"use", "manual_review"}:
+        selection_status = str(row.get("selection_status", "")).strip()
+        if selection_status not in {"use", "manual_review"}:
             errors.append(f"{scene_id} selected image has invalid selection_status `{row.get('selection_status')}`")
+        semantic_relaxed = (
+            semantic_qc_mode == "disabled"
+            and allow_manual_review_without_vlm
+            and selection_status == "manual_review"
+        )
         if row.get("coverage_status") != "pass":
-            errors.append(f"{scene_id} selected image failed semantic coverage")
+            message = f"{scene_id} selected image failed semantic coverage"
+            if semantic_relaxed:
+                warnings.append(message)
+            else:
+                errors.append(message)
         if row.get("semantic_flags"):
-            errors.append(f"{scene_id} selected image has semantic flags: {', '.join(row.get('semantic_flags', []))}")
+            message = f"{scene_id} selected image has semantic flags: {', '.join(row.get('semantic_flags', []))}"
+            if semantic_relaxed:
+                warnings.append(message)
+            else:
+                errors.append(message)
         image_path = row.get("selected_image_path") or row.get("image_path")
         if not image_path or not Path(image_path).exists():
             errors.append(f"{scene_id} selected image file is missing")

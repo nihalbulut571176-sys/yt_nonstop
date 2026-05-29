@@ -138,6 +138,71 @@ class PipelineStateTests(unittest.TestCase):
             self.assertEqual(manifest["failed_count"], 0)
             self.assertEqual(manifest["missing_count"], 0)
 
+    def test_generator_accepts_pilot_resume_args_and_skips_without_api_key(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            project_json = self.build_generation_fixture(Path(tmp))
+            project_root = project_json.parent
+            images_dir = project_root / "images" / "run" / "images"
+            images_dir.mkdir(parents=True, exist_ok=True)
+            prompt_settings = {"provider": "fastgen_openai_v4", "size": "1024x1024", "aspect_ratio": "16:9"}
+            image_path = images_dir / "scene_0001_V01.png"
+            image_path.write_bytes(TINY_PNG)
+            state_db = resolve_state_db_path(project_json, json.loads(project_json.read_text(encoding="utf-8")))
+            conn = connect_state_db(state_db)
+            try:
+                mark_frame_success(
+                    conn,
+                    project_id="state_resume_smoke",
+                    frame_id="F0001",
+                    visual_slot_id="VS0001",
+                    prompt_hash=compute_prompt_hash(
+                        prompt="Premium documentary evidence image one.",
+                        refs=[],
+                        settings=prompt_settings,
+                    ),
+                    image_path=str(image_path),
+                )
+            finally:
+                conn.close()
+
+            env = os.environ.copy()
+            env.pop("FAST_GEN_API_KEY", None)
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS / "fastgen_openai_v4_generate.py"),
+                    "--prompts",
+                    str(project_root / "exports" / "fastgen_prompts.md"),
+                    "--refs",
+                    str(project_root / "prompts" / "fastgen_ref_paths.json"),
+                    "--workdir",
+                    str(project_root / "images" / "run"),
+                    "--size",
+                    "1024x1024",
+                    "--aspect-ratio",
+                    "16:9",
+                    "--project-id",
+                    "state_resume_smoke",
+                    "--state-db",
+                    str(state_db),
+                    "--state-stage",
+                    "generate_images",
+                    "--resume",
+                    "--frame-id",
+                    "F0001",
+                ],
+                check=True,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            payload = json.loads(result.stdout.strip().splitlines()[-1])
+            self.assertEqual(payload["done"], 0)
+            self.assertEqual(payload["skipped"], 1)
+            self.assertEqual(payload["failed"], 0)
+            self.assertEqual(payload["filtered"], 1)
+
     def test_project_status_reports_failed_frame(self):
         with tempfile.TemporaryDirectory() as tmp:
             project_json = self.build_generation_fixture(Path(tmp))

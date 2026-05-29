@@ -9,6 +9,15 @@ from project_pipeline_utils import append_event, append_log, load_json, load_pro
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def resolve_source_dir(source_dir: Path) -> Path:
+    if list(source_dir.glob("*.png")):
+        return source_dir
+    nested_images_dir = source_dir / "images"
+    if nested_images_dir.exists() and list(nested_images_dir.glob("*.png")):
+        return nested_images_dir
+    return source_dir
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--project-json", required=True)
@@ -27,6 +36,7 @@ def main() -> None:
 
     if not source_dir.exists():
         raise FileNotFoundError(f"Raw images dir not found: {source_dir}")
+    source_dir = resolve_source_dir(source_dir)
     if not run_manifest_path.exists():
         raise FileNotFoundError(f"Image manifest not found: {run_manifest_path}")
     if not scene_plan_path.exists():

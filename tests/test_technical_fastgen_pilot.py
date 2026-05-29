@@ -650,6 +650,61 @@ def test_legacy_wrapper_flags_still_parse():
         assert "--real-generation" in result.stdout
 
 
+def test_normalize_project_images_accepts_nested_run_images_dir():
+    with tempfile.TemporaryDirectory() as tmp:
+        project_json = build_pilot_fixture(Path(tmp))
+        project = json.loads(project_json.read_text(encoding="utf-8"))
+        nested_images_dir = Path(project["images"]["raw_images_dir"]) / "images"
+        nested_images_dir.mkdir(parents=True, exist_ok=True)
+        image_path = nested_images_dir / "scene_0001_V01.png"
+        image_path.write_bytes(TINY_PNG)
+
+        write_json(
+            Path(project["images"]["run_manifest_path"]),
+            {
+                "generated_images": [
+                    {
+                        "scene_id": "scene_0001",
+                        "image_path": str(image_path),
+                        "output_file": "scene_0001_V01.png",
+                    }
+                ]
+            },
+        )
+        write_json(
+            Path(project["images"]["selected_images_manifest_path"]),
+            {
+                "selected_images": [
+                    {
+                        "scene_id": "scene_0001",
+                        "selected_image_path": str(image_path),
+                    }
+                ]
+            },
+        )
+
+        subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPTS / "normalize_project_images.py"),
+                "--project-json",
+                str(project_json),
+                "--width",
+                "1920",
+                "--height",
+                "1080",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            env=cli_env(),
+        )
+
+        normalized_path = Path(project["images"]["normalized_images_dir"]) / "scene_0001_V01.png"
+        assert normalized_path.exists()
+
+
 def test_full_creative_pilot_enables_llm_runtime_defaults():
     project = {"project_id": "pilot", "workflow": {}, "runtime": {}, "qc": {}}
     args = argparse.Namespace(

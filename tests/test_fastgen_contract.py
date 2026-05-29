@@ -526,6 +526,50 @@ class FastGenContractTests(unittest.TestCase):
             errors, _warnings = validate_image_qc(project)
             self.assertTrue(any("invalid selection_status" in item or "failed semantic coverage" in item for item in errors))
 
+    def test_validate_image_qc_allows_manual_review_semantic_warnings_when_disabled(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            qc_path = root / "image_qc_report.json"
+            selected_path = root / "selected_images_manifest.json"
+            image_path = root / "scene_0001.png"
+            image_path.write_bytes(b"fake")
+            qc_path.write_text(
+                json.dumps({"images": [{"scene_id": "scene_0001"}]}),
+                encoding="utf-8",
+            )
+            selected_path.write_text(
+                json.dumps(
+                    {
+                        "selected_images": [
+                            {
+                                "scene_id": "scene_0001",
+                                "beat_id": "beat_0001",
+                                "voice_text": "voice",
+                                "visualized_claim": "claim",
+                                "selection_status": "manual_review",
+                                "coverage_status": "fail",
+                                "semantic_flags": ["must_show_not_grounded_in_prompt"],
+                                "selected_image_path": str(image_path),
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            project = {
+                "qc": {
+                    "image_semantic_qc_mode": "disabled",
+                    "allow_manual_review_without_vlm": True,
+                },
+                "images": {
+                    "image_qc_report_path": str(qc_path),
+                    "selected_images_manifest_path": str(selected_path),
+                },
+            }
+            errors, warnings = validate_image_qc(project)
+            self.assertEqual(errors, [])
+            self.assertTrue(any("failed semantic coverage" in item for item in warnings))
+
     def test_qc_generated_images_accepts_enriched_manifest_without_success_log(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
