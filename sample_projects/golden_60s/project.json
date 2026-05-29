@@ -1,0 +1,38 @@
+{
+  "project_id": "golden_60s",
+  "schema_version": "draft-1",
+  "meta": {
+    "project_root": ".",
+    "language": "en"
+  },
+  "workflow": {
+    "is_sequence": true,
+    "skip_storyboard_allowed": false,
+    "strict_generation_lock": false,
+    "render_dry_run": true,
+    "profile": "golden_60s_no_api"
+  },
+  "inputs": {
+    "audio_duration_seconds": 78.0
+  },
+  "generation": {
+    "key_beat_variants": 1,
+    "normal_beat_variants": 1,
+    "allow_regeneration": true,
+    "max_regeneration_attempts": 2
+  },
+  "qc": {
+    "image_semantic_qc_mode": "disabled",
+    "allow_manual_review_without_vlm": true
+  },
+  "scene_plan": {
+    "source_srt_path": "input/source.srt"
+  },
+  "transcription": {
+    "srt_path": "input/source.srt",
+    "raw_srt_path": "input/source.srt"
+  },
+  "transcript_cleanup": {
+    "cleaned_srt_path": "input/source.srt"
+  }
+}

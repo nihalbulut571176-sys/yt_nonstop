@@ -9,6 +9,7 @@ from project_pipeline_utils import load_json, load_project, save_project
 
 ALLOWED_NON_STRICT = {"locked", "locked_with_warnings"}
 ALLOWED_STRICT = {"locked"}
+NON_GENERATIVE_DECISIONS = {"hold_previous", "continuation_motion"}
 
 
 def main() -> None:
@@ -28,7 +29,13 @@ def main() -> None:
     meta_path = export_path.with_suffix(export_path.suffix + ".meta.json")
 
     allowed = ALLOWED_STRICT if project["workflow"].get("strict_generation_lock") else ALLOWED_NON_STRICT
-    eligible = [row for row in locked_rows if row["generation_lock_status"] in allowed]
+    eligible = [
+        row
+        for row in locked_rows
+        if row["generation_lock_status"] in allowed
+        and str(row.get("generation_decision") or row.get("generation_mode") or "new_image") not in NON_GENERATIVE_DECISIONS
+    ]
+    non_generative = [row for row in locked_rows if str(row.get("generation_decision") or row.get("generation_mode") or "") in NON_GENERATIVE_DECISIONS]
     blocked = [row["frame_id"] for row in locked_rows if row["generation_lock_status"] not in allowed]
     if args.require_filled_prompts and blocked:
         raise RuntimeError(f"Generation lock blocked frames: {', '.join(blocked[:20])}")
@@ -47,6 +54,8 @@ def main() -> None:
             "beat_priority": row.get("beat_priority", "supporting"),
             "key_beat": bool(row.get("key_beat")),
             "variant_count": int(row.get("variant_count", 1) or 1),
+            "visual_slot_id": row.get("visual_slot_id", ""),
+            "generation_decision": row.get("generation_decision") or row.get("generation_mode") or "new_image",
         }
         for row in eligible
     ]
@@ -54,6 +63,7 @@ def main() -> None:
         "package_path": str(project["prompts"]["generation_locked_json_path"]),
         "package_signature": stable_hash({"eligible_frames": [row.get("frame_id") for row in eligible], "items": package_items}),
         "prompt_count": len(eligible),
+        "non_generative_frame_count": len(non_generative),
         "package_items": package_items,
     }
     meta_payload["export_signature"] = stable_hash(
@@ -75,6 +85,9 @@ def main() -> None:
             "reference_ids": row.get("reference_ids", []),
             "reference_strength": row.get("reference_strength", "none"),
             "reference_usage": row.get("reference_usage", "none"),
+            "visual_slot_id": row.get("visual_slot_id", ""),
+            "generation_decision": row.get("generation_decision") or row.get("generation_mode") or "new_image",
+            "variant_count": int(row.get("variant_count", 1) or 1),
         }
         for row in eligible
     ]
@@ -90,6 +103,9 @@ def main() -> None:
                 "reference_ids",
                 "reference_strength",
                 "reference_usage",
+                "visual_slot_id",
+                "generation_decision",
+                "variant_count",
             ],
         )
         writer.writeheader()
@@ -109,6 +125,7 @@ def main() -> None:
                 "",
                 f"Locked frames available: {len(eligible)}",
                 f"Blocked frames: {len(blocked)}",
+                f"Non-generative visual slots skipped: {len(non_generative)}",
                 f"Strict mode: {project['workflow'].get('strict_generation_lock')}",
                 f"Output: {export_path}",
                 f"Batches JSON: {batches_json_path}",

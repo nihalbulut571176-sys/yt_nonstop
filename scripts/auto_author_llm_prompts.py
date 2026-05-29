@@ -3,6 +3,8 @@ import re
 from pathlib import Path
 
 from project_pipeline_utils import load_json, load_project, save_json, save_project
+from llm_pipeline_contracts import validate_scene_prompt_drafts_payload, validate_visual_bible_payload
+from yt_nonstop.providers.llm_provider import LLMProvider, LLMRequest, build_json_only_prompt, provider_from_project
 
 
 STYLE_SUMMARY = (
@@ -463,9 +465,77 @@ def build_visual_bible(project: dict, records: list[dict]) -> dict:
     }
 
 
+def build_visual_bible_context(project: dict, records: list[dict]) -> dict:
+    compact_records = []
+    for record in records:
+        compact_records.append(
+            {
+                "scene_id": record.get("scene_id"),
+                "beat_id": record.get("beat_id"),
+                "voice_text": record.get("voice_text"),
+                "spoken_claim": record.get("spoken_claim"),
+                "must_show": record.get("must_show"),
+                "active_entity_ids": record.get("active_entity_ids", []),
+                "continuity_cast": record.get("continuity_cast", []),
+                "environment": record.get("environment"),
+                "film_block_id": record.get("film_block_id"),
+            }
+        )
+    return {
+        "task": "author_visual_bible",
+        "project_id": project.get("project_id"),
+        "language": project.get("meta", {}).get("language"),
+        "scene_records": compact_records,
+        "requirements": [
+            "Return a JSON object only.",
+            "Define a coherent visual world for the full film.",
+            "Do not include file paths, runtime statuses, or technical state.",
+        ],
+    }
+
+
+def build_prompt_authoring_context(project: dict, records: list[dict], visual_bible: dict) -> dict:
+    compact_records = []
+    for record in records:
+        compact_records.append(
+            {
+                "scene_id": record.get("scene_id"),
+                "frame_id": record.get("frame_id"),
+                "beat_id": record.get("beat_id"),
+                "shot_id": record.get("shot_id"),
+                "film_block_id": record.get("film_block_id"),
+                "voice_text": record.get("voice_text"),
+                "spoken_claim": record.get("spoken_claim"),
+                "must_show": record.get("must_show"),
+                "camera": record.get("camera"),
+                "composition": record.get("composition"),
+                "lighting": record.get("lighting"),
+                "mood": record.get("mood"),
+                "active_entity_ids": record.get("active_entity_ids", []),
+                "reference_ids": record.get("reference_ids", []),
+                "event_clarity_required": bool(record.get("event_clarity_required")),
+            }
+        )
+    return {
+        "task": "author_scene_prompt_drafts",
+        "project_id": project.get("project_id"),
+        "language": project.get("meta", {}).get("language"),
+        "visual_bible": visual_bible,
+        "scene_records": compact_records,
+        "requirements": [
+            "Return JSON only.",
+            "Return an array of scene prompt draft objects.",
+            "Each record must include scene_id, visual_goal, and final_prompt.",
+            "Do not include file paths, statuses, or runtime fields.",
+        ],
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--project-json", required=True)
+    parser.add_argument("--provider", default="", help="LLM provider mode override: file, command, http, openai_compatible, disabled.")
+    parser.add_argument("--input-json", help="Optional file-mode JSON payload containing visual_bible and llm_prompt_drafts.")
     args = parser.parse_args()
 
     project_json = Path(args.project_json).resolve()
@@ -475,9 +545,66 @@ def main() -> None:
     drafts_path = Path(project["prompts"]["llm_prompt_drafts_path"])
 
     records = load_json(context_path)
-    visual_bible = build_visual_bible(project, records)
-    theme = visual_bible["subject_type"]
-    drafts = [build_prompt(record, theme, visual_bible) for record in records]
+    provider_config = provider_from_project(
+        project,
+        stage_name="auto_author_llm_prompts",
+        override_mode=args.provider or None,
+        input_json_path=str(Path(args.input_json).resolve()) if args.input_json else None,
+    )
+    if provider_config.mode == "disabled":
+        visual_bible = build_visual_bible(project, records)
+        theme = visual_bible["subject_type"]
+        drafts = [build_prompt(record, theme, visual_bible) for record in records]
+    else:
+        provider = LLMProvider(provider_config)
+        vb_context = build_visual_bible_context(project, records)
+        vb_response = provider.invoke(
+            LLMRequest(
+                stage_name="auto_author_llm_prompts",
+                task="author_visual_bible",
+                contract_name="visual_bible.v1",
+                system_prompt="You are a visual bible author for a narrated silent-image film pipeline. Return JSON only.",
+                user_prompt=build_json_only_prompt(
+                    instruction="Author the project visual bible from this context.",
+                    context=vb_context,
+                ),
+                context=vb_context,
+                response_key="visual_bible",
+            )
+        )
+        if provider_config.mode == "file" and isinstance(vb_response.payload, dict) and "visual_bible" in vb_response.payload:
+            visual_bible = vb_response.payload["visual_bible"]
+        else:
+            visual_bible = vb_response.payload
+        if isinstance(visual_bible, dict):
+            visual_bible.setdefault("project_id", project.get("project_id"))
+        vb_errors, _ = validate_visual_bible_payload(visual_bible)
+        if vb_errors:
+            raise RuntimeError("Invalid visual_bible from provider:\n" + "\n".join(vb_errors))
+        prompt_context = build_prompt_authoring_context(project, records, visual_bible)
+        prompt_response = provider.invoke(
+            LLMRequest(
+                stage_name="auto_author_llm_prompts",
+                task="author_scene_prompt_drafts",
+                contract_name="llm_prompt_drafts.v1",
+                system_prompt="You are a prompt author for a narrated silent-image film pipeline. Return JSON only.",
+                user_prompt=build_json_only_prompt(
+                    instruction="Author the scene prompt drafts from this context.",
+                    context=prompt_context,
+                ),
+                context=prompt_context,
+                response_key="llm_prompt_drafts",
+            )
+        )
+        if provider_config.mode == "file" and isinstance(prompt_response.payload, dict):
+            drafts_payload = prompt_response.payload.get("llm_prompt_drafts") or prompt_response.payload.get("drafts") or prompt_response.payload
+        else:
+            drafts_payload = prompt_response.payload
+        drafts = drafts_payload if isinstance(drafts_payload, list) else []
+        expected_scene_ids = [str(record.get("scene_id")) for record in records if record.get("scene_id")]
+        draft_errors, _ = validate_scene_prompt_drafts_payload(drafts, expected_scene_ids=expected_scene_ids)
+        if draft_errors:
+            raise RuntimeError("Invalid llm_prompt_drafts from provider:\n" + "\n".join(draft_errors))
 
     save_json(visual_bible_path, visual_bible)
     save_json(drafts_path, drafts)

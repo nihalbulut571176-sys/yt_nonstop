@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from image_semantic_qc import default_image_semantic_qc_adapter
+from vlm_semantic_qc_provider import default_image_semantic_qc_adapter, image_semantic_qc_mode_from_project
 from llm_pipeline_contracts import inspect_image_file
 from pipeline_contracts import dedupe_strings, normalize_text, normalize_text_lower
 from project_pipeline_utils import load_json, load_project, save_json, save_project
@@ -88,6 +88,7 @@ def selection_allowed(selection_status: str) -> bool:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--project-json", required=True)
+    parser.add_argument("--semantic-qc-mode", choices=["disabled", "heuristic", "external"], help="Override project.qc.image_semantic_qc_mode for this run.")
     args = parser.parse_args()
 
     project_json = Path(args.project_json).resolve()
@@ -108,7 +109,8 @@ def main() -> None:
     qc_results_path = Path(project["images"]["image_qc_report_path"])
     selection_manifest_path = Path(project["images"]["selected_images_manifest_path"])
     qc_report_path = project_root / "logs" / "qc_report.md"
-    adapter = default_image_semantic_qc_adapter()
+    semantic_qc_mode = image_semantic_qc_mode_from_project(project, args.semantic_qc_mode)
+    adapter = default_image_semantic_qc_adapter(project, semantic_qc_mode)
 
     grouped_records: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in generated_rows:
@@ -160,7 +162,21 @@ def main() -> None:
             )
             inspection = inspect_image_file(image_path) if image_path else {"exists": False, "readable": False}
             semantic_flags = sorted(set(prompt_semantic_flags + list(semantic.get("semantic_flags", []))))
-            coverage_status = "pass" if prompt_coverage_status == "pass" and semantic.get("coverage_status") == "pass" and not semantic_flags else "fail"
+            blocking_semantic_flags = {
+                "missing_image_file",
+                "unreadable_image_file",
+                "missing_required_reference_lock",
+                "missing_must_show",
+                "must_show_not_grounded_in_prompt",
+                "missing_visualized_claim",
+            }
+            coverage_status = (
+                "pass"
+                if prompt_coverage_status == "pass"
+                and semantic.get("coverage_status") == "pass"
+                and not any(flag in blocking_semantic_flags for flag in semantic_flags)
+                else "fail"
+            )
             technical_qc_passed = bool(record.get("status") == "success" and inspection.get("exists") and inspection.get("readable"))
             decision = str(semantic.get("decision", "manual_review"))
             if not technical_qc_passed:
@@ -187,12 +203,22 @@ def main() -> None:
                 "must_show_coverage": semantic.get("must_show_coverage", []),
                 "identity_check": semantic.get("identity_check", {}),
                 "style_continuity_check": semantic.get("style_continuity_check", {}),
+                "artifact_text_check": semantic.get("artifact_text_check", {}),
+                "voice_text_alignment_check": semantic.get("voice_text_alignment_check", {}),
+                "semantic_qc_provider": semantic.get("provider", getattr(adapter, "provider_name", adapter.__class__.__name__)),
+                "vlm_required": bool(semantic.get("vlm_required", semantic_qc_mode == "external")),
                 "technical_qc_passed": technical_qc_passed,
                 "coverage_status": coverage_status,
                 "semantic_flags": semantic_flags,
                 "decision": decision,
                 **build_scores(scene, record),
-                "notes": "Adapter-backed image semantic QC with prompt-grounding fallback.",
+                "variant_rank_explanation": [
+                    "decision",
+                    "technical_qc_passed",
+                    "coverage_status",
+                    "final_score",
+                ],
+                "notes": "Adapter-backed image semantic QC; heuristic/disabled modes are allowed for no-VLM bootstrap runs.",
             }
             scene_results.append(row)
             qc_results.append(row)
@@ -209,6 +235,17 @@ def main() -> None:
             reverse=True,
         )
         winner = ordered[0]
+        variant_ranking = [
+            {
+                "rank": rank,
+                "image_id": item.get("image_id"),
+                "decision": item.get("decision"),
+                "coverage_status": item.get("coverage_status"),
+                "final_score": item.get("final_score"),
+                "semantic_flags": item.get("semantic_flags", []),
+            }
+            for rank, item in enumerate(ordered, start=1)
+        ]
         selections.append(
             {
                 "scene_id": scene_id,
@@ -226,6 +263,19 @@ def main() -> None:
                 "must_show": winner.get("must_show", []),
                 "coverage_status": winner.get("coverage_status", "fail"),
                 "semantic_flags": winner.get("semantic_flags", []),
+                "vlm_caption": winner.get("vlm_caption", ""),
+                "must_show_coverage": winner.get("must_show_coverage", []),
+                "identity_check": winner.get("identity_check", {}),
+                "style_continuity_check": winner.get("style_continuity_check", {}),
+                "artifact_text_check": winner.get("artifact_text_check", {}),
+                "voice_text_alignment_check": winner.get("voice_text_alignment_check", {}),
+                "semantic_qc_provider": winner.get("semantic_qc_provider", getattr(adapter, "provider_name", adapter.__class__.__name__)),
+                "vlm_required": bool(winner.get("vlm_required", semantic_qc_mode == "external")),
+                "variant_ranking": variant_ranking,
+                "generation_mode": scene.get("generation_mode"),
+                "film_block_id": scene.get("film_block_id"),
+                "transition_in": scene.get("transition_in"),
+                "transition_out": scene.get("transition_out"),
             }
         )
         report_lines.extend(
@@ -240,8 +290,8 @@ def main() -> None:
             ]
         )
 
-    save_json(qc_results_path, {"project_id": project["project_id"], "created_at": iso_now(), "images": qc_results})
-    save_json(selection_manifest_path, {"project_id": project["project_id"], "created_at": iso_now(), "selected_images": selections})
+    save_json(qc_results_path, {"project_id": project["project_id"], "created_at": iso_now(), "semantic_qc_mode": semantic_qc_mode, "semantic_qc_provider": getattr(adapter, "provider_name", adapter.__class__.__name__), "images": qc_results})
+    save_json(selection_manifest_path, {"project_id": project["project_id"], "created_at": iso_now(), "semantic_qc_mode": semantic_qc_mode, "semantic_qc_provider": getattr(adapter, "provider_name", adapter.__class__.__name__), "selected_images": selections})
     qc_report_path.parent.mkdir(parents=True, exist_ok=True)
     qc_report_path.write_text("\n".join(report_lines), encoding="utf-8")
 
@@ -252,7 +302,9 @@ def main() -> None:
     project["images"]["image_qc_report_path"] = str(qc_results_path)
     project["images"]["generated_count"] = sum(1 for item in generated_rows if item.get("status") == "success")
     project["images"]["failed_count"] = sum(1 for item in generated_rows if item.get("status") != "success")
-    project["current_stage"] = "normalize_images"
+    project.setdefault("qc", {})["image_semantic_qc_mode"] = semantic_qc_mode
+    project["qc"]["image_semantic_qc_provider"] = getattr(adapter, "provider_name", adapter.__class__.__name__)
+    project["current_stage"] = "regeneration_plan"
     save_project(project_json, project)
 
     print(qc_results_path)

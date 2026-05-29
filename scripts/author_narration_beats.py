@@ -3,6 +3,7 @@ from pathlib import Path
 
 from project_pipeline_utils import load_json, load_project, save_json, save_project
 from prompt_safety import is_probably_abstract, lint_prompt_observability
+from yt_nonstop.providers.llm_provider import build_json_only_prompt, complete_json, provider_from_project
 
 
 ABSTRACT_ONLY_TERMS = {
@@ -118,7 +119,23 @@ def is_drawable_phrase(value: str) -> bool:
 
 
 def derive_must_visualize(beat: dict, scene: dict) -> list[str]:
-    items = event_must_show(scene, beat) + fallback_must_show(scene, beat)
+    authored_items = list(beat.get("must_visualize", []) or [])
+    if authored_items:
+        cleaned_authored = []
+        seen = set()
+        for item in authored_items:
+            cleaned = clean_text(item)
+            if not cleaned:
+                continue
+            lowered = cleaned.lower()
+            if lowered in seen:
+                continue
+            if lowered not in ABSTRACT_ONLY_TERMS:
+                cleaned_authored.append(cleaned)
+                seen.add(lowered)
+        if cleaned_authored:
+            return cleaned_authored[:3]
+    items = authored_items + event_must_show(scene, beat) + fallback_must_show(scene, beat)
     filtered = []
     seen = set()
     for item in items:
@@ -213,10 +230,67 @@ def normalize_authored_beat(skeleton: dict, authored: dict, scene: dict) -> dict
     return beat
 
 
+def build_authoring_context(project: dict, skeleton_beats: list[dict], scene_plan: dict) -> dict:
+    scenes = {scene["scene_id"]: scene for scene in scene_plan.get("scenes", []) if scene.get("scene_id")}
+    compact_beats = []
+    for beat in skeleton_beats:
+        scene = scenes.get(beat.get("scene_id"), {})
+        compact_beats.append(
+            {
+                "beat_id": beat.get("beat_id"),
+                "scene_id": beat.get("scene_id"),
+                "start": beat.get("start"),
+                "end": beat.get("end"),
+                "duration": beat.get("duration"),
+                "voice_text": beat.get("voice_text"),
+                "scene_meaning": scene.get("scene_meaning"),
+                "visual_goal": scene.get("visual_goal"),
+                "what_is_in_frame": scene.get("what_is_in_frame"),
+                "environment": scene.get("environment"),
+                "event_type": scene.get("event_type"),
+                "event_clarity_required": bool(scene.get("event_clarity_required")),
+                "subject_ids": list(scene.get("subject_ids", [])),
+                "active_entity_ids": list(scene.get("active_entity_ids", [])),
+            }
+        )
+    return {
+        "task": "author_narration_beats",
+        "project_id": project.get("project_id"),
+        "language": project.get("meta", {}).get("language"),
+        "beats": compact_beats,
+        "requirements": [
+            "Return JSON only.",
+            "Do not change beat_id, scene_id, start, end, duration, or order.",
+            "For each beat, return spoken_claim, must_visualize, entity_mentions, location_mentions, beat_role, visual_priority.",
+            "must_visualize items must be concrete, observable, and drawable.",
+            "Do not include file paths, job ids, statuses, or runtime fields.",
+        ],
+    }
+
+
+def authored_beats_from_payload(payload: object) -> dict[str, dict]:
+    if isinstance(payload, dict):
+        rows = payload.get("beats", [])
+    else:
+        rows = payload
+    authored_rows = rows if isinstance(rows, list) else []
+    result: dict[str, dict] = {}
+    for item in authored_rows:
+        if not isinstance(item, dict):
+            continue
+        scene_id = clean_text(item.get("scene_id"))
+        beat_id = clean_text(item.get("beat_id"))
+        key = beat_id or scene_id
+        if key:
+            result[key] = item
+    return result
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--project-json", required=True)
     parser.add_argument("--input-json", help="Optional authored beat JSON payload to merge over the timing skeleton.")
+    parser.add_argument("--provider", default="", help="LLM provider mode override: heuristic, file, external, command, http, openai_compatible, disabled.")
     args = parser.parse_args()
 
     project_json = Path(args.project_json).resolve()
@@ -229,16 +303,30 @@ def main() -> None:
     beats_payload = load_json(beats_path)
     scene_plan = load_json(scene_plan_path)
     scene_by_id = {scene["scene_id"]: scene for scene in scene_plan.get("scenes", []) if scene.get("scene_id")}
-    raw_authored = {}
-    if args.input_json:
-        authored_payload = load_json(Path(args.input_json).resolve())
-        authored_beats = authored_payload.get("beats", []) if isinstance(authored_payload, dict) else authored_payload
-        for item in authored_beats if isinstance(authored_beats, list) else []:
-            scene_id = clean_text(item.get("scene_id"))
-            beat_id = clean_text(item.get("beat_id"))
-            key = beat_id or scene_id
-            if key:
-                raw_authored[key] = item
+    provider_config = provider_from_project(
+        project,
+        stage_name="author_narration_beats",
+        override_mode=args.provider or None,
+        input_json_path=str(Path(args.input_json).resolve()) if args.input_json else None,
+    )
+    raw_authored: dict[str, dict] = {}
+    if provider_config.mode in {"file", "command", "http", "openai_compatible"}:
+        authored_payload = complete_json(
+            "author_narration_beats",
+            "You enrich narration beats for a silent visual pipeline. Return JSON only.",
+            {
+                "instruction": "Enrich the narration beats with concrete visual intent while preserving timing fields exactly.",
+                "user_prompt": build_json_only_prompt(
+                    instruction="Enrich the narration beats with concrete visual intent while preserving timing fields exactly.",
+                    context=build_authoring_context(project, beats_payload.get("beats", []), scene_plan),
+                ),
+                "context": build_authoring_context(project, beats_payload.get("beats", []), scene_plan),
+            },
+            schema_name="narration_beats_enrichment.v1",
+            required_keys=["beats"],
+            provider_config=provider_config,
+        )
+        raw_authored = authored_beats_from_payload(authored_payload)
 
     authored_beats = []
     for skeleton in beats_payload.get("beats", []):

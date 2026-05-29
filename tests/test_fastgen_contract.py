@@ -686,6 +686,7 @@ class FastGenContractTests(unittest.TestCase):
                             {
                                 "scene_id": "scene_0001",
                                 "selection_status": "use",
+                                "coverage_status": "pass",
                                 "selected_image_path": str(raw_image),
                                 "normalized_image_path": str(normalized_image),
                             }

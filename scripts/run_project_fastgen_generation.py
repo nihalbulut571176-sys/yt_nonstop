@@ -3,10 +3,20 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 from llm_pipeline_contracts import build_generation_job_id, classify_generation_error, compute_prompt_hash, inspect_image_file, iso_now
 from pipeline_contracts import stable_hash
 from project_pipeline_utils import append_event, append_log, load_json, load_project, mark_stage, save_json, save_project
+from fastgen_openai_v4_generate import parse_prompt_blocks
+from pipeline_state import (
+    DEFAULT_STAGE,
+    connect as connect_state_db,
+    get_frame_state,
+    resolve_state_db_path,
+    summarize_states,
+    upsert_frame_state,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -64,10 +74,161 @@ def build_scene_lookup(prompt_file: Path, scene_plan: dict, package: dict) -> tu
     return scene_by_prompt_index, scene_map
 
 
+def load_prompt_meta(prompt_file: Path) -> list[dict[str, Any]]:
+    meta_path = prompt_file.with_suffix(prompt_file.suffix + ".meta.json")
+    if not meta_path.exists():
+        return []
+    return load_json(meta_path).get("package_items", [])
+
+
+def sync_generation_state(
+    *,
+    state_db_path: Path,
+    project_id: str,
+    prompt_file: Path,
+    prompt_profile: dict[str, Any],
+    stage: str = DEFAULT_STAGE,
+) -> dict[str, Any]:
+    prompt_items = parse_prompt_blocks(prompt_file)
+    prompt_meta = load_prompt_meta(prompt_file)
+    conn = connect_state_db(state_db_path)
+    try:
+        for item in prompt_items:
+            meta = prompt_meta[item["index"] - 1] if item["index"] - 1 < len(prompt_meta) else {}
+            frame_id = str(meta.get("frame_id") or "")
+            if not frame_id:
+                continue
+            prompt_hash = compute_prompt_hash(prompt=item["prompt"], refs=item.get("refs", []), settings=prompt_profile)
+            upsert_frame_state(
+                conn,
+                project_id=project_id,
+                frame_id=frame_id,
+                visual_slot_id=str(meta.get("visual_slot_id") or ""),
+                stage=stage,
+                status="pending",
+                prompt_hash=prompt_hash,
+            )
+        return summarize_states(conn.execute("SELECT * FROM frame_state WHERE project_id = ? AND stage = ?", (project_id, stage)).fetchall())
+    finally:
+        conn.close()
+
+
+def build_enriched_manifest_from_state(
+    *,
+    state_db_path: Path,
+    project: dict,
+    project_id: str,
+    job_id: str,
+    created_at: str,
+    prompt_file: Path,
+    workdir: Path,
+    prompt_profile: dict[str, Any],
+    scene_plan: dict,
+    scene_map: dict[str, dict],
+    failed_lookup: dict[int, dict],
+    stage: str = DEFAULT_STAGE,
+) -> dict[str, Any]:
+    prompt_items = parse_prompt_blocks(prompt_file)
+    prompt_meta = load_prompt_meta(prompt_file)
+    generated_images = []
+    conn = connect_state_db(state_db_path)
+    try:
+        for item in prompt_items:
+            meta = prompt_meta[item["index"] - 1] if item["index"] - 1 < len(prompt_meta) else {}
+            scene_id = str(meta.get("scene_id") or f"scene_{item['index']:04d}")
+            frame_id = str(meta.get("frame_id") or "")
+            visual_slot_id = str(meta.get("visual_slot_id") or "")
+            variant_count = max(1, int(meta.get("variant_count", 1) or 1))
+            prompt_hash = compute_prompt_hash(prompt=item["prompt"], refs=item.get("refs", []), settings=prompt_profile)
+            state = get_frame_state(conn, project_id=project_id, frame_id=frame_id, visual_slot_id=visual_slot_id, stage=stage) if frame_id else None
+            for variant_index in range(1, variant_count + 1):
+                output_file = f"{scene_id}_V{variant_index:02d}.png"
+                default_image_path = workdir / "images" / output_file
+                image_path = Path(state.image_path) if state and state.image_path else default_image_path
+                failed_meta = failed_lookup.get(item["index"], {})
+                if state and state.status == "success" and image_path.exists():
+                    status = "success"
+                    error_type = ""
+                    error_message = ""
+                elif default_image_path.exists():
+                    status = "success"
+                    image_path = default_image_path
+                    error_type = ""
+                    error_message = ""
+                elif state and state.status == "failed":
+                    status = "failed"
+                    error_type = failed_meta.get("error_type") or classify_generation_error(state.error_message)
+                    error_message = state.error_message or failed_meta.get("error_message", "")
+                else:
+                    status = "missing"
+                    error_type = "filesystem_error"
+                    error_message = "Image file missing after generation run or interrupted generation"
+                image_info = inspect_image_file(image_path) if status == "success" else {}
+                generated_images.append(
+                    {
+                        "job_id": job_id,
+                        "created_at": created_at,
+                        "scene_id": scene_id,
+                        "frame_id": frame_id,
+                        "visual_slot_id": visual_slot_id,
+                        "source_prompt_index": item["index"],
+                        "variant_index": variant_index,
+                        "variant_label": f"V{variant_index:02d}",
+                        "prompt_hash": prompt_hash,
+                        "generator_profile": stable_hash(prompt_profile),
+                        "generator_settings": prompt_profile,
+                        "refs": item.get("refs", []),
+                        "prompt": item.get("prompt", ""),
+                        "output_file": output_file,
+                        "image_path": str(image_path),
+                        "beat_priority": meta.get("beat_priority", "standard"),
+                        "key_beat": bool(meta.get("key_beat")),
+                        "variant_count": variant_count,
+                        "selection_required": bool(meta.get("key_beat")) or variant_count > 1,
+                        "status": status,
+                        "error_type": error_type,
+                        "error_message": error_message,
+                        "image_format": image_info.get("format"),
+                        "image_width": image_info.get("width"),
+                        "image_height": image_info.get("height"),
+                    }
+                )
+
+                scene = scene_map.get(scene_id)
+                if scene and status == "success":
+                    scene["generated_index"] = item["index"]
+                    scene["still_image_path"] = str(image_path)
+                    scene["render_source"] = "still"
+                    scene["render_asset_path"] = str(image_path)
+                    notes = [note for note in scene.get("notes", []) if note != "Still image pending"]
+                    if "Generated image ready" not in notes:
+                        notes.append("Generated image ready")
+                    scene["notes"] = notes
+
+    finally:
+        conn.close()
+
+    return {
+        "project_id": project_id,
+        "job_id": job_id,
+        "created_at": created_at,
+        "profile_id": project["profile_id"],
+        "prompt_file": str(prompt_file),
+        "workdir": str(workdir),
+        "state_db_path": str(state_db_path),
+        "generator_profile": prompt_profile,
+        "generated_images": generated_images,
+        "failed_count": sum(1 for item in generated_images if item["status"] == "failed"),
+        "completed_count": sum(1 for item in generated_images if item["status"] == "success"),
+        "missing_count": sum(1 for item in generated_images if item["status"] == "missing"),
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--project-json", required=True)
     parser.add_argument("--size", default="1024x1024")
+    parser.add_argument("--aspect-ratio", default="16:9")
     parser.add_argument("--start", type=int, default=1)
     parser.add_argument("--end", type=int, default=0)
     parser.add_argument("--poll-seconds", type=float, default=3.0)
@@ -76,6 +237,10 @@ def main() -> None:
     parser.add_argument("--stop-on-error", action="store_true")
     parser.add_argument("--retry-rounds", type=int, default=3)
     parser.add_argument("--soften-policy-prompts", action="store_true")
+    parser.add_argument("--resume", action="store_true", help="Use pipeline_state.sqlite to skip successful frames and continue interrupted runs.")
+    parser.add_argument("--retry-failed-only", action="store_true", help="Regenerate only frames currently marked failed in pipeline_state.sqlite.")
+    parser.add_argument("--frame-id", action="append", default=[], help="Regenerate a specific frame_id; can be repeated.")
+    parser.add_argument("--state-db", default="", help="Override pipeline_state.sqlite path.")
     args = parser.parse_args()
 
     project_json = Path(args.project_json).resolve()
@@ -94,8 +259,58 @@ def main() -> None:
     if not scene_plan_path.exists():
         raise FileNotFoundError(f"Scene plan not found: {scene_plan_path}")
 
-    append_log(project, f"Starting FastGen generation in {workdir}")
-    append_event(project, {"kind": "stage_start", "stage": "generate_images"})
+    state_db_path = resolve_state_db_path(project_json, project, args.state_db or None)
+    project.setdefault("state", {})["pipeline_state_path"] = str(state_db_path)
+    prompt_profile = {
+        "provider": "fastgen_openai_v4",
+        "size": args.size,
+        "aspect_ratio": args.aspect_ratio,
+    }
+    sync_summary = sync_generation_state(
+        state_db_path=state_db_path,
+        project_id=project["project_id"],
+        prompt_file=prompt_file,
+        prompt_profile=prompt_profile,
+    )
+
+    if args.resume and int(sync_summary.get("total", 0) or 0) > 0:
+        by_status = sync_summary.get("by_status", {}) or {}
+        pending_like = sum(int(by_status.get(key, 0) or 0) for key in ("pending", "running", "failed", "missing"))
+        if pending_like == 0:
+            prompt_package = load_json(prompt_package_path)
+            scene_plan = load_json(scene_plan_path)
+            _, scene_map = build_scene_lookup(prompt_file, scene_plan, prompt_package)
+            job_id = build_generation_job_id(project["project_id"])
+            created_at = iso_now()
+            enriched_manifest = build_enriched_manifest_from_state(
+                state_db_path=state_db_path,
+                project=project,
+                project_id=project["project_id"],
+                job_id=job_id,
+                created_at=created_at,
+                prompt_file=prompt_file,
+                workdir=workdir,
+                prompt_profile=prompt_profile,
+                scene_plan=scene_plan,
+                scene_map=scene_map,
+                failed_lookup={},
+            )
+            run_manifest_path = Path(project["images"]["run_manifest_path"])
+            save_json(run_manifest_path, enriched_manifest)
+            save_json(scene_plan_path, scene_plan)
+            project["images"]["status"] = "generated"
+            project["images"]["job_id"] = job_id
+            project["images"]["generated_count"] = enriched_manifest["completed_count"]
+            project["images"]["failed_count"] = enriched_manifest["failed_count"]
+            project["images"]["missing_count"] = enriched_manifest.get("missing_count", 0)
+            project["images"]["state_db_path"] = str(state_db_path)
+            project["current_stage"] = "image_qc"
+            save_project(project_json, project)
+            print(run_manifest_path)
+            return
+
+    append_log(project, f"Starting FastGen generation in {workdir}; state={state_db_path}; state_summary={sync_summary}")
+    append_event(project, {"kind": "stage_start", "stage": "generate_images", "state_db_path": str(state_db_path), "state_summary": sync_summary})
     mark_stage(project, "generate_images", "running", current_stage="generate_images")
     save_project(project_json, project)
 
@@ -110,6 +325,14 @@ def main() -> None:
         str(workdir),
         "--size",
         args.size,
+        "--aspect-ratio",
+        args.aspect_ratio,
+        "--state-db",
+        str(state_db_path),
+        "--project-id",
+        project["project_id"],
+        "--state-stage",
+        DEFAULT_STAGE,
         "--start",
         str(args.start),
         "--poll-seconds",
@@ -123,6 +346,12 @@ def main() -> None:
         cmd.extend(["--end", str(args.end)])
     if args.stop_on_error:
         cmd.append("--stop-on-error")
+    if args.resume:
+        cmd.append("--resume")
+    if args.retry_failed_only:
+        cmd.append("--retry-failed-only")
+    for frame_id in args.frame_id:
+        cmd.extend(["--frame-id", frame_id])
 
     retry_rounds = max(1, args.retry_rounds)
     failed_path = workdir / "failed.jsonl"
@@ -132,6 +361,8 @@ def main() -> None:
 
     for round_index in range(1, retry_rounds + 1):
         append_log(project, f"FastGen attempt {round_index}/{retry_rounds}")
+        if failed_path.exists():
+            failed_path.unlink()
         subprocess.run(cmd, check=True)
         last_failed_records = load_failed_records(failed_path)
         if not last_failed_records:
@@ -162,107 +393,43 @@ def main() -> None:
 
     project = load_project(project_json)
     run_manifest_path = Path(project["images"]["run_manifest_path"])
-    raw_manifest = load_json(run_manifest_path)
     run_summary_path = workdir / "run_summary.json"
-    run_summary = load_json(run_summary_path) if run_summary_path.exists() else {"done": 0, "skipped": 0, "failed": 0}
+    run_summary = load_json(run_summary_path) if run_summary_path.exists() else {"done": 0, "skipped": 0, "failed": 0, "filtered": 0}
     prompt_package = load_json(prompt_package_path)
     scene_plan = load_json(scene_plan_path)
-    scene_by_prompt_index, scene_map = build_scene_lookup(prompt_file, scene_plan, prompt_package)
+    _, scene_map = build_scene_lookup(prompt_file, scene_plan, prompt_package)
     failed_lookup = build_failed_lookup(last_failed_records)
-    prompt_profile = {
-        "provider": "fastgen_openai_v4",
-        "size": args.size,
-    }
-    generated_images = []
-    for record in raw_manifest:
-        prompt_index = int(record["source_prompt_index"])
-        scene_id = scene_by_prompt_index.get(prompt_index)
-        if not scene_id:
-            continue
-        image_path = str(workdir / "images" / record["output"])
-        failed_meta = failed_lookup.get(int(record["index"]))
-        if Path(image_path).exists():
-            status = "success"
-            error_type = ""
-            error_message = ""
-        elif failed_meta:
-            status = "failed"
-            error_type = failed_meta["error_type"]
-            error_message = failed_meta["error_message"]
-        else:
-            status = "missing"
-            error_type = "filesystem_error"
-            error_message = "Image file missing after generation run"
-        prompt_hash = compute_prompt_hash(
-            prompt=record.get("prompt", ""),
-            refs=record.get("refs", []),
-            settings=prompt_profile,
-        )
-        image_info = inspect_image_file(Path(image_path)) if status == "success" else {}
-        generated_images.append(
-            {
-                "job_id": job_id,
-                "created_at": created_at,
-                "scene_id": scene_id,
-                "source_prompt_index": prompt_index,
-                "variant_index": int(record.get("variant_index", 1) or 1),
-                "variant_label": str(record.get("variant_label", f"V{int(record.get('variant_index', 1) or 1):02d}")),
-                "prompt_hash": prompt_hash,
-                "generator_profile": stable_hash(prompt_profile),
-                "generator_settings": prompt_profile,
-                "refs": record.get("refs", []),
-                "prompt": record.get("prompt", ""),
-                "output_file": record["output"],
-                "image_path": image_path,
-                "beat_priority": record.get("beat_priority", "standard"),
-                "key_beat": bool(record.get("key_beat")),
-                "variant_count": int(record.get("variant_count", 1) or 1),
-                "selection_required": bool(record.get("selection_required")),
-                "status": status,
-                "error_type": error_type,
-                "error_message": error_message,
-                "image_format": image_info.get("format"),
-                "image_width": image_info.get("width"),
-                "image_height": image_info.get("height"),
-            }
-        )
 
-        scene = scene_map.get(scene_id)
-        if scene and status == "success":
-            scene["generated_index"] = prompt_index
-            scene["still_image_path"] = image_path
-            scene["render_source"] = "still"
-            scene["render_asset_path"] = image_path
-            notes = [note for note in scene.get("notes", []) if note != "Still image pending"]
-            if "Generated image ready" not in notes:
-                notes.append("Generated image ready")
-            scene["notes"] = notes
-
-    enriched_manifest = {
-        "project_id": project["project_id"],
-        "job_id": job_id,
-        "created_at": created_at,
-        "profile_id": project["profile_id"],
-        "prompt_file": str(prompt_file),
-        "workdir": str(workdir),
-        "generator_profile": prompt_profile,
-        "generated_images": generated_images,
-        "failed_count": int(run_summary.get("failed", 0) or 0),
-        "completed_count": sum(1 for item in generated_images if item["status"] == "success"),
-        "skipped_count": int(run_summary.get("skipped", 0) or 0),
-        "retry_rounds_used": retry_rounds,
-    }
+    enriched_manifest = build_enriched_manifest_from_state(
+        state_db_path=state_db_path,
+        project=project,
+        project_id=project["project_id"],
+        job_id=job_id,
+        created_at=created_at,
+        prompt_file=prompt_file,
+        workdir=workdir,
+        prompt_profile=prompt_profile,
+        scene_plan=scene_plan,
+        scene_map=scene_map,
+        failed_lookup=failed_lookup,
+    )
+    enriched_manifest["skipped_count"] = int(run_summary.get("skipped", 0) or 0)
+    enriched_manifest["filtered_count"] = int(run_summary.get("filtered", 0) or 0)
+    enriched_manifest["retry_rounds_used"] = retry_rounds
     save_json(run_manifest_path, enriched_manifest)
     save_json(scene_plan_path, scene_plan)
 
-    project["images"]["status"] = "generated"
+    incomplete_count = int(enriched_manifest.get("failed_count", 0) or 0) + int(enriched_manifest.get("missing_count", 0) or 0)
+    project["images"]["status"] = "generated" if incomplete_count == 0 else "partial"
     project["images"]["job_id"] = job_id
     project["images"]["generated_count"] = enriched_manifest["completed_count"]
     project["images"]["failed_count"] = enriched_manifest["failed_count"]
-    project["current_stage"] = "image_qc"
+    project["images"]["missing_count"] = enriched_manifest.get("missing_count", 0)
+    project["images"]["state_db_path"] = str(state_db_path)
+    project["current_stage"] = "image_qc" if incomplete_count == 0 else "generate_images"
     save_project(project_json, project)
-    append_event(project, {"kind": "stage_end", "stage": "generate_images", "status": "generated"})
-    append_log(project, f"FastGen generation completed: {enriched_manifest['completed_count']} images ready")
+    append_event(project, {"kind": "stage_end", "stage": "generate_images", "status": project["images"]["status"], "incomplete_count": incomplete_count})
+    append_log(project, f"FastGen generation completed: {enriched_manifest['completed_count']} images ready; incomplete={incomplete_count}")
 
     print(run_manifest_path)
 

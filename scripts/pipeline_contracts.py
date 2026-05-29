@@ -99,6 +99,11 @@ class FrameBrief:
     screen_action: str
     plan: str
     camera_storyboard: str
+    visual_slot_id: str = ""
+    source_scene_id: str = ""
+    source_beat_ids: list[str] = field(default_factory=list)
+    generation_decision: str = "new_image"
+    slot_type: str = "story_action"
     generation_mode: str = "unique"
     source_shot_id: str = ""
     variation_note: str = ""

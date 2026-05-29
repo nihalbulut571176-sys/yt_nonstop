@@ -89,6 +89,15 @@ def lock_record(frame_brief: dict, scene: dict, previous_prompt: str) -> tuple[d
     payload["reference_images"] = reference_images
     payload["visualized_claim"] = str(scene.get("visualized_claim") or frame_brief.get("visualized_claim") or "")
     payload["must_show"] = list(scene.get("must_show") or frame_brief.get("must_show") or [])
+    payload["visual_slot_id"] = frame_brief.get("visual_slot_id") or scene.get("visual_slot_id", "")
+    payload["source_scene_id"] = frame_brief.get("source_scene_id") or scene.get("source_scene_id", "")
+    payload["source_beat_ids"] = frame_brief.get("source_beat_ids") or scene.get("source_beat_ids", [])
+    payload["generation_decision"] = frame_brief.get("generation_decision") or scene.get("generation_decision") or frame_brief.get("generation_mode") or "new_image"
+    payload["generation_mode"] = frame_brief.get("generation_mode") or payload["generation_decision"]
+    payload["slot_type"] = frame_brief.get("slot_type") or scene.get("slot_type", "")
+    payload["beat_priority"] = frame_brief.get("beat_priority", "supporting")
+    payload["key_beat"] = bool(frame_brief.get("key_beat"))
+    payload["variant_count"] = int(frame_brief.get("variant_count", 1) or 0)
     payload["reference_strength"] = scene.get("reference_strength") or frame_brief.get("subject_continuity_strength") or "none"
     payload["reference_usage"] = scene.get("reference_usage") or (reference_bindings[0]["usage"] if reference_bindings else "none")
     payload["reference_prefix"] = build_reference_prefix(reference_ids)
@@ -135,6 +144,7 @@ def main() -> None:
     report_path = Path(project["logs"]["generation_lock_report_path"])
     save_json(json_path, locked_rows)
     write_csv(csv_path, locked_rows)
+    report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text("\n".join(report_lines), encoding="utf-8")
 
     statuses = {row["generation_lock_status"] for row in locked_rows}

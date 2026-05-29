@@ -1,147 +1,119 @@
 import argparse
 from pathlib import Path
+from typing import Any
 
 from project_pipeline_utils import load_json, load_project, save_json, save_project
 
 
 ALLOWED_IMPORTANCE = {"hero", "supporting", "continuity", "bridge", "reuse"}
-ALLOWED_GENERATION_MODES = {"unique", "derived", "reused"}
+ALLOWED_GENERATION_DECISIONS = {
+    "new_image",
+    "new_angle_same_setup",
+    "detail_insert",
+    "reaction_shot",
+    "establishing_shot",
+    "hold_previous",
+    "continuation_motion",
+    "manual_asset",
+}
+NON_GENERATIVE_DECISIONS = {"hold_previous", "continuation_motion"}
 
 
-def clean_text(value: str) -> str:
+def clean_text(value: Any) -> str:
     return " ".join(str(value or "").replace("\n", " ").split()).strip()
 
 
-def infer_importance(beat: dict, scene: dict, index: int, total: int) -> str:
-    priority = clean_text(beat.get("visual_priority")).lower()
+def importance_from_slot(slot: dict[str, Any], index: int, total: int) -> str:
+    priority = clean_text(slot.get("priority")).lower()
     if priority == "high" or index in {1, total}:
         return "hero"
     if priority == "medium":
         return "supporting"
-    duration = float(scene.get("duration", 0) or 0)
-    if duration <= 1.6:
-        return "bridge"
+    if slot.get("generation_decision") in NON_GENERATIVE_DECISIONS:
+        return "reuse"
     return "continuity"
 
 
-def infer_generation_mode(importance: str, scene: dict, active_entities: list[str]) -> str:
-    if scene.get("shot_role") in {"investigative_bridge", "documentary_bridge"}:
-        return "derived"
-    if importance == "bridge":
-        return "derived"
-    if len(active_entities) >= 2 and importance != "hero":
-        return "reused"
-    return "unique"
+def infer_slot_shot_type(slot: dict[str, Any]) -> str:
+    explicit = clean_text(slot.get("shot_type") or slot.get("shot_design"))
+    if explicit:
+        return explicit
+    slot_type = clean_text(slot.get("slot_type")).lower()
+    mapping = {
+        "establishing_shot": "wide establishing shot",
+        "character_action": "medium character action shot",
+        "detail_insert": "close detail insert",
+        "evidence_insert": "close evidence insert",
+        "reaction_shot": "reaction shot",
+        "context_detail": "context detail shot",
+        "continuation_motion": "continuation motion hold",
+    }
+    return mapping.get(slot_type, "medium documentary shot")
 
 
-def infer_shot_type(scene: dict, beat: dict, importance: str) -> str:
-    event_type = clean_text(scene.get("event_type") or beat.get("beat_role")).lower()
-    if event_type in {"assault_moment", "theft_reveal", "access_moment"}:
-        return "close evidence shot"
-    if event_type in {"entry_moment"}:
-        return "medium arrival shot"
-    if importance == "hero":
-        return "medium hero shot"
-    if importance == "bridge":
-        return "bridge shot"
-    return "medium documentary shot"
-
-
-def infer_visual_function(scene: dict, beat: dict, importance: str) -> str:
-    for candidate in (
-        scene.get("visual_function"),
-        scene.get("narrative_purpose"),
-        scene.get("shot_role"),
-        beat.get("beat_role"),
-    ):
-        value = clean_text(candidate)
-        if value:
-            return value
-    return "hook" if importance == "hero" else "explain"
-
-
-def infer_film_block_id(scene: dict, beat: dict, index: int) -> str:
-    for candidate in (
-        scene.get("location_id"),
-        scene.get("environment"),
-        scene.get("global_scene_id"),
-        beat.get("beat_role"),
-    ):
-        value = clean_text(candidate).lower().replace(" ", "_")
-        if value:
-            return f"film_block_{value}"
-    return f"film_block_{index:04d}"
-
-
-def infer_camera(scene: dict, beat: dict, visual_bible: dict, importance: str) -> str:
-    if clean_text(scene.get("camera")):
-        return clean_text(scene["camera"])
-    camera_language = visual_bible.get("camera_language", {})
-    lenses = camera_language.get("lenses", [])
-    movements = camera_language.get("movement", [])
-    if importance == "hero" and lenses:
-        lens = lenses[0]
-        movement = movements[0] if movements else "slow push-in"
-        return f"{lens} {movement}".strip()
-    if movements:
-        return clean_text(movements[0])
-    return clean_text(beat.get("beat_role")).replace("_", " ") or "documentary framing"
-
-
-def infer_lighting(scene: dict, visual_bible: dict) -> str:
-    if clean_text(scene.get("lighting")):
-        return clean_text(scene["lighting"])
-    color_script = visual_bible.get("color_script", {})
-    if clean_text(color_script.get("base_palette")):
-        return clean_text(color_script["base_palette"])
-    return "motivated documentary lighting"
-
-
-def build_default_plan(project: dict, scene_plan: dict, beats_payload: dict, continuity: dict, visual_bible: dict) -> dict:
-    scenes = scene_plan.get("scenes", [])
-    beats = beats_payload.get("beats", [])
-    beats_by_scene = {beat.get("scene_id"): beat for beat in beats if beat.get("scene_id")}
-    segment_entity_map = continuity.get("segment_entity_map", {})
+def build_from_visual_allocation(project: dict[str, Any], allocation: dict[str, Any], continuity: dict[str, Any], visual_bible: dict[str, Any]) -> dict[str, Any]:
+    visual_slots = allocation.get("visual_slots", [])
+    if not visual_slots:
+        raise RuntimeError("visual_allocation_plan has no visual_slots")
     scene_entity_map = continuity.get("scene_entity_map", {})
-    shots = []
-    scene_groups = []
-    scene_to_shot = {}
-    total = len(scenes)
-
-    for index, scene in enumerate(scenes, start=1):
-        beat = beats_by_scene.get(scene["scene_id"], {})
-        active_map = scene_entity_map.get(scene["scene_id"]) or segment_entity_map.get(str(scene.get("source_segment_id", "")), {})
-        active_entities = list(dict.fromkeys(active_map.get("active_entities", []) or beat.get("entity_mentions", []) or scene.get("subject_ids", [])))
-        importance = infer_importance(beat, scene, index, total)
-        generation_mode = infer_generation_mode(importance, scene, active_entities)
-        shot_id = clean_text(scene.get("shot_id")) or f"shot_{index:04d}"
-        source_shot_id = shot_id
-        must_show = [clean_text(item) for item in beat.get("must_visualize", []) if clean_text(item)]
-        if not must_show:
-            fallback = clean_text(scene.get("what_is_in_frame") or scene.get("visual_goal") or scene.get("voice_text"))
-            if fallback:
-                must_show = [fallback]
-        film_block_id = infer_film_block_id(scene, beat, index)
+    segment_entity_map = continuity.get("segment_entity_map", {})
+    shots: list[dict[str, Any]] = []
+    scene_groups: list[dict[str, Any]] = []
+    scene_to_shot: dict[str, dict[str, Any]] = {}
+    visual_slot_to_shot: dict[str, dict[str, Any]] = {}
+    total = len(visual_slots)
+    for index, slot in enumerate(visual_slots, start=1):
+        slot_id = clean_text(slot.get("visual_slot_id") or f"VS{index:04d}")
+        decision = clean_text(slot.get("generation_decision") or "new_image").lower()
+        if decision not in ALLOWED_GENERATION_DECISIONS:
+            decision = "new_image"
+        shot_id = clean_text(slot.get("shot_id") or f"shot_{index:04d}")
+        scene_ids = [clean_text(item) for item in slot.get("scene_ids", []) if clean_text(item)]
+        source_scene_id = clean_text(slot.get("source_scene_id") or (scene_ids[0] if scene_ids else ""))
+        active_entities: list[str] = []
+        for scene_id in scene_ids or [source_scene_id]:
+            active_map = scene_entity_map.get(scene_id) or segment_entity_map.get(scene_id) or {}
+            active_entities.extend(active_map.get("active_entities", []) or [])
+        active_entities.extend(slot.get("primary_entity_ids", []) or [])
+        active_entities = list(dict.fromkeys(clean_text(item) for item in active_entities if clean_text(item)))
+        importance = importance_from_slot(slot, index, total)
+        camera = clean_text(slot.get("camera"))
+        if not camera:
+            camera_language = visual_bible.get("camera_language", {}) if isinstance(visual_bible, dict) else {}
+            movement = (camera_language.get("movement") or ["documentary framing"])[0]
+            camera = clean_text(movement) or "documentary framing"
+        lighting = clean_text(slot.get("lighting"))
+        if not lighting:
+            color_script = visual_bible.get("color_script", {}) if isinstance(visual_bible, dict) else {}
+            lighting = clean_text(color_script.get("base_palette")) or "motivated documentary lighting"
         shot_record = {
             "shot_id": shot_id,
+            "visual_slot_id": slot_id,
             "importance": importance,
-            "generation_mode": generation_mode,
-            "primary_scene_id": scene["scene_id"],
-            "beat_ids": [clean_text(beat.get("beat_id")) or f"beat_{index:04d}"],
-            "scene_ids": [scene["scene_id"]],
-            "shot_type": infer_shot_type(scene, beat, importance),
-            "visual_function": infer_visual_function(scene, beat, importance),
+            "generation_mode": decision,
+            "generation_decision": decision,
+            "primary_scene_id": source_scene_id,
+            "source_scene_id": source_scene_id,
+            "beat_ids": [clean_text(item) for item in slot.get("beat_ids", []) if clean_text(item)],
+            "scene_ids": scene_ids or ([source_scene_id] if source_scene_id else []),
+            "shot_type": infer_slot_shot_type(slot),
+            "slot_type": clean_text(slot.get("slot_type") or "explanation_visual"),
+            "visual_function": clean_text(slot.get("visual_function") or "show_spoken_idea"),
             "primary_entity_ids": active_entities,
-            "must_show": must_show,
-            "film_block_id": film_block_id,
-            "visual_anchor": clean_text(scene.get("primary_subject") or scene.get("main_subject") or must_show[0] if must_show else scene.get("voice_text")),
-            "off_topic_risk": "low" if must_show else "medium",
-            "prompt_strategy": "ground every prompt in beat-level observable action and continuity-locked entities",
-            "primary_subject": clean_text(scene.get("primary_subject") or scene.get("main_subject")),
-            "camera": infer_camera(scene, beat, visual_bible, importance),
-            "lighting": infer_lighting(scene, visual_bible),
-            "transition_in": "cut",
-            "transition_out": "cut_on_phrase_end",
+            "must_show": [clean_text(item) for item in slot.get("must_show", []) if clean_text(item)],
+            "film_block_id": clean_text(slot.get("film_block_id") or f"film_block_{index:04d}"),
+            "visual_anchor": clean_text(slot.get("must_show", [""])[0] if slot.get("must_show") else slot.get("visualized_claim")),
+            "visualized_claim": clean_text(slot.get("visualized_claim")),
+            "off_topic_risk": "low" if slot.get("must_show") else "medium",
+            "prompt_strategy": "ground the prompt in this authored visual slot, not in a generic scene summary",
+            "primary_subject": clean_text(slot.get("primary_subject")),
+            "camera": camera,
+            "lighting": lighting,
+            "transition_in": clean_text(slot.get("transition_in") or "cut"),
+            "transition_out": clean_text(slot.get("transition_out") or "cut_on_phrase_end"),
+            "variant_count": int(slot.get("variant_count", 0) or 0),
+            "reason": clean_text(slot.get("reason")),
+            "source_visual_slot_id": clean_text(slot.get("source_visual_slot_id")),
         }
         shots.append(shot_record)
         scene_groups.append(
@@ -150,118 +122,102 @@ def build_default_plan(project: dict, scene_plan: dict, beats_payload: dict, con
                 "importance": importance,
                 "visual_strategy": shot_record["visual_function"],
                 "shot_id": shot_id,
-                "scenes": [scene["scene_id"]],
-                "variation_notes": {scene["scene_id"]: ""},
+                "visual_slot_id": slot_id,
+                "scenes": shot_record["scene_ids"],
+                "variation_notes": {scene_id: slot.get("reason", "") for scene_id in shot_record["scene_ids"]},
             }
         )
-        scene_to_shot[scene["scene_id"]] = {
+        mapping = {
             "shot_id": shot_id,
-            "generation_mode": generation_mode,
-            "source_shot_id": source_shot_id,
-            "variation_note": "",
-            "beat_id": shot_record["beat_ids"][0],
+            "visual_slot_id": slot_id,
+            "generation_mode": decision,
+            "generation_decision": decision,
+            "source_shot_id": clean_text(slot.get("source_visual_slot_id") or shot_id),
+            "variation_note": clean_text(slot.get("reason")),
+            "beat_id": shot_record["beat_ids"][0] if shot_record["beat_ids"] else "",
         }
-
+        visual_slot_to_shot[slot_id] = mapping
+        if source_scene_id and source_scene_id not in scene_to_shot:
+            scene_to_shot[source_scene_id] = mapping
+    generative_count = sum(1 for shot in shots if shot["generation_decision"] not in NON_GENERATIVE_DECISIONS)
     return {
         "project_id": project["project_id"],
         "quality_mode": project["prompts"].get("quality_mode", "standard"),
-        "total_scenes": total,
-        "target_unique_shots": sum(1 for shot in shots if shot["generation_mode"] == "unique"),
-        "actual_unique_shots": sum(1 for shot in shots if shot["generation_mode"] == "unique"),
+        "total_scenes": len({sid for shot in shots for sid in shot.get("scene_ids", [])}),
+        "total_visual_slots": len(visual_slots),
+        "target_unique_shots": generative_count,
+        "actual_unique_shots": generative_count,
+        "planning_source": "visual_allocation_plan.json",
+        "scene_groups": scene_groups,
+        "shots": shots,
+        "scene_to_shot": scene_to_shot,
+        "visual_slot_to_shot": visual_slot_to_shot,
+    }
+
+
+# Legacy fallback kept for non-sequence or old fixtures.
+def build_default_plan(project: dict[str, Any], scene_plan: dict[str, Any], beats_payload: dict[str, Any], continuity: dict[str, Any], visual_bible: dict[str, Any]) -> dict[str, Any]:
+    scenes = scene_plan.get("scenes", [])
+    beats = beats_payload.get("beats", [])
+    beats_by_scene = {beat.get("scene_id"): beat for beat in beats if beat.get("scene_id")}
+    shots = []
+    scene_groups = []
+    scene_to_shot = {}
+    for index, scene in enumerate(scenes, start=1):
+        beat = beats_by_scene.get(scene.get("scene_id"), {})
+        shot_id = clean_text(scene.get("shot_id")) or f"shot_{index:04d}"
+        must_show = [clean_text(item) for item in beat.get("must_visualize", []) if clean_text(item)] or [clean_text(scene.get("voice_text"))]
+        priority = clean_text(beat.get("visual_priority") or "low").lower()
+        importance = "hero" if priority == "high" or index == 1 else "supporting" if priority == "medium" else "continuity"
+        generation_mode = "new_image"
+        record = {
+            "shot_id": shot_id,
+            "importance": importance,
+            "generation_mode": generation_mode,
+            "generation_decision": generation_mode,
+            "primary_scene_id": scene.get("scene_id"),
+            "source_scene_id": scene.get("scene_id"),
+            "beat_ids": [clean_text(beat.get("beat_id")) or f"beat_{index:04d}"],
+            "scene_ids": [scene.get("scene_id")],
+            "shot_type": "medium documentary shot",
+            "slot_type": "explanation_visual",
+            "visual_function": clean_text(beat.get("beat_role") or scene.get("visual_function") or "explain"),
+            "primary_entity_ids": list(dict.fromkeys(beat.get("entity_mentions", []) or scene.get("subject_ids", []) or [])),
+            "must_show": must_show,
+            "film_block_id": clean_text(scene.get("film_block_id") or scene.get("global_scene_id") or f"film_block_{index:04d}"),
+            "visual_anchor": must_show[0],
+            "visualized_claim": clean_text(beat.get("spoken_claim") or scene.get("visualized_claim") or scene.get("voice_text")),
+            "off_topic_risk": "low",
+            "prompt_strategy": "ground every prompt in beat-level observable action and continuity-locked entities",
+            "primary_subject": clean_text(scene.get("primary_subject") or scene.get("main_subject")),
+            "camera": clean_text(scene.get("camera") or "documentary framing"),
+            "lighting": clean_text(scene.get("lighting") or "motivated documentary lighting"),
+            "transition_in": "cut",
+            "transition_out": "cut_on_phrase_end",
+            "variant_count": 1,
+        }
+        shots.append(record)
+        scene_groups.append({"group_id": f"group_{index:04d}", "importance": importance, "visual_strategy": record["visual_function"], "shot_id": shot_id, "scenes": [scene.get("scene_id")], "variation_notes": {scene.get("scene_id"): ""}})
+        scene_to_shot[scene.get("scene_id")] = {"shot_id": shot_id, "generation_mode": generation_mode, "generation_decision": generation_mode, "source_shot_id": shot_id, "variation_note": "", "beat_id": record["beat_ids"][0]}
+    return {
+        "project_id": project["project_id"],
+        "quality_mode": project["prompts"].get("quality_mode", "standard"),
+        "total_scenes": len(scenes),
+        "total_visual_slots": len(scenes),
+        "target_unique_shots": len(shots),
+        "actual_unique_shots": len(shots),
         "planning_source": "narration_beats.json",
         "scene_groups": scene_groups,
         "shots": shots,
         "scene_to_shot": scene_to_shot,
+        "visual_slot_to_shot": {},
     }
 
 
-def normalize_plan(raw_plan: dict, scene_ids: set[str], quality_mode: str) -> dict:
-    scene_groups = raw_plan.get("scene_groups", [])
-    shots = raw_plan.get("shots", [])
-    scene_to_shot = raw_plan.get("scene_to_shot", {})
-
-    shots_by_id = {}
-    normalized_shots = []
-    for shot in shots:
-        shot_id = clean_text(shot.get("shot_id"))
-        if not shot_id or shot_id in shots_by_id:
-            continue
-        importance = clean_text(shot.get("importance", "supporting")).lower() or "supporting"
-        if importance not in ALLOWED_IMPORTANCE:
-            importance = "supporting"
-        generation_mode = clean_text(shot.get("generation_mode", "unique")).lower() or "unique"
-        if generation_mode not in ALLOWED_GENERATION_MODES:
-            generation_mode = "unique"
-        scene_ids_for_shot = [scene_id for scene_id in shot.get("scene_ids", []) if scene_id in scene_ids]
-        primary_scene_id = clean_text(shot.get("primary_scene_id")) or (scene_ids_for_shot[0] if scene_ids_for_shot else "")
-        normalized = {
-            "shot_id": shot_id,
-            "importance": importance,
-            "generation_mode": generation_mode,
-            "primary_scene_id": primary_scene_id,
-            "beat_ids": [clean_text(beat_id) for beat_id in shot.get("beat_ids", []) if clean_text(beat_id)],
-            "scene_ids": scene_ids_for_shot,
-            "shot_type": clean_text(shot.get("shot_type", "medium shot")) or "medium shot",
-            "visual_function": clean_text(shot.get("visual_function", "explain")) or "explain",
-            "primary_entity_ids": [clean_text(entity_id) for entity_id in shot.get("primary_entity_ids", []) if clean_text(entity_id)],
-            "must_show": [clean_text(item) for item in shot.get("must_show", []) if clean_text(item)],
-            "film_block_id": clean_text(shot.get("film_block_id", shot_id)) or shot_id,
-            "visual_anchor": clean_text(shot.get("visual_anchor")),
-            "off_topic_risk": clean_text(shot.get("off_topic_risk", "unknown")) or "unknown",
-            "prompt_strategy": clean_text(shot.get("prompt_strategy")),
-            "primary_subject": clean_text(shot.get("primary_subject")),
-            "camera": clean_text(shot.get("camera")),
-            "lighting": clean_text(shot.get("lighting")),
-            "transition_in": clean_text(shot.get("transition_in", "cut")) or "cut",
-            "transition_out": clean_text(shot.get("transition_out", "cut")) or "cut",
-        }
-        shots_by_id[shot_id] = normalized
-        normalized_shots.append(normalized)
-
-    normalized_scene_to_shot = {}
-    for scene_id, mapping in scene_to_shot.items():
-        if scene_id not in scene_ids:
-            continue
-        shot_id = clean_text(mapping.get("shot_id"))
-        if shot_id not in shots_by_id:
-            continue
-        generation_mode = clean_text(mapping.get("generation_mode", shots_by_id[shot_id]["generation_mode"])).lower() or shots_by_id[shot_id]["generation_mode"]
-        if generation_mode not in ALLOWED_GENERATION_MODES:
-            generation_mode = shots_by_id[shot_id]["generation_mode"]
-        normalized_scene_to_shot[scene_id] = {
-            "shot_id": shot_id,
-            "generation_mode": generation_mode,
-            "source_shot_id": clean_text(mapping.get("source_shot_id", shot_id)) or shot_id,
-            "variation_note": clean_text(mapping.get("variation_note")),
-            "beat_id": clean_text(mapping.get("beat_id")),
-        }
-
-    for group in scene_groups:
-        shot_id = clean_text(group.get("shot_id"))
-        if shot_id not in shots_by_id:
-            continue
-        for scene_id in group.get("scenes", []):
-            if scene_id not in scene_ids or scene_id in normalized_scene_to_shot:
-                continue
-            normalized_scene_to_shot[scene_id] = {
-                "shot_id": shot_id,
-                "generation_mode": shots_by_id[shot_id]["generation_mode"],
-                "source_shot_id": shot_id,
-                "variation_note": clean_text(group.get("variation_notes", {}).get(scene_id, "")),
-                "beat_id": "",
-            }
-
-    return {
-        "project_id": raw_plan.get("project_id"),
-        "quality_mode": quality_mode,
-        "total_scenes": len(scene_ids),
-        "target_unique_shots": int(raw_plan.get("target_unique_shots", len(normalized_shots)) or len(normalized_shots)),
-        "actual_unique_shots": len([shot for shot in normalized_shots if shot["generation_mode"] == "unique"]),
-        "planning_source": clean_text(raw_plan.get("planning_source", "narration_beats.json")) or "narration_beats.json",
-        "scene_groups": scene_groups,
-        "shots": normalized_shots,
-        "scene_to_shot": normalized_scene_to_shot,
-    }
+def normalize_plan(raw_plan: dict[str, Any], quality_mode: str) -> dict[str, Any]:
+    raw_plan["quality_mode"] = quality_mode
+    raw_plan.setdefault("visual_slot_to_shot", {})
+    return raw_plan
 
 
 def main() -> None:
@@ -275,6 +231,7 @@ def main() -> None:
     project = load_project(project_json)
     scene_plan_path = Path(project["scene_plan"]["scene_plan_path"])
     narration_beats_path = Path(project["planning"]["narration_beats_path"])
+    allocation_path = Path(project["planning"].get("visual_allocation_plan_path", ""))
     continuity_path = Path(project["planning"]["continuity_map_json_path"])
     visual_bible_path = Path(project["prompts"]["visual_bible_path"])
     output_path = Path(project["prompts"]["visual_shot_plan_path"])
@@ -284,26 +241,23 @@ def main() -> None:
     beats_payload = load_json(narration_beats_path)
     continuity = load_json(continuity_path) if continuity_path.exists() else {}
     visual_bible = load_json(visual_bible_path) if visual_bible_path.exists() else {}
-    scene_ids = {scene["scene_id"] for scene in scene_plan.get("scenes", []) if scene.get("scene_id")}
-    if not scene_ids:
-        raise RuntimeError("scene_plan has no scenes; cannot build visual_shot_plan")
 
     if args.input_json:
-        raw_plan = load_json(Path(args.input_json).resolve())
-        plan = normalize_plan(raw_plan, scene_ids, quality_mode)
+        plan = normalize_plan(load_json(Path(args.input_json).resolve()), quality_mode)
+    elif allocation_path.exists():
+        allocation = load_json(allocation_path)
+        plan = build_from_visual_allocation(project, allocation, continuity, visual_bible)
+        plan["quality_mode"] = quality_mode
     else:
         plan = build_default_plan(project, scene_plan, beats_payload, continuity, visual_bible)
         plan["quality_mode"] = quality_mode
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
     save_json(output_path, plan)
-
     project["prompts"]["quality_mode"] = quality_mode
     project["prompts"]["visual_shot_plan_path"] = str(output_path)
     project["prompts"]["visual_shot_plan_status"] = "planned"
     project["current_stage"] = "build_frame_briefs"
     save_project(project_json, project)
-
     print(output_path)
 
 
