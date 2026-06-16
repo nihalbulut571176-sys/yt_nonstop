@@ -252,6 +252,64 @@ def test_webapi_pipeline_state_marks_active_run_lock(tmp_path, monkeypatch):
     assert any(active_job.job.run_id in item["reason"] for item in payload["available_actions"])
 
 
+def test_webapi_runs_record_events_logs_and_rejected_conflicts(tmp_path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    _make_repo_native_project(workspace)
+    monkeypatch.setenv("YT_NONSTOP_WORKSPACE_ROOT", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_ALLOWED_PROJECT_ROOTS", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_WEB_RUNTIME_DIR", str(tmp_path / "runtime"))
+
+    app = create_app()
+    client = TestClient(app)
+    headers = _login(client)
+    project_id = client.get("/api/projects", headers=headers).json()[0]["id"]
+
+    completed_job = app.state.jobs.start_job(
+        project_id=project_id,
+        command=[sys.executable, "-c", "print('hello from run')"],
+        read_only=False,
+    )
+    assert completed_job.accepted is True
+    time.sleep(0.8)
+
+    run_details = client.get(f"/api/runs/{completed_job.job.run_id}", headers=headers)
+    assert run_details.status_code == 200
+    completed_payload = run_details.json()
+    assert completed_payload["status"] == "completed"
+    assert "hello from run" in "\n".join(completed_payload["log_tail"])
+    assert {event["event_type"] for event in completed_payload["events"]} >= {"queued", "running", "completed"}
+
+    active_job = app.state.jobs.start_job(
+        project_id=project_id,
+        command=[sys.executable, "-c", "import time; time.sleep(1)"],
+        read_only=False,
+    )
+    rejected_job = app.state.jobs.start_job(
+        project_id=project_id,
+        command=[sys.executable, "-c", "print('blocked')"],
+        read_only=False,
+    )
+    assert active_job.accepted is True
+    assert rejected_job.accepted is False
+
+    rejected_details = client.get(f"/api/runs/{rejected_job.job.run_id}", headers=headers)
+    assert rejected_details.status_code == 200
+    rejected_payload = rejected_details.json()
+    assert rejected_payload["status"] == "rejected"
+    assert rejected_payload["error_category"] == "run_conflict_error"
+    assert any("active run" in event["message"] for event in rejected_payload["events"])
+
+    project_runs = client.get(f"/api/projects/{project_id}/runs", headers=headers)
+    assert project_runs.status_code == 200
+    run_ids = [item["run_id"] for item in project_runs.json()]
+    assert rejected_job.job.run_id in run_ids
+    assert completed_job.job.run_id in run_ids
+
+    logs = client.get(f"/api/runs/{completed_job.job.run_id}/logs", headers=headers)
+    assert logs.status_code == 200
+    assert "hello from run" in "\n".join(logs.json()["lines"])
+
+
 def test_webapi_pipeline_runs_review_and_settings(tmp_path, monkeypatch):
     workspace = tmp_path / "workspace"
     source_project = _make_repo_native_project(workspace)

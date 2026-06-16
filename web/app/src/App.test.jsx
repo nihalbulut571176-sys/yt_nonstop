@@ -128,6 +128,19 @@ const activeRunState = {
   }))
 };
 
+const runSummary = {
+  run_id: 'run-history',
+  project_id: 'demo-project',
+  action_type: 'validate',
+  command: ['yt-nonstop', 'validate'],
+  status: 'completed',
+  started_at: '2026-01-01T00:00:00Z',
+  finished_at: '2026-01-01T00:00:03Z',
+  exit_code: 0,
+  log_path: 'logs/run-history.log',
+  username: 'operator'
+};
+
 function primeMocks() {
   mockApi.getToken.mockReturnValue('token-1');
   mockApi.me.mockResolvedValue(authPayload);
@@ -266,4 +279,28 @@ test('overview and pipeline expose warning and active-run state', async () => {
   expect((await screen.findAllByText('run-active')).length).toBeGreaterThan(0);
   const validateButtons = await screen.findAllByRole('button', {name: /validate/i});
   expect(validateButtons[0]).toBeDisabled();
+});
+
+test('runs page renders product run history and events', async () => {
+  mockApi.listRuns.mockResolvedValue([runSummary]);
+  mockApi.getProjectRuns.mockResolvedValue([runSummary]);
+  mockApi.getPipelineState.mockResolvedValue(activeRunState);
+  mockApi.getRun.mockResolvedValue({
+    ...activeRunState.active_run,
+    events: [
+      {event_id: 1, run_id: 'run-active', event_type: 'queued', message: 'Run accepted and queued.', created_at: '2026-01-01T00:00:00Z'},
+      {event_id: 2, run_id: 'run-active', event_type: 'running', message: 'Run is now running.', created_at: '2026-01-01T00:00:01Z'}
+    ],
+    log_tail: ['running']
+  });
+  render(
+    <MemoryRouter initialEntries={['/projects/demo-project/runs']}>
+      <App />
+    </MemoryRouter>
+  );
+
+  expect(await screen.findByText('Active Run Event Stream')).toBeInTheDocument();
+  expect(await screen.findByText('Run accepted and queued.')).toBeInTheDocument();
+  expect((await screen.findAllByText('run-history')).length).toBeGreaterThan(0);
+  expect((await screen.findAllByText('validate')).length).toBeGreaterThan(0);
 });

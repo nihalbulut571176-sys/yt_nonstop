@@ -6,6 +6,7 @@ export function RunsTable({rows}) {
       <table>
         <thead>
           <tr>
+            <th>Run ID</th>
             <th>Status</th>
             <th>Action</th>
             <th>User</th>
@@ -18,6 +19,7 @@ export function RunsTable({rows}) {
         <tbody>
           {rows.map((run) => (
             <tr key={run.run_id}>
+              <td><code>{run.run_id}</code></td>
               <td>{run.status}</td>
               <td>{run.action_type || 'n/a'}</td>
               <td>{run.username || 'n/a'}</td>
