@@ -20,7 +20,7 @@ def _write_json(path: Path, payload: dict) -> None:
 
 def _make_repo_native_project(root: Path) -> Path:
     project_root = root / "demo_project"
-    for folder in ("input", "work", "images", "output", "renders", "qc", "reports", "prompts", "exports", "logs"):
+    for folder in ("input", "work", "images", "final_images", "output", "renders", "qc", "reports", "prompts", "exports", "logs"):
         (project_root / folder).mkdir(parents=True, exist_ok=True)
     _write_json(
         project_root / "project.json",
@@ -35,6 +35,10 @@ def _make_repo_native_project(root: Path) -> Path:
     (project_root / "work" / "review_sheet.csv").write_text("beat_id,text\nB0001,hello\n", encoding="utf-8")
     (project_root / "exports" / "edit_timeline.csv").write_text("shot_id,start,end\nS001,0,3\n", encoding="utf-8")
     (project_root / "reports" / "notes.md").write_text("# hello\nworld\n", encoding="utf-8")
+    (project_root / "prompts" / "prompts.md").write_text("# prompt\nvisual direction\n", encoding="utf-8")
+    (project_root / "images" / "B0001.png").write_bytes(b"image")
+    (project_root / "final_images" / "B0001.png").write_bytes(b"final")
+    (project_root / "output" / "final.mp4").write_bytes(b"video")
     return project_root
 
 
@@ -191,7 +195,11 @@ def test_webapi_workspace_projects_and_assets(tmp_path, monkeypatch):
 
     assets = client.get(f"/api/projects/{project_id}/assets", headers=headers)
     assert assets.status_code == 200
-    assert assets.json()["total_count"] >= 1
+    asset_payload = assets.json()
+    assert asset_payload["total_count"] >= 5
+    groups = {item["type"]: item for item in asset_payload["groups"]}
+    assert {"images", "final_images", "output", "prompts", "reports"}.issubset(groups.keys())
+    assert groups["final_images"]["label"] == "Final Images"
 
     timeline = client.get(f"/api/projects/{project_id}/timeline", headers=headers)
     assert timeline.status_code == 200
@@ -200,6 +208,24 @@ def test_webapi_workspace_projects_and_assets(tmp_path, monkeypatch):
     preview = client.get(f"/api/projects/{project_id}/preview", params={"path": str(project_root / "reports" / "notes.md")}, headers=headers)
     assert preview.status_code == 200
     assert "world" in preview.json()["content"]
+
+    image_preview = client.get(f"/api/projects/{project_id}/preview", params={"path": str(project_root / "images" / "B0001.png")}, headers=headers)
+    assert image_preview.status_code == 200
+    assert image_preview.json()["preview_kind"] == "image"
+
+    missing_preview = client.get(f"/api/projects/{project_id}/preview", params={"path": str(project_root / "reports" / "missing.md")}, headers=headers)
+    assert missing_preview.status_code == 404
+    assert missing_preview.json()["code"] == "filesystem_error"
+
+    outside_file = tmp_path / "outside.md"
+    outside_file.write_text("outside", encoding="utf-8")
+    outside_preview = client.get(f"/api/projects/{project_id}/preview", params={"path": str(outside_file)}, headers=headers)
+    assert outside_preview.status_code == 403
+    assert outside_preview.json()["code"] == "filesystem_error"
+
+    outside_media = client.get(f"/api/projects/{project_id}/media", params={"path": str(outside_file), "token": headers["Authorization"].split(" ", 1)[1]})
+    assert outside_media.status_code == 403
+    assert outside_media.json()["code"] == "filesystem_error"
 
 
 def test_webapi_pipeline_state_marks_limited_support_actions(tmp_path, monkeypatch):

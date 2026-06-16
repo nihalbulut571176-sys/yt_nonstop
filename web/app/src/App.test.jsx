@@ -155,6 +155,31 @@ const reviewQueue = {
   raw_rows: []
 };
 
+const assetCollection = {
+  project_id: 'demo-project',
+  total_count: 3,
+  groups: [
+    {
+      type: 'final_images',
+      label: 'Final Images',
+      count: 1,
+      entries: [{type: 'final_images', label: 'final_images/B0001.png', path: 'C:\\demo\\final_images\\B0001.png', size: 2048, modified_at: '2026-01-01T00:00:00Z', preview_kind: 'image'}]
+    },
+    {
+      type: 'output',
+      label: 'Output',
+      count: 1,
+      entries: [{type: 'output', label: 'output/final.mp4', path: 'C:\\demo\\output\\final.mp4', size: 4096, modified_at: '2026-01-01T00:00:00Z', preview_kind: 'video'}]
+    },
+    {
+      type: 'prompts',
+      label: 'Prompts',
+      count: 1,
+      entries: [{type: 'prompts', label: 'prompts/prompts.md', path: 'C:\\demo\\prompts\\prompts.md', size: 512, modified_at: '2026-01-01T00:00:00Z', preview_kind: 'text'}]
+    }
+  ]
+};
+
 function primeMocks() {
   mockApi.getToken.mockReturnValue('token-1');
   mockApi.me.mockResolvedValue(authPayload);
@@ -335,4 +360,23 @@ test('review page shows saved decisions and filters queue rows', async () => {
   await user.selectOptions(screen.getByLabelText(/decision filter/i), 'approved');
   expect((await screen.findAllByText('B0001')).length).toBeGreaterThan(0);
   expect(screen.queryByText('B0002')).not.toBeInTheDocument();
+});
+
+test('assets page groups files and opens text preview through API', async () => {
+  const user = userEvent.setup();
+  mockApi.getAssets.mockResolvedValue(assetCollection);
+  mockApi.preview.mockResolvedValue({path: 'C:\\demo\\prompts\\prompts.md', preview_kind: 'text', content: '# prompt\nvisual direction'});
+  render(
+    <MemoryRouter initialEntries={['/projects/demo-project/assets']}>
+      <App />
+    </MemoryRouter>
+  );
+
+  expect(await screen.findByText('Asset Collections')).toBeInTheDocument();
+  expect(await screen.findByText('Final Images')).toBeInTheDocument();
+  expect(await screen.findByText('Output')).toBeInTheDocument();
+
+  await user.click(await screen.findByRole('button', {name: /prompts\/prompts\.md/i}));
+  expect(mockApi.preview).toHaveBeenCalledWith('demo-project', 'C:\\demo\\prompts\\prompts.md');
+  expect(await screen.findByText(/visual direction/i)).toBeInTheDocument();
 });
