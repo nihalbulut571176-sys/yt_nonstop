@@ -287,6 +287,19 @@ def test_webapi_can_bootstrap_project(tmp_path, monkeypatch):
     app = create_app()
     client = TestClient(app)
     headers = _login(client)
+    invalid_response = client.post(
+        "/api/projects",
+        json={
+            "project_name": "Invalid Web MVP",
+            "source_srt_path": str(source_srt),
+            "raw_text_path": str(raw_text),
+        },
+        headers=headers,
+    )
+    assert invalid_response.status_code == 400
+    assert invalid_response.json()["code"] == "validation_error"
+    assert not (workspace / "invalid_web_mvp").exists()
+
     response = client.post(
         "/api/projects",
         json={
@@ -300,6 +313,7 @@ def test_webapi_can_bootstrap_project(tmp_path, monkeypatch):
     assert response.status_code == 200
     payload = response.json()
     project_root = Path(payload["project_root"])
+    assert payload["next_route"] == f"/projects/{payload['project_id']}/overview"
     assert (project_root / "project.json").exists()
     assert (project_root / "input" / "raw_text.md").read_text(encoding="utf-8").startswith("# raw")
 

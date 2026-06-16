@@ -1,4 +1,4 @@
-import {render, screen, waitFor} from '@testing-library/react';
+import {render, screen, waitFor, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {MemoryRouter} from 'react-router-dom';
 import {beforeEach, expect, test, vi} from 'vitest';
@@ -181,5 +181,48 @@ test('pipeline quick action calls product api action endpoint', async () => {
 
   await waitFor(() => {
     expect(mockApi.pipelineAction).toHaveBeenCalledWith('demo-project', expect.objectContaining({action: 'validate'}));
+  });
+});
+
+test('project setup validates required fields before calling api', async () => {
+  const user = userEvent.setup();
+  render(
+    <MemoryRouter initialEntries={['/projects/new']}>
+      <App />
+    </MemoryRouter>
+  );
+
+  expect(await screen.findByText('Create Project')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', {name: /create project/i}));
+
+  expect(await screen.findByText(/project name is required/i)).toBeInTheDocument();
+  expect(mockApi.createProject).not.toHaveBeenCalled();
+});
+
+test('project setup submits required input paths', async () => {
+  const user = userEvent.setup();
+  mockApi.createProject.mockResolvedValue({project_id: 'new-project', next_route: '/projects/new-project/overview'});
+  render(
+    <MemoryRouter initialEntries={['/projects/new']}>
+      <App />
+    </MemoryRouter>
+  );
+
+  expect(await screen.findByText('Create Project')).toBeInTheDocument();
+  const setupForm = screen.getByRole('button', {name: /create project/i}).closest('form');
+  const controls = within(setupForm);
+  await user.type(controls.getByLabelText(/project name/i), 'New Project');
+  await user.type(controls.getByLabelText(/source srt path/i), 'C:\\input\\source.srt');
+  await user.type(controls.getByLabelText(/source audio path/i), 'C:\\input\\source.mp3');
+  await user.type(controls.getByLabelText(/raw text path/i), 'C:\\input\\raw_text.md');
+  await user.click(controls.getByRole('button', {name: /create project/i}));
+
+  await waitFor(() => {
+    expect(mockApi.createProject).toHaveBeenCalledWith(expect.objectContaining({
+      project_name: 'New Project',
+      source_srt_path: 'C:\\input\\source.srt',
+      source_audio_path: 'C:\\input\\source.mp3',
+      raw_text_path: 'C:\\input\\raw_text.md'
+    }));
   });
 });

@@ -228,23 +228,31 @@ def _slugify_project_name(value: str) -> str:
     return normalized or "project"
 
 
-def _copy_optional_file(source: str | None, destination: Path) -> None:
-    if not source:
-        return
-    source_path = Path(source).expanduser().resolve()
-    if not source_path.exists() or not source_path.is_file():
-        raise ProductApiError(status_code=400, code="validation_error", message=f"Source file not found: {source_path}", details={"source_path": str(source_path)})
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(source_path, destination)
+def _resolve_required_file(value: str | None, *, label: str, details_key: str) -> Path:
+    if not value or not value.strip():
+        raise ProductApiError(status_code=400, code="validation_error", message=f"{label} is required", details={details_key: value or ""})
+    path = Path(value).expanduser().resolve()
+    if not path.exists() or not path.is_file():
+        raise ProductApiError(status_code=400, code="validation_error", message=f"{label} not found: {path}", details={details_key: str(path)})
+    return path
+
+
+def _resolve_optional_file(value: str | None, *, label: str, details_key: str) -> Path | None:
+    if not value or not value.strip():
+        return None
+    path = Path(value).expanduser().resolve()
+    if not path.exists() or not path.is_file():
+        raise ProductApiError(status_code=400, code="validation_error", message=f"{label} not found: {path}", details={details_key: str(path)})
+    return path
 
 
 def _run_bootstrap(config: WebConfig, request: CreateProjectRequest) -> CreateProjectResponse:
-    source_srt = Path(request.source_srt_path).expanduser().resolve()
-    if not source_srt.exists() or not source_srt.is_file():
-        raise ProductApiError(status_code=400, code="validation_error", message=f"Source SRT not found: {source_srt}", details={"source_srt_path": str(source_srt)})
-    source_audio = Path(request.source_audio_path).expanduser().resolve() if request.source_audio_path else None
-    if source_audio and (not source_audio.exists() or not source_audio.is_file()):
-        raise ProductApiError(status_code=400, code="validation_error", message=f"Source audio not found: {source_audio}", details={"source_audio_path": str(source_audio)})
+    if not request.project_name.strip():
+        raise ProductApiError(status_code=400, code="validation_error", message="Project name is required", details={"project_name": request.project_name})
+    source_srt = _resolve_required_file(request.source_srt_path, label="Source SRT", details_key="source_srt_path")
+    source_audio = _resolve_required_file(request.source_audio_path, label="Source audio", details_key="source_audio_path")
+    raw_text = _resolve_required_file(request.raw_text_path, label="Raw text", details_key="raw_text_path")
+    setup_notes = _resolve_optional_file(request.setup_notes_path, label="Setup notes", details_key="setup_notes_path")
 
     slug = _slugify_project_name(request.project_name)
     project_root = (config.workspace_root / slug).resolve(strict=False)
@@ -275,14 +283,16 @@ def _run_bootstrap(config: WebConfig, request: CreateProjectRequest) -> CreatePr
         )
 
     project_json_path = project_root / "project.json"
-    _copy_optional_file(request.raw_text_path, project_root / "input" / "raw_text.md")
-    _copy_optional_file(request.setup_notes_path, project_root / "input" / "project_setup_notes.md")
+    shutil.copy2(raw_text, project_root / "input" / "raw_text.md")
+    if setup_notes:
+        shutil.copy2(setup_notes, project_root / "input" / "project_setup_notes.md")
     return CreateProjectResponse(
         project_id=slug,
         project_name=request.project_name,
         project_root=str(project_root),
         project_json_path=str(project_json_path),
         support="full",
+        next_route=f"/projects/{slug}/overview",
         notes=[
             "Project folder bootstrapped from the repo-native real pilot template.",
             "CLI remains the execution source of truth for all stage runs.",

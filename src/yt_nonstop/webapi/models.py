@@ -276,6 +276,7 @@ class CreateProjectResponse(BaseModel):
     project_root: str
     project_json_path: str
     support: ProjectSupport
+    next_route: str
     notes: list[str] = Field(default_factory=list)
 
 
