@@ -75,6 +75,7 @@ export function PipelinePage() {
         <div className="panel">
           <SectionTitle title="Pipeline State" meta={pipelineState.lifecycle_status} />
           <div className="info-cluster">
+            {pipelineState.blocked_by_active_run ? <ListBlock title="Active run lock" rows={[pipelineState.active_run?.run_id || 'A write-heavy run is active.']} tone="warn" /> : null}
             <ListBlock title="Blocked reasons" rows={pipelineState.blocked} empty="No blockers detected." tone="warn" />
             <ListBlock title="Warnings" rows={pipelineState.warnings} empty="No warnings detected." />
             <ListBlock title="Info" rows={pipelineState.info} empty="No extra notes." tone="accent" />

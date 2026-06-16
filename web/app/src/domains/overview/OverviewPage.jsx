@@ -47,9 +47,14 @@ export function OverviewPage() {
           <ListBlock title="Blocked reasons" rows={overview.blocked} empty="No blockers currently." tone="warn" />
         </div>
         <div className="panel">
-          <SectionTitle title="Recent Outputs" meta={`${overview.latest_outputs.length}`} />
-          <ListBlock title="Latest outputs" rows={overview.latest_outputs} empty="No tracked outputs yet." tone="accent" />
+          <SectionTitle title="Warnings" meta={`${overview.warnings.length}`} />
+          <ListBlock title="Warning signals" rows={overview.warnings} empty="No warnings currently." tone="accent" />
         </div>
+      </div>
+
+      <div className="panel">
+        <SectionTitle title="Recent Outputs" meta={`${overview.latest_outputs.length}`} />
+        <ListBlock title="Latest outputs" rows={overview.latest_outputs} empty="No tracked outputs yet." tone="accent" />
       </div>
     </section>
   );

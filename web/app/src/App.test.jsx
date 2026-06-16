@@ -95,6 +95,7 @@ const pipelineState = {
   ready_for_human_review: true,
   completed: false,
   active_run: null,
+  blocked_by_active_run: false,
   recent_runs: [],
   available_actions: [
     {key: 'validate', label: 'Validate', recommended: true, enabled: true, reason: null},
@@ -103,6 +104,28 @@ const pipelineState = {
     {key: 'render_dry_run', label: 'Render dry run', recommended: false, enabled: true, reason: null},
     {key: 'run_range', label: 'Run stage range', recommended: false, enabled: true, reason: null}
   ]
+};
+
+const activeRunState = {
+  ...pipelineState,
+  lifecycle_status: 'running',
+  active_run: {
+    run_id: 'run-active',
+    project_id: 'demo-project',
+    action_type: 'resume',
+    command: ['yt-nonstop', 'run', '--resume'],
+    status: 'running',
+    started_at: '2026-01-01T00:00:00Z',
+    finished_at: null,
+    exit_code: null,
+    log_path: 'logs/run-active.log'
+  },
+  blocked_by_active_run: true,
+  available_actions: pipelineState.available_actions.map((item) => ({
+    ...item,
+    enabled: false,
+    reason: 'Active run run-active is already running for this project.'
+  }))
 };
 
 function primeMocks() {
@@ -148,6 +171,8 @@ test('renders production shell and overview for authenticated user', async () =>
   expect(await screen.findByText('yt_nonstop')).toBeInTheDocument();
   expect(await screen.findByText('Recommended Next Command')).toBeInTheDocument();
   expect((await screen.findAllByText((content) => content.includes('yt-nonstop run --resume'))).length).toBeGreaterThan(0);
+  expect(await screen.findByText('Warning signals')).toBeInTheDocument();
+  expect(await screen.findByText('1 frame still in manual review')).toBeInTheDocument();
 });
 
 test('shows login screen and signs in', async () => {
@@ -225,4 +250,20 @@ test('project setup submits required input paths', async () => {
       raw_text_path: 'C:\\input\\raw_text.md'
     }));
   });
+});
+
+test('overview and pipeline expose warning and active-run state', async () => {
+  mockApi.getOverview.mockResolvedValue({...overview, warnings: ['1 frame still in manual review']});
+  mockApi.getPipelineState.mockResolvedValue(activeRunState);
+  mockApi.getRun.mockResolvedValue({...activeRunState.active_run, events: [], log_tail: ['running']});
+  render(
+    <MemoryRouter initialEntries={['/projects/demo-project/pipeline']}>
+      <App />
+    </MemoryRouter>
+  );
+
+  expect(await screen.findByText('Active run lock')).toBeInTheDocument();
+  expect((await screen.findAllByText('run-active')).length).toBeGreaterThan(0);
+  const validateButtons = await screen.findAllByRole('button', {name: /validate/i});
+  expect(validateButtons[0]).toBeDisabled();
 });

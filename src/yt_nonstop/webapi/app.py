@@ -55,13 +55,13 @@ class ProductApiError(Exception):
 
 def _available_pipeline_actions(project, state: PipelineState) -> list[PipelineAction]:
     if not project.project_json_path:
+        reason = "This project has no project.json, so CLI-backed pipeline actions are disabled."
         return [
-            PipelineAction(
-                key="limited_support",
-                label="Limited support project",
-                enabled=False,
-                reason="This project has no project.json, so CLI-backed pipeline actions are disabled.",
-            )
+            PipelineAction(key="validate", label="Validate", enabled=False, reason=reason),
+            PipelineAction(key="resume", label="Resume", enabled=False, reason=reason),
+            PipelineAction(key="retry_failed_only", label="Retry failed only", enabled=False, reason=reason),
+            PipelineAction(key="render_dry_run", label="Render dry run", enabled=False, reason=reason),
+            PipelineAction(key="run_range", label="Run stage range", enabled=False, reason=reason),
         ]
     active_write = state.active_run is not None
     disabled_reason = f"Active run {state.active_run.run_id} is already running for this project." if active_write else None
@@ -113,6 +113,7 @@ def _build_pipeline_state(project, jobs: JobStore, app_state: AppStateStore) -> 
             blocked_count=1,
             warning_count=0,
             active_run=active_run,
+            blocked_by_active_run=active_run is not None,
             recent_runs=recent_runs,
         )
         state.available_actions = _available_pipeline_actions(project, state)
@@ -156,6 +157,7 @@ def _build_pipeline_state(project, jobs: JobStore, app_state: AppStateStore) -> 
         ready_for_human_review=dashboard.ready_for_human_review,
         completed=dashboard.completed,
         active_run=active_run,
+        blocked_by_active_run=active_run is not None,
         recent_runs=recent_runs,
     )
     state.available_actions = _available_pipeline_actions(project, state)

@@ -202,6 +202,56 @@ def test_webapi_workspace_projects_and_assets(tmp_path, monkeypatch):
     assert "world" in preview.json()["content"]
 
 
+def test_webapi_pipeline_state_marks_limited_support_actions(tmp_path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    _make_artifact_project(workspace)
+    monkeypatch.setenv("YT_NONSTOP_WORKSPACE_ROOT", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_ALLOWED_PROJECT_ROOTS", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_WEB_RUNTIME_DIR", str(tmp_path / "runtime"))
+
+    app = create_app()
+    client = TestClient(app)
+    headers = _login(client)
+    project_id = client.get("/api/projects", headers=headers).json()[0]["id"]
+
+    pipeline_state = client.get(f"/api/projects/{project_id}/pipeline", headers=headers)
+    assert pipeline_state.status_code == 200
+    payload = pipeline_state.json()
+    assert payload["support"] == "limited"
+    assert payload["lifecycle_status"] == "blocked"
+    assert payload["available_actions"]
+    assert all(item["enabled"] is False for item in payload["available_actions"])
+    assert all("project.json" in item["reason"] for item in payload["available_actions"])
+
+
+def test_webapi_pipeline_state_marks_active_run_lock(tmp_path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    _make_repo_native_project(workspace)
+    monkeypatch.setenv("YT_NONSTOP_WORKSPACE_ROOT", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_ALLOWED_PROJECT_ROOTS", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_WEB_RUNTIME_DIR", str(tmp_path / "runtime"))
+
+    app = create_app()
+    client = TestClient(app)
+    headers = _login(client)
+    project_id = client.get("/api/projects", headers=headers).json()[0]["id"]
+
+    active_job = app.state.jobs.start_job(
+        project_id=project_id,
+        command=[sys.executable, "-c", "import time; time.sleep(1)"],
+        read_only=False,
+    )
+    assert active_job.accepted is True
+
+    pipeline_state = client.get(f"/api/projects/{project_id}/pipeline", headers=headers)
+    assert pipeline_state.status_code == 200
+    payload = pipeline_state.json()
+    assert payload["blocked_by_active_run"] is True
+    assert payload["active_run"]["run_id"] == active_job.job.run_id
+    assert all(item["enabled"] is False for item in payload["available_actions"])
+    assert any(active_job.job.run_id in item["reason"] for item in payload["available_actions"])
+
+
 def test_webapi_pipeline_runs_review_and_settings(tmp_path, monkeypatch):
     workspace = tmp_path / "workspace"
     source_project = _make_repo_native_project(workspace)

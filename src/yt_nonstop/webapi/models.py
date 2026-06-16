@@ -229,6 +229,7 @@ class PipelineState(BaseModel):
     ready_for_human_review: bool = False
     completed: bool = False
     active_run: RunSummary | None = None
+    blocked_by_active_run: bool = False
     recent_runs: list[RunSummary] = Field(default_factory=list)
     available_actions: list[PipelineAction] = Field(default_factory=list)
 
