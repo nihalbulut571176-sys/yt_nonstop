@@ -15,7 +15,9 @@ if str(SCRIPTS) not in sys.path:
 from generation_lock import lock_record  # noqa: E402
 from llm_pipeline_contracts import classify_generation_error, validate_generation_manifest  # noqa: E402
 from pipeline_contracts import prompt_has_text_conflict, prompt_restates_srt, stable_hash  # noqa: E402
-from validate_project import validate_author_narration_beats, validate_export_generation_batches, validate_image_qc, validate_quality_assurance  # noqa: E402
+from validate_project import validate_author_narration_beats, validate_build_reference_prompt_pack, validate_export_generation_batches, validate_image_qc, validate_quality_assurance  # noqa: E402
+from attach_reference_assets import resolve_reference_bindings  # noqa: E402
+from yt_nonstop.utils.text_repair import repair_mojibake_text  # noqa: E402
 
 
 class FastGenContractTests(unittest.TestCase):
@@ -52,6 +54,56 @@ class FastGenContractTests(unittest.TestCase):
         self.assertTrue(prompt_has_text_conflict("Show readable text on a label but no readable text anywhere else"))
         self.assertTrue(prompt_restates_srt("The frame says hidden mechanism revealed at dusk", "hidden mechanism revealed at dusk"))
         self.assertFalse(prompt_has_text_conflict("No text, no subtitles, no readable text, no labels"))
+
+    def test_repair_mojibake_text_restores_russian(self):
+        broken = "РџСЂРµРґСЃС‚Р°РІСЊС‚Рµ СЃРµР±Рµ СЋРІРµР»РёСЂРЅС‹Р№ Р±СѓС‚РёРє."
+        self.assertEqual(repair_mojibake_text(broken), "Представьте себе ювелирный бутик.")
+
+    def test_reference_routing_skips_optional_character_refs_for_non_human_shot(self):
+        frame = {
+            "shot_role": "aftermath_escape",
+            "slot_type": "explanation_visual",
+            "shot_type": "wide exit-facing angle",
+            "subject_visible": False,
+            "visible_subject_ids": [],
+            "primary_subject_id": "boutique_attendant",
+            "entity_locks": [],
+        }
+        subject_map = {
+            "boutique_attendant": {
+                "subject_id": "boutique_attendant",
+                "subject_type": "character",
+                "reference_policy": "optional",
+                "reference_asset_ids": ["ref_attendant"],
+            }
+        }
+        asset_map = {"ref_attendant": {"path": __file__}}
+        bindings, flags = resolve_reference_bindings(frame, subject_map, asset_map)
+        self.assertEqual(bindings, [])
+        self.assertEqual(flags, [])
+
+    def test_reference_routing_keeps_required_character_refs_for_human_shot(self):
+        frame = {
+            "shot_role": "operator_entry",
+            "slot_type": "explanation_visual",
+            "shot_type": "medium documentary angle",
+            "subject_visible": True,
+            "visible_subject_ids": ["lead_operator"],
+            "primary_subject_id": "lead_operator",
+            "entity_locks": [{"entity_id": "lead_operator", "reference_policy": "required"}],
+        }
+        subject_map = {
+            "lead_operator": {
+                "subject_id": "lead_operator",
+                "subject_type": "character",
+                "reference_policy": "required",
+                "reference_asset_ids": ["ref_lead"],
+            }
+        }
+        asset_map = {"ref_lead": {"path": __file__}}
+        bindings, flags = resolve_reference_bindings(frame, subject_map, asset_map)
+        self.assertEqual([binding["subject_id"] for binding in bindings], ["lead_operator"])
+        self.assertEqual(flags, [])
 
     def test_quality_assurance_flags_adjacent_duplicates(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -958,6 +1010,39 @@ class FastGenContractTests(unittest.TestCase):
             self.assertIn("front-facing chest-up portrait", payload["items"][0]["prompt"])
             self.assertIn("close-up of hands and sleeves", payload["items"][0]["prompt"])
             self.assertIn("full-body wardrobe view", payload["items"][0]["prompt"])
+
+    def test_build_reference_prompt_pack_allows_empty_items_for_projects_without_recurring_people(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_root = root / "project"
+            (project_root / "config").mkdir(parents=True, exist_ok=True)
+            (project_root / "prompts").mkdir(parents=True, exist_ok=True)
+            continuity_path = project_root / "config" / "continuity_entities.json"
+            pack_path = project_root / "prompts" / "reference_prompt_pack.json"
+            project_json = project_root / "project.json"
+            continuity_path.write_text(json.dumps({"character_profiles": []}), encoding="utf-8")
+            project_json.write_text(
+                json.dumps(
+                    {
+                        "project_id": "reference_prompt_pack_empty_test",
+                        "meta": {"project_root": str(project_root)},
+                        "planning": {"continuity_map_json_path": str(continuity_path)},
+                        "assets": {"character_references_root": str(project_root / "assets" / "references" / "characters")},
+                        "prompts": {"reference_prompt_pack_path": str(pack_path)},
+                        "logs": {"generation_report_path": str(project_root / "logs" / "generation_report.md")},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            subprocess.run(
+                [sys.executable, str(SCRIPTS / "build_reference_prompt_pack.py"), "--project-json", str(project_json)],
+                check=True,
+            )
+            payload = json.loads(pack_path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["items"], [])
+            errors, warnings = validate_build_reference_prompt_pack(json.loads(project_json.read_text(encoding="utf-8")))
+            self.assertEqual(errors, [])
+            self.assertEqual(warnings, [])
 
     def test_build_subject_registry_writes_reference_mapping(self):
         with tempfile.TemporaryDirectory() as tmp:

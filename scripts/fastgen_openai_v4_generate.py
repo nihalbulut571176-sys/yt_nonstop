@@ -59,6 +59,12 @@ def request_json(url: str, method: str = "GET", headers=None, data=None):
         return json.loads(resp.read().decode("utf-8"))
 
 
+def request_bytes(url: str, method: str = "GET", headers=None, data=None) -> bytes:
+    req = urllib.request.Request(url, method=method, headers=headers or {}, data=data)
+    with urllib.request.urlopen(req, timeout=300) as resp:
+        return resp.read()
+
+
 def request_json_with_retries(url: str, method: str = "GET", headers=None, data=None, attempts: int = 3, sleep_seconds: float = 5.0):
     last_error: Exception | None = None
     for attempt in range(1, attempts + 1):
@@ -183,11 +189,27 @@ def load_or_create_ref_cache(api_key: str, ref_map: dict, cache_path: Path):
     return cache
 
 
-def create_operation(api_key: str, prompt: str, refs: list[str], size: str, aspect_ratio: str):
+def create_operation(
+    api_key: str,
+    prompt: str,
+    refs: list[str],
+    size: str,
+    aspect_ratio: str,
+    *,
+    route: str,
+    model: str,
+):
+    headers = {"X-API-Key": api_key, "Content-Type": "application/json"}
+    if route == "v5":
+        payload = {"model": model, "prompt": prompt}
+        if refs:
+            payload["reference_images"] = refs
+        data = json.dumps(payload).encode("utf-8")
+        return request_json_with_retries(f"{ROOT}/api/v5/generations", method="POST", headers=headers, data=data)
+
     payload = {"prompt": prompt, "size": size, "aspect_ratio": aspect_ratio}
     if refs:
         payload["reference_images"] = refs
-    headers = {"X-API-Key": api_key, "Content-Type": "application/json"}
     data = json.dumps(payload).encode("utf-8")
     return request_json_with_retries(f"{ROOT}/api/v4/openai/image/generate", method="POST", headers=headers, data=data)
 
@@ -204,8 +226,10 @@ def poll_operation(api_key: str, operation_id: str, poll_seconds: float = 3.0, m
     raise TimeoutError(f"Operation polling timed out: {operation_id}")
 
 
-def get_operation_status(api_key: str, operation_id: str):
+def get_operation_status(api_key: str, operation_id: str, *, route: str):
     headers = {"X-API-Key": api_key}
+    if route == "v5":
+        return request_json_with_retries(f"{ROOT}/api/v5/generations/{operation_id}", method="GET", headers=headers)
     return request_json_with_retries(f"{ROOT}/api/v4/operations/{operation_id}", method="GET", headers=headers)
 
 
@@ -214,6 +238,12 @@ def write_data_uri_image(data_uri: str, target_path: Path):
         raise ValueError("Unexpected result format: not an image data URI")
     header, b64 = data_uri.split(",", 1)
     target_path.write_bytes(base64.b64decode(b64))
+
+
+def write_downloaded_image(api_key: str, download_path: str, target_path: Path) -> None:
+    headers = {"X-API-Key": api_key}
+    url = download_path if download_path.startswith("http") else f"{STORAGE}{download_path}"
+    target_path.write_bytes(request_bytes(url, headers=headers))
 
 
 def append_jsonl(path: Path, item: dict[str, Any]) -> None:
@@ -300,14 +330,24 @@ def save_success(
     run_summary: dict[str, int],
     live_log_path: Path,
     live_jsonl_path: Path,
+    api_key: str,
+    route: str,
     state_conn=None,
     project_id: str = "",
     state_stage: str = DEFAULT_STAGE,
 ) -> None:
-    result = status["result"]
-    if not isinstance(result, list) or not result:
-        raise RuntimeError(f"Unexpected result payload for {item['index']:03d}: {json.dumps(status, ensure_ascii=False)}")
-    write_data_uri_image(result[0], target_path)
+    if route == "v5":
+        result = status.get("results")
+        if not isinstance(result, list) or not result:
+            raise RuntimeError(f"Unexpected v5 result payload for {item['index']:03d}: {json.dumps(status, ensure_ascii=False)}")
+        download_path = str(result[0].get("download_path") or "")
+        if not download_path:
+            raise RuntimeError(f"Missing download_path in v5 result for {item['index']:03d}: {json.dumps(status, ensure_ascii=False)}")
+        write_downloaded_image(api_key, download_path, target_path)
+    else:
+        if not isinstance(result, list) or not result:
+            raise RuntimeError(f"Unexpected result payload for {item['index']:03d}: {json.dumps(status, ensure_ascii=False)}")
+        write_data_uri_image(result[0], target_path)
 
     meta_record = {
         "index": item["index"],
@@ -374,6 +414,8 @@ def main() -> None:
     parser.add_argument("--state-db", default="")
     parser.add_argument("--project-id", default="")
     parser.add_argument("--state-stage", default=DEFAULT_STAGE)
+    parser.add_argument("--route", choices=["v4", "v5"], default="v4")
+    parser.add_argument("--model", default="")
     args = parser.parse_args()
 
     prompts_path = Path(args.prompts)
@@ -396,10 +438,13 @@ def main() -> None:
     end = args.end if args.end > 0 else len(prompt_items)
     prompt_items = [item for item in prompt_items if args.start <= item["index"] <= end]
     prompt_profile = {
-        "provider": "fastgen_openai_v4",
+        "provider": "fastgen_openai_v4" if args.route == "v4" else "fastgen_v5",
+        "route": args.route,
         "size": args.size,
         "aspect_ratio": args.aspect_ratio,
     }
+    if args.model:
+        prompt_profile["model"] = args.model
     requested_frame_ids = {str(item).strip() for item in args.frame_id if str(item).strip()}
     state_conn = connect_state_db(Path(args.state_db)) if args.state_db and args.project_id else None
 
@@ -516,8 +561,16 @@ def main() -> None:
                 target_path = out_dir / item["output"]
                 try:
                     ref_hashes = [ref_cache[ref_id]["file_hash"] for ref_id in item["refs"]]
-                    created = create_operation(api_key, item["prompt"], ref_hashes, args.size, args.aspect_ratio)
-                    op_id = created["operation_id"]
+                    created = create_operation(
+                        api_key,
+                        item["prompt"],
+                        ref_hashes,
+                        args.size,
+                        args.aspect_ratio,
+                        route=args.route,
+                        model=args.model,
+                    )
+                    op_id = created["operation_id"] if args.route == "v4" else created["id"]
                     item["operation_id"] = op_id
                     item["target_path"] = str(target_path)
                     item["poll_count"] = 0
@@ -589,9 +642,9 @@ def main() -> None:
             finished_ops: list[str] = []
             for op_id, item in list(active.items()):
                 try:
-                    status = get_operation_status(api_key, op_id)
+                    status = get_operation_status(api_key, op_id, route=args.route)
                     item["poll_count"] += 1
-                    if status["status"] == "success":
+                    if status["status"] in {"success", "succeeded"}:
                         save_success(
                             item=item,
                             status=status,
@@ -601,13 +654,15 @@ def main() -> None:
                             run_summary=run_summary,
                             live_log_path=live_log_path,
                             live_jsonl_path=live_jsonl_path,
+                            api_key=api_key,
+                            route=args.route,
                             state_conn=state_conn,
                             project_id=args.project_id,
                             state_stage=args.state_stage,
                         )
                         consecutive_failures = 0
                         finished_ops.append(op_id)
-                    elif status["status"] == "error":
+                    elif status["status"] in {"error", "failed"}:
                         raise RuntimeError(json.dumps(status, ensure_ascii=False))
                     elif item["poll_count"] >= args.max_polls:
                         raise TimeoutError(f"Operation polling timed out: {op_id}")

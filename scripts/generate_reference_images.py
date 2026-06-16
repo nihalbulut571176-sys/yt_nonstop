@@ -69,7 +69,9 @@ def main() -> None:
 
     append_log(project, f"Starting reference generation in {workdir}")
     append_event(project, {"kind": "stage_start", "stage": "generate_reference_images", "count": len(items)})
-    api_key = load_env_key()
+    api_key = ""
+    if items:
+        api_key = load_env_key()
 
     completed_manifest: list[dict] = []
     pending = deque()

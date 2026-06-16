@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 from project_pipeline_utils import iso_now, load_project, save_project
+from yt_nonstop.utils.text_repair import repair_mojibake_text
 
 
 SENTENCE_END_RE = re.compile(r"[.!?…]$|[.!?…][\"')\]]$")
@@ -44,7 +45,7 @@ def parse_srt(text: str) -> list[dict]:
         if len(lines) < 3:
             continue
         start_tc, end_tc = lines[1].split(" --> ")
-        content = " ".join(line.strip() for line in lines[2:])
+        content = repair_mojibake_text(" ".join(line.strip() for line in lines[2:]))
         segments.append(
             {
                 "start_tc": start_tc,

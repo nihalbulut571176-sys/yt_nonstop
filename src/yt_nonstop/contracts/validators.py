@@ -409,8 +409,10 @@ def validate_build_reference_prompt_pack(project: dict[str, Any]) -> tuple[list[
         return errors, warnings
     payload = load_json(pack_path)
     items = payload.get("items", [])
-    if not isinstance(items, list) or not items:
-        errors.append("reference_prompt_pack has no items")
+    if not isinstance(items, list):
+        errors.append("reference_prompt_pack items must be a list")
+        return errors, warnings
+    if not items:
         return errors, warnings
     seen_ids = set()
     for item in items:

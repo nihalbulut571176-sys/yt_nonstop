@@ -5,6 +5,34 @@ from pipeline_contracts import ReferenceBinding
 from project_pipeline_utils import load_json, load_project, save_json, save_project
 
 
+HUMAN_CENTRIC_SHOT_ROLES = {
+    "operator_entry",
+    "necklace_access",
+    "assault_moment",
+    "empty_case_reveal",
+    "delayed_reaction",
+    "operator_exit",
+    "historical_context",
+    "identity_reveal",
+    "reaction_shot",
+}
+
+HUMAN_CENTRIC_SLOT_TYPES = {
+    "reaction_shot",
+    "portrait",
+    "identity_reveal",
+}
+
+
+def allows_optional_character_refs(frame: dict) -> bool:
+    shot_role = str(frame.get("shot_role") or "").strip().lower()
+    slot_type = str(frame.get("slot_type") or "").strip().lower()
+    shot_type = str(frame.get("shot_type") or "").strip().lower()
+    if shot_role in HUMAN_CENTRIC_SHOT_ROLES or slot_type in HUMAN_CENTRIC_SLOT_TYPES:
+        return True
+    return any(token in shot_type for token in ("portrait", "close", "medium", "over-the-shoulder", "reaction"))
+
+
 def candidate_subject_ids(frame: dict) -> list[str]:
     ordered: list[str] = []
     for value in frame.get("visible_subject_ids", []) or []:
@@ -47,8 +75,14 @@ def resolve_reference_bindings(frame: dict, subject_map: dict, asset_map: dict) 
         if not subject:
             flags.append(f"unknown_subject_id:{subject_id}")
             continue
+        subject_type = str(subject.get("subject_type") or "character").strip().lower()
+        if subject_type != "character":
+            continue
 
         policy = str(subject.get("reference_policy", "optional")).strip().lower()
+        if policy not in {"required", "strict"} and not allows_optional_character_refs(frame):
+            flags.append(f"optional_reference_routed_off:{subject_id}")
+            continue
         asset_ids = list(subject.get("reference_asset_ids", []))
         if policy in {"required", "strict"} and not asset_ids:
             flags.append(f"missing_reference_for_required_subject:{subject_id}")

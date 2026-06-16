@@ -1,0 +1,17 @@
+{
+  "name": "illyuziya-vybora-remotion",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "remotion:still:fastgen": "remotion still remotion/entry.jsx FastGenFirst120 output/fastgen_first120/check_frame_900.png --frame=900",
+    "remotion:still:fastgen:s05": "remotion still remotion/entry.jsx FastGenFirst120 output/fastgen_first120/check_frame_1650.png --frame=1650",
+    "remotion:render:fastgen": "remotion render remotion/entry.jsx FastGenFirst120 output/fastgen_first120/illyuziya_vybora_fastgen_first120.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.365",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "remotion": "^4.0.365"
+  }
+}

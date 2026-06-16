@@ -3,6 +3,8 @@ import json
 import re
 from pathlib import Path
 
+from yt_nonstop.utils.text_repair import repair_mojibake_text
+
 
 STYLE_SUMMARY = (
     "Premium cinematic documentary still, photorealistic, realistic lens perspective, atmospheric depth, "
@@ -29,7 +31,7 @@ REQUIRED_PROMPT_HEADERS = [
 
 
 def clean_text(text: str) -> str:
-    return re.sub(r"\s+", " ", str(text or "").replace("\n", " ")).strip()
+    return re.sub(r"\s+", " ", repair_mojibake_text(str(text or "")).replace("\n", " ")).strip()
 
 
 def stable_hash(payload: object) -> str:
@@ -77,6 +79,8 @@ def infer_theme(project: dict, source_text: str, scenes: list[dict]) -> str:
             "ограблен",
         }
     ):
+        return "luxury_jewel_heist_documentary"
+    if any(marker in blob for marker in {"бриллиант", "бутик", "колье", "ограбление", "токио"}):
         return "luxury_jewel_heist_documentary"
     return "generic_documentary"
 
@@ -234,6 +238,27 @@ def detect_semantic_flags(text: str) -> dict[str, bool]:
         "boutique_luxury": any(token in lowered for token in ["бутик", "витрин", "бриллиант", "колье", "display", "boutique", "diamond", "necklace"]),
         "comedic_contrast": any(token in lowered for token in ["не комедия", "почти комедийн", "not comedy", "comic"]),
     }
+    flags["spray_attack"] = flags["spray_attack"] or any(token in lowered for token in ["газ", "ослеп", "раздражающ"])
+    flags["open_case"] = flags["open_case"] or any(token in lowered for token in ["витрина открыта", "открытая витрина"])
+    flags["missing_jewel"] = flags["missing_jewel"] or any(token in lowered for token in ["исчез", "пропал", "украден"])
+    flags["attendant_action"] = flags["attendant_action"] or any(token in lowered for token in ["сотрудниц", "сотрудник", "продавщиц"])
+    flags["access_opening"] = flags["access_opening"] or any(token in lowered for token in ["доступ", "открывает", "открыл", "разблок"])
+    flags["operator_entry"] = flags["operator_entry"] or any(token in lowered for token in ["входят", "вошли", "двое", "клиент"])
+    flags["delayed_reaction"] = flags["delayed_reaction"] or any(token in lowered for token in ["пытаются понять", "что случилось", "не успевает", "слишком поздно"])
+    flags["operator_exit"] = flags["operator_exit"] or any(token in lowered for token in ["уходят", "выходят"])
+    flags["historical_context"] = flags["historical_context"] or any(token in lowered for token in ["токио", "япони", "2004"])
+    flags["institutional_response"] = flags["institutional_response"] or any(token in lowered for token in ["полици", "система", "решение"])
+    flags["nickname_identity"] = flags["nickname_identity"] or any(token in lowered for token in ["розовыми пантерами", "розовую пантеру", "их прозвали"])
+    flags["object_evidence"] = flags["object_evidence"] or any(token in lowered for token in ["баночке с кремом", "кремом", "баночк"])
+    flags["anti_myth"] = flags["anti_myth"] or any(token in lowered for token in ["не потому", "романтический кодекс"])
+    flags["network_scale"] = flags["network_scale"] or any(token in lowered for token in ["балкан", "сеть", "бывших военных", "логистик"])
+    flags["mechanism_focus"] = flags["mechanism_focus"] or any(token in lowered for token in ["механизм", "архитектур", "человеческую реакци", "бюрократи"])
+    flags["security_system"] = flags["security_system"] or any(token in lowered for token in ["охрана", "камеры", "магнитн"])
+    flags["boutique_luxury"] = flags["boutique_luxury"] or any(token in lowered for token in ["бутик", "витрин", "бриллиант", "колье"])
+    flags["comedic_contrast"] = flags["comedic_contrast"] or any(token in lowered for token in ["не комедия", "почти комедийн"])
+    flags["human_cost"] = any(token in lowered for token in ["травмирован", "риск для", "расследован", "human cost", "investigation"])
+    flags["necklace_specs"] = any(token in lowered for token in ["стоимость", "бриллиант", "карат", "центральный камень", "сто шестнадцать"])
+    flags["speed_execution"] = any(token in lowered for token in ["считанные секунды", "всё происходит", "все происходит"])
     flags["theft_reveal"] = flags["open_case"] or flags["missing_jewel"]
     flags["reaction_escape"] = flags["delayed_reaction"] or flags["operator_exit"]
     flags["content_payload"] = any(value for key, value in flags.items() if key not in {"boutique_luxury", "security_system"})
@@ -262,6 +287,14 @@ def infer_event_type(flags: dict[str, bool], shot_index: int) -> tuple[str, floa
         return "anti_myth", 0.90, ""
     if flags["comedic_contrast"]:
         return "hidden_threat", 0.90, ""
+    if flags.get("necklace_specs"):
+        return "necklace_detail", 0.92, ""
+    if flags.get("speed_execution"):
+        return "speed_execution", 0.90, ""
+    if flags.get("human_cost"):
+        return "anti_myth", 0.88, ""
+    if flags["attendant_action"] and shot_index <= 15:
+        return "necklace_access", 0.86, ""
     if flags["institutional_response"]:
         return "system_delay", 0.88, ""
     if flags["access_opening"]:
@@ -306,6 +339,8 @@ def infer_part_semantic_role(event_type: str, part_index: int, parts_total: int)
         return "mechanism"
     if event_type == "object_evidence":
         return "moment" if part_index == 1 else "identity_context"
+    if event_type in {"necklace_detail", "speed_execution"}:
+        return "single"
     return "transition"
 
 
@@ -410,6 +445,26 @@ def semantic_defaults(event_type: str, part_role: str) -> dict:
             "scale": "medium",
             "lighting_family": "cold",
             "density": "busy",
+        },
+        "necklace_detail": {
+            "semantic_action": "show the jewel's scale, value, and physical specificity before the attack",
+            "event_clarity_required": False,
+            "visual_function": "evidence",
+            "visual_strategy": "tension_detail",
+            "viewer_emotion": "awe",
+            "scale": "macro",
+            "lighting_family": "warm",
+            "density": "focused",
+        },
+        "speed_execution": {
+            "semantic_action": "make the operation feel compressed into a few decisive seconds",
+            "event_clarity_required": True,
+            "visual_function": "contrast",
+            "visual_strategy": "before_after_contrast",
+            "viewer_emotion": "pressure",
+            "scale": "medium",
+            "lighting_family": "contrast",
+            "density": "layered",
         },
         "system_delay": {
             "semantic_action": "show institutional delay and slower decision-making compared with the operators",
@@ -607,6 +662,10 @@ def infer_shot_role(scene: dict, scene_entry: dict, descriptor: dict, theme: str
         return "investigative_mechanism"
     if event_type == "system_delay":
         return "institutional_realization" if part_role == "reaction" else "system_delay"
+    if event_type == "necklace_detail":
+        return "necklace_detail"
+    if event_type == "speed_execution":
+        return "speed_execution"
     if event_type == "necklace_access":
         return "necklace_access"
     if event_type == "operator_entry":
@@ -651,6 +710,15 @@ def build_blueprint(shot_role: str, shot_index: int, theme: str) -> dict:
             "lighting": "cool security spill with warm boutique accents",
             "atmosphere": "controlled, watchful, procedural",
             "visual_goal": "Show surveillance as a character in the film.",
+        },
+        "necklace_detail": {
+            "scene_meaning": "Pause on the necklace itself so its scale, value, and physical specificity become emotionally legible before it vanishes.",
+            "action": "Show the necklace as a real object of exceptional value, emphasizing diamond count, central stone mass, and luxury craftsmanship without turning it into an ad shot.",
+            "composition": "the necklace dominates the frame with exacting material detail while the boutique context remains softly readable around it",
+            "angle": "macro jewel documentary angle",
+            "lighting": "tight luxury spotlight with disciplined specular control across the stones and velvet mount",
+            "atmosphere": "expensive, fragile, high-stakes",
+            "visual_goal": "Make the viewer feel exactly what is about to disappear.",
         },
         "operator_entry": {
             "scene_meaning": "Introduce the same two operators as composed affluent customers who do not belong emotionally to the room.",
@@ -705,6 +773,15 @@ def build_blueprint(shot_role: str, shot_index: int, theme: str) -> dict:
             "lighting": "tight gallery light on the empty mount with cooler spill spreading across the room",
             "atmosphere": "stunned, escalating, chaotic",
             "visual_goal": "Extend the theft reveal into consequence rather than repeating the same empty-case beat.",
+        },
+        "speed_execution": {
+            "scene_meaning": "Make the robbery feel compressed into a tiny window where human reaction is already too slow.",
+            "action": "Show overlapping gestures, open access geometry, and time pressure in one readable frame so the whole operation feels brutally fast.",
+            "composition": "multiple decisive elements share the frame at once, making the scene feel half a beat ahead of any response",
+            "angle": "compressed action documentary angle",
+            "lighting": "harder contrast over boutique luxury light, with motion and reflection making the instant feel unstable",
+            "atmosphere": "compressed, tactical, breathless",
+            "visual_goal": "Translate counted seconds into one image that feels too fast for the room.",
         },
         "delayed_reaction": {
             "scene_meaning": "Show the audience and staff still trying to understand the attack while the operators already have a head start.",
@@ -815,7 +892,71 @@ def build_blueprint(shot_role: str, shot_index: int, theme: str) -> dict:
             "visual_goal": "Support continuity without replacing a missing semantic beat.",
         },
     }
-    return mapping[shot_role]
+    blueprint = dict(mapping[shot_role])
+    if shot_role == "luxury_establishing":
+        variants = [
+            {
+                "composition": "wide boutique threshold and display architecture, with the jewel protected deeper in the frame",
+                "angle": "wide architectural documentary angle",
+                "visual_goal": "Anchor the viewer in the expensive controlled environment before any human action begins.",
+            },
+            {
+                "composition": "top-down surveillance geometry with the display case nested inside security infrastructure",
+                "angle": "top-down surveillance angle",
+                "visual_goal": "Make surveillance feel built into the architecture, not added on top of it.",
+            },
+            {
+                "composition": "reflection-heavy boutique interior where the jewel is visible through layers of glass and control hardware",
+                "angle": "oblique reflection documentary angle",
+                "visual_goal": "Show luxury and security as one mirrored system rather than one isolated hero object.",
+            },
+        ]
+        blueprint.update(variants[(shot_index - 1) % len(variants)])
+    elif shot_role == "operator_entry":
+        variants = [
+            {
+                "composition": "one operator leading and the other slightly behind, both framed by glass and surveillance lines at the threshold",
+                "angle": "medium documentary angle at eye level",
+            },
+            {
+                "composition": "the lead operator reflected in boutique glass while the support operator hangs back in the same controlled lane",
+                "angle": "three-quarter reflected entry angle",
+            },
+            {
+                "composition": "the pair crossing into the display floor while cameras, vitrines, and staff geometry make them look temporarily ordinary",
+                "angle": "wide entry floor angle",
+            },
+            {
+                "composition": "support operator foreground with the lead operator slightly deeper in frame, both boxed in by polished security architecture",
+                "angle": "surveillance-framed medium angle",
+            },
+        ]
+        blueprint.update(variants[(shot_index - 1) % len(variants)])
+    elif shot_role == "necklace_access":
+        variants = [
+            {
+                "action": "Show the attendant preparing the access ritual with one hand approaching the lock while the necklace remains protected and readable.",
+                "composition": "the attendant hand, lock hardware, and necklace all readable in one tight controlled frame",
+                "angle": "close documentary angle",
+            },
+            {
+                "action": "Show the instant the controlled lock releases while the attendant's posture and the case geometry explain the ritual.",
+                "composition": "release hardware and attendant gesture dominate, with the necklace still centered as the stake",
+                "angle": "macro evidence angle",
+            },
+            {
+                "action": "Show the necklace newly exposed inside the case while staff and operator presence remain partial and watchful.",
+                "composition": "the necklace and open access geometry are dominant, with humans held as partial tactical shapes around it",
+                "angle": "close side-on gallery angle",
+            },
+            {
+                "action": "Show the attendant and the waiting operator sharing the same controlled access beat without losing the necklace or lock in the frame.",
+                "composition": "attendant, necklace, and observing operator triangulated inside the same glass-heavy boutique frame",
+                "angle": "medium access documentary angle",
+            },
+        ]
+        blueprint.update(variants[(shot_index - 1) % len(variants)])
+    return blueprint
 
 
 def resolve_environment(active_ids: list[str], location_map: dict[str, dict], shot_role: str, theme: str) -> str:
@@ -864,11 +1005,13 @@ def build_continuity_bundle(project: dict, scenes: list[dict], source_text: str)
 def _primary_subject_for_role(shot_role: str) -> str:
     mapping = {
         "operator_entry": "the same two operators moving through the boutique under surveillance",
+        "necklace_detail": "the signature necklace rendered as a precise high-value object moments before the theft",
         "assault_moment": "the boutique attendant being blinded in the instant of the attack",
         "assault_aftermath": "the boutique attendant reeling in the immediate aftermath of the blinding spray",
         "empty_case_reveal": "the same display case now open with the necklace suddenly missing",
         "empty_case_aftermath": "the same open display case as the theft shock ripples through the room",
         "necklace_access": "the attendant opening controlled access to the signature necklace display",
+        "speed_execution": "the operation accelerating through the decisive seconds before the room can react",
         "security_system": "the boutique security layer controlling access to the room",
         "luxury_establishing": "the same protected luxury boutique environment centered on the display architecture and jewel-security system",
         "delayed_reaction": "the room still trying to understand the attack a moment too late",

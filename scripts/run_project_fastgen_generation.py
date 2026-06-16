@@ -26,6 +26,12 @@ from pipeline_state import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def generation_route_label(route: str, model: str) -> str:
+    if route == "v5":
+        return f"v5:{model}" if model else "v5"
+    return "v4-openai-image"
+
+
 def load_failed_records(path: Path) -> list[dict]:
     if not path.exists():
         return []
@@ -428,6 +434,8 @@ def main() -> None:
     parser.add_argument("--project-json", required=True)
     parser.add_argument("--size", default="1024x1024")
     parser.add_argument("--aspect-ratio", default="16:9")
+    parser.add_argument("--route", choices=["v4", "v5"], default="v4")
+    parser.add_argument("--model", default="")
     parser.add_argument("--start", type=int, default=1)
     parser.add_argument("--end", type=int, default=0)
     parser.add_argument("--poll-seconds", type=float, default=3.0)
@@ -469,10 +477,13 @@ def main() -> None:
     project["runtime"]["limit_frames"] = int(effective_limit or 0)
     project["runtime"]["real_generation"] = bool(args.real_generation)
     prompt_profile = {
-        "provider": "fastgen_openai_v4",
+        "provider": "fastgen_openai_v4" if args.route == "v4" else "fastgen_v5",
+        "route": args.route,
         "size": args.size,
         "aspect_ratio": args.aspect_ratio,
     }
+    if args.model:
+        prompt_profile["model"] = args.model
     sync_summary = sync_generation_state(
         state_db_path=state_db_path,
         project_id=project["project_id"],
@@ -546,7 +557,7 @@ def main() -> None:
             enriched_manifest["skipped_existing_success_count"] = int(selection["skipped_existing_success_count"])
             enriched_manifest["skipped_due_to_limit_count"] = deferred_due_limit_count
             enriched_manifest["non_generative_slots_count"] = int(selection["non_generative_slots_count"])
-            enriched_manifest["provider"] = "fastgen_openai_v4"
+            enriched_manifest["provider"] = prompt_profile["provider"]
             enriched_manifest["started_at"] = started_at
             enriched_manifest["finished_at"] = iso_now()
             enriched_manifest["planned_generative_frames_count"] = int(selection["planned_generative_frames_count"])
@@ -557,6 +568,8 @@ def main() -> None:
             else:
                 project["images"]["status"] = "generated"
             project["images"]["job_id"] = job_id
+            project["images"]["provider"] = "Fast Gen"
+            project["images"]["route"] = generation_route_label(args.route, args.model)
             project["images"]["generated_count"] = enriched_manifest["completed_count"]
             project["images"]["failed_count"] = enriched_manifest["failed_count"]
             project["images"]["missing_count"] = enriched_manifest.get("missing_count", 0)
@@ -604,6 +617,8 @@ def main() -> None:
         args.size,
         "--aspect-ratio",
         args.aspect_ratio,
+        "--route",
+        args.route,
         "--state-db",
         str(state_db_path),
         "--project-id",
@@ -619,6 +634,8 @@ def main() -> None:
         "--concurrency",
         str(args.concurrency),
     ]
+    if args.model:
+        cmd.extend(["--model", args.model])
     if args.end > 0:
         cmd.extend(["--end", str(args.end)])
     if args.stop_on_error:
@@ -723,7 +740,7 @@ def main() -> None:
     enriched_manifest["skipped_existing_success_count"] = int(selection["skipped_existing_success_count"])
     enriched_manifest["skipped_due_to_limit_count"] = deferred_due_limit_count
     enriched_manifest["non_generative_slots_count"] = int(selection["non_generative_slots_count"])
-    enriched_manifest["provider"] = "fastgen_openai_v4"
+    enriched_manifest["provider"] = prompt_profile["provider"]
     enriched_manifest["started_at"] = started_at
     enriched_manifest["finished_at"] = iso_now()
     enriched_manifest["planned_generative_frames_count"] = int(selection["planned_generative_frames_count"])
@@ -743,6 +760,8 @@ def main() -> None:
     else:
         project["images"]["status"] = "generated" if incomplete_count == 0 else "partial"
     project["images"]["job_id"] = job_id
+    project["images"]["provider"] = "Fast Gen"
+    project["images"]["route"] = generation_route_label(args.route, args.model)
     project["images"]["generated_count"] = enriched_manifest["completed_count"]
     project["images"]["failed_count"] = enriched_manifest["failed_count"]
     project["images"]["missing_count"] = enriched_manifest.get("missing_count", 0)

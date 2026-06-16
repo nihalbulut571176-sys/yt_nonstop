@@ -5,13 +5,14 @@ from typing import Any
 
 from pipeline_contracts import FrameBrief, build_frame_id, build_shot_id, dedupe_strings, request_spec_from_project, stable_hash, write_csv
 from project_pipeline_utils import load_json, load_project, save_json, save_project
+from yt_nonstop.utils.text_repair import repair_mojibake_text
 
 
 NON_GENERATIVE_DECISIONS = {"hold_previous", "continuation_motion"}
 
 
 def clean_text(value: Any) -> str:
-    return " ".join(str(value or "").replace("\n", " ").split()).strip()
+    return " ".join(repair_mojibake_text(str(value or "")).replace("\n", " ").split()).strip()
 
 
 def choose_style_meta(scene: dict, index: int, slot: dict | None = None) -> dict:

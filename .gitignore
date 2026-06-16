@@ -45,3 +45,14 @@ deliverables/partial_*_avatar/clips/
 
 # Python cache
 scripts/__pycache__/
+
+# Web prototype local installs / outputs
+web/**/node_modules/
+web/**/dist/
+web/**/build/
+web/**/out/
+web/**/output/
+web/**/.cache/
+
+# Local project workspaces outside repo truth
+YT_visual/
