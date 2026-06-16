@@ -79,4 +79,4 @@ Run the backend with:
 yt-nonstop studio --reload
 ```
 
-See [Web Studio](docs/web_studio.md) for the operator workflow and frontend dev setup.
+The studio is a local-first single-operator MVP with login/session handling, SQLite app state, project setup, pipeline controls, review decisions, asset browsing, run history, and typed settings. See [Web Studio](docs/web_studio.md) for the operator workflow, smoke checklist, and frontend dev setup.

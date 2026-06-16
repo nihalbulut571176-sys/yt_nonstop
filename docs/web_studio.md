@@ -1,79 +1,82 @@
-# Web Studio
+# Web Studio MVP
 
 ## Purpose
 
-The first web studio is a local internal operator tool that wraps the existing `yt-nonstop` CLI.
+The web studio is a local-first product shell around the existing `yt-nonstop` CLI and project-folder workflow.
 
-It does not replace the pipeline. It launches the same commands we already trust, then reads the generated artifacts back into a browser UI.
+The CLI and project artifacts remain the execution truth. The web app owns operator-facing state such as login sessions, project registry metadata, run history, review decisions, cached asset indexes, and non-secret settings.
 
-## Scope In V1
-
-The v1 studio ships with four operator screens:
-
-- `Projects`
-- `Pipeline`
-- `Review`
-- `Assets`
-
-It is intentionally:
-
-- single-operator
-- local-machine only
-- workspace-root aware
-- built around the existing `C:\Users\MIKE\Documents\Codex\YT_visual` project-folder convention
-
-## Backend
-
-Backend source lives in:
+## Source Layout
 
 ```text
-src/yt_nonstop/webapi/
+src/yt_nonstop/webapi/   FastAPI backend, app-state DB, run orchestration
+web/app/                 React studio frontend
 ```
 
-Key responsibilities:
-
-- discover projects under the workspace root
-- normalize repo-native and artifact-style folders into one project model
-- run `yt-nonstop` subprocess jobs in the background
-- persist lightweight job metadata under `.runtime/webstudio/`
-- expose status, review, timeline, artifact, and log endpoints
-
-Primary endpoints:
-
-- `GET /api/projects`
-- `GET /api/projects/{id}`
-- `GET /api/projects/{id}/status`
-- `GET /api/projects/{id}/artifacts`
-- `GET /api/projects/{id}/timeline`
-- `GET /api/projects/{id}/review`
-- `POST /api/projects/{id}/validate`
-- `POST /api/projects/{id}/run`
-- `POST /api/projects/{id}/review/apply`
-- `GET /api/jobs`
-- `GET /api/jobs/{job_id}`
-- `GET /api/jobs/{job_id}/logs`
-
-## Frontend
-
-Frontend source lives in:
+The default project workspace remains:
 
 ```text
-web/app/
+C:\Users\MIKE\Documents\Codex\YT_visual
 ```
 
-It is a React SPA intended for local operator use. The UI keeps persistent project context, current stage visibility, quick access to logs, and direct browsing of generated artifacts.
+## MVP Pages
 
-## Running It
+- `Login`: local operator sign-in and session restore.
+- `Projects`: discovered local projects plus support/status summaries.
+- `Project Overview`: lifecycle, blockers, next action, recent runs, latest outputs.
+- `Pipeline`: validate/resume/retry/render dry-run controls backed by CLI subprocess runs.
+- `Review`: review artifact rows plus persisted operator decisions.
+- `Assets`: grouped images, final images, videos, prompts, timelines, and reports with bounded previews.
+- `Runs / History`: project-scoped and global runs with status, command, logs, and events.
+- `Settings`: operator preferences, workspace metadata, FastGen provider metadata, and secret presence flags.
 
-Install Python dependencies for the repo, then run:
+## Backend Model
+
+The backend is a typed local product API:
+
+- Auth/session endpoints live under `/api/auth/*`.
+- Workspace and project state live under `/api/workspace/*` and `/api/projects/*`.
+- Long-running operator actions are represented as runs under `/api/runs/*`.
+- Review decisions are persisted in SQLite but source review artifacts remain in the project folder.
+- Assets are indexed from project folders and preview/media reads are restricted to allowed project roots.
+- Settings persist non-secret preferences in SQLite; secrets stay in env/local secret storage.
+
+Important rule: browser write actions are bounded to project bootstrap, launching CLI-backed runs, saving review decisions, and saving typed settings.
+
+## App-State Database
+
+SQLite is stored under the configured runtime directory, normally:
+
+```text
+.runtime/webstudio/studio.sqlite3
+```
+
+The DB is for web concerns only:
+
+- users and sessions
+- projects and snapshots
+- runs and run events
+- review items and decisions
+- asset indexes
+- provider metadata
+- user preferences
+- audit events
+
+Large media, prompts, reports, timelines, renders, and generated files stay in project folders, not in SQLite.
+
+## Running Locally
 
 ```bash
-yt-nonstop studio --reload
+yt-nonstop studio --host 127.0.0.1 --port 8787 --reload
 ```
 
-That starts the FastAPI backend on `127.0.0.1:8787`.
+Open:
 
-For frontend development:
+```text
+http://127.0.0.1:8787
+```
+
+Frontend development:
 
 ```bash
 cd web/app
@@ -81,37 +84,77 @@ npm install
 npm run dev
 ```
 
-The Vite dev server proxies `/api` calls to the backend.
-
-For a built local bundle:
+Production frontend bundle:
 
 ```bash
 cd web/app
 npm run build
 ```
 
-If `web/app/dist/` exists, the FastAPI app serves the built studio directly.
+If `web/app/dist/` exists, FastAPI serves the built studio.
 
 ## Configuration
 
-Environment variables:
+Core environment variables:
 
 - `YT_NONSTOP_REPO_ROOT`
 - `YT_NONSTOP_WORKSPACE_ROOT`
 - `YT_NONSTOP_WEB_RUNTIME_DIR`
 - `YT_NONSTOP_ALLOWED_PROJECT_ROOTS`
 - `YT_NONSTOP_WEB_POLL_SECONDS`
+- `YT_NONSTOP_STUDIO_USERNAME`
+- `YT_NONSTOP_STUDIO_PASSWORD`
+- `YT_NONSTOP_STUDIO_SESSION_TTL_HOURS`
+- `YT_NONSTOP_WEB_DEFAULT_PROFILE`
+- `YT_NONSTOP_WEB_DEFAULT_CONCURRENCY`
 
-Defaults assume:
+FastGen metadata:
 
-- repo root: `C:\Users\MIKE\Documents\Codex\YT`
-- workspace root: `C:\Users\MIKE\Documents\Codex\YT_visual`
+- `FASTGEN_API_URL`
+- `FASTGEN_MODEL`
+- `FASTGEN_API_KEY`
+
+`FASTGEN_API_KEY` is exposed to the UI only as a configured/missing flag. The value is never returned by `/api/settings`.
+
+## MVP Smoke Checklist
+
+Use this checklist before treating a branch as a usable local studio build:
+
+1. Start the app with `yt-nonstop studio --reload`.
+2. Sign in with the configured local operator account.
+3. Open `Projects` and confirm local projects are discovered under `YT_visual`.
+4. Create/bootstrap a small project from `/projects/new`.
+5. Open the project overview and confirm lifecycle, blockers, next action, and recent runs render.
+6. Launch `validate` or `resume` from `Pipeline`.
+7. Inspect active run status, logs, and project/global run history.
+8. Open `Review`, save a decision, refresh, and confirm it persists.
+9. Open `Assets`, preview a text artifact, image, and video if available.
+10. Open `Settings` and confirm FastGen secret is shown only as presence metadata.
+
+## Publish Gate
+
+Fast local gate:
+
+```bash
+python -m pytest tests\test_webapi.py
+cd web/app
+npm test
+npm run build
+yt-nonstop studio --help
+```
+
+Known acceptable warnings:
+
+- Starlette/httpx deprecation warning from the FastAPI test client.
+- React Router v7 future-flag warnings in Vitest.
+
+Any auth, filesystem boundary, run conflict, review persistence, asset preview, or secret-redaction regression should block publication.
 
 ## Current Limits
 
-- no auth
-- no multi-user support
-- no project creation wizard
-- no direct prompt editing
-- no arbitrary filesystem browsing outside allowed project roots
-- no queue/worker infra beyond local subprocess execution
+- Local-first single-operator deployment only.
+- Role model exists, but full multi-user collaboration is not implemented.
+- No arbitrary project config editing in the browser.
+- No prompt editing UI.
+- No hosted worker queue or remote execution.
+- Remotion remains reference/prototype material, not a first-class studio module yet.
