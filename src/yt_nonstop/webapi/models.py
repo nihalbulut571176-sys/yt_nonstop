@@ -310,7 +310,7 @@ class ReviewDecisionRequest(BaseModel):
 
 class SettingsUpdateRequest(BaseModel):
     default_profile: str | None = None
-    default_concurrency: int | None = None
+    default_concurrency: int | None = Field(default=None, ge=1, le=50)
     default_real_generation: bool | None = None
 
 

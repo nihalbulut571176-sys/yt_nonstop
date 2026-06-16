@@ -342,6 +342,9 @@ def test_webapi_pipeline_runs_review_and_settings(tmp_path, monkeypatch):
     monkeypatch.setenv("YT_NONSTOP_WORKSPACE_ROOT", str(workspace))
     monkeypatch.setenv("YT_NONSTOP_ALLOWED_PROJECT_ROOTS", str(workspace))
     monkeypatch.setenv("YT_NONSTOP_WEB_RUNTIME_DIR", str(tmp_path / "runtime"))
+    monkeypatch.setenv("FASTGEN_API_URL", "https://fastgen.example/api")
+    monkeypatch.setenv("FASTGEN_MODEL", "fastgen-test")
+    monkeypatch.setenv("FASTGEN_API_KEY", "super-secret-fastgen-key")
 
     app = create_app()
     client = TestClient(app)
@@ -390,7 +393,12 @@ def test_webapi_pipeline_runs_review_and_settings(tmp_path, monkeypatch):
 
     settings = client.get("/api/settings", headers=headers)
     assert settings.status_code == 200
+    settings_text = json.dumps(settings.json())
+    assert "super-secret-fastgen-key" not in settings_text
     assert any(item["category"] == "environment" for item in settings.json())
+    provider_settings = next(item for item in settings.json() if item["category"] == "provider_metadata" and item["provider"] == "fastgen")
+    assert provider_settings["value"]["api_key_configured"] is True
+    assert provider_settings["value"]["api_url"] == "https://fastgen.example/api"
     auth_settings = next(item for item in settings.json() if item["category"] == "auth")
     assert auth_settings["value"]["default_credentials_active"] is True
     assert "password" not in json.dumps(auth_settings["value"])
@@ -398,6 +406,12 @@ def test_webapi_pipeline_runs_review_and_settings(tmp_path, monkeypatch):
     update = client.patch("/api/settings", json={"default_profile": "no_vlm_production", "default_concurrency": 6}, headers=headers)
     assert update.status_code == 200
     assert update.json()["value"]["default_concurrency"] == 6
+    persisted = client.get("/api/settings", headers=headers)
+    preference_settings = next(item for item in persisted.json() if item["category"] == "operator_preferences" and item["key"] == "studio_preferences")
+    assert preference_settings["value"]["default_concurrency"] == 6
+
+    invalid_update = client.patch("/api/settings", json={"default_concurrency": 0}, headers=headers)
+    assert invalid_update.status_code == 422
 
     preview_media = client.get(
         f"/api/projects/{project_id}/media",

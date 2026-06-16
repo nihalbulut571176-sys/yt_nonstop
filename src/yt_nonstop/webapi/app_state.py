@@ -808,15 +808,27 @@ class AppStateStore:
         )
         items.append(
             SettingRecord(
+                category="provider_metadata",
+                key="fastgen",
+                provider="fastgen",
+                value={
+                    "api_url": self.config.fastgen_api_url,
+                    "model": self.config.fastgen_model,
+                    "api_key_configured": bool(self.config.fastgen_api_key),
+                    "secret_storage": "environment",
+                },
+                updated_at=_iso_now(),
+                updated_by_username="system",
+            )
+        )
+        items.append(
+            SettingRecord(
                 category="environment",
                 key="environment",
                 provider="studio",
                 value={
                     "default_profile": self.config.default_profile,
                     "default_concurrency": self.config.default_concurrency,
-                    "fastgen_api_url": self.config.fastgen_api_url,
-                    "fastgen_model": self.config.fastgen_model,
-                    "fastgen_api_key_configured": bool(self.config.fastgen_api_key),
                 },
                 updated_at=_iso_now(),
                 updated_by_username="system",

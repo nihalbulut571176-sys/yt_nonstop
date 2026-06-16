@@ -180,6 +180,13 @@ const assetCollection = {
   ]
 };
 
+const settingsPayload = [
+  {category: 'workspace', key: 'workspace', provider: 'studio', value: {workspace_root: 'C:\\YT_visual', runtime_dir: 'C:\\runtime'}, updated_at: '2026-01-01T00:00:00Z'},
+  {category: 'environment', key: 'environment', provider: 'studio', value: {default_profile: 'no_vlm_production', default_concurrency: 10}, updated_at: '2026-01-01T00:00:00Z'},
+  {category: 'provider_metadata', key: 'fastgen', provider: 'fastgen', value: {api_url: 'https://fastgen.example/api', model: 'fastgen-test', api_key_configured: true, secret_storage: 'environment'}, updated_at: '2026-01-01T00:00:00Z'},
+  {category: 'auth', key: 'local_operator', provider: 'studio', value: {username: 'operator', role: 'Admin', session_ttl_hours: 12, default_credentials_active: true}, updated_at: '2026-01-01T00:00:00Z'}
+];
+
 function primeMocks() {
   mockApi.getToken.mockReturnValue('token-1');
   mockApi.me.mockResolvedValue(authPayload);
@@ -203,7 +210,7 @@ function primeMocks() {
   mockApi.pipelineAction.mockResolvedValue({accepted: true, run_id: 'run-1', state: 'queued', message: 'Run accepted.'});
   mockApi.applyReview.mockResolvedValue({accepted: true, run_id: 'run-2', state: 'queued', message: 'Review run accepted.'});
   mockApi.saveReviewDecision.mockResolvedValue({id: 1, item_id: 'B0001', decision: 'approved'});
-  mockApi.getSettings.mockResolvedValue([{category: 'environment', key: 'environment', value: {default_profile: 'no_vlm_production'}}]);
+  mockApi.getSettings.mockResolvedValue(settingsPayload);
   mockApi.updateSettings.mockResolvedValue({category: 'operator_preferences', key: 'studio_preferences', value: {default_concurrency: 10}});
 }
 
@@ -379,4 +386,23 @@ test('assets page groups files and opens text preview through API', async () => 
   await user.click(await screen.findByRole('button', {name: /prompts\/prompts\.md/i}));
   expect(mockApi.preview).toHaveBeenCalledWith('demo-project', 'C:\\demo\\prompts\\prompts.md');
   expect(await screen.findByText(/visual direction/i)).toBeInTheDocument();
+});
+
+test('settings page shows provider metadata without exposing secrets and saves preferences', async () => {
+  const user = userEvent.setup();
+  render(
+    <MemoryRouter initialEntries={['/settings']}>
+      <App />
+    </MemoryRouter>
+  );
+
+  expect(await screen.findByText('Workspace / Environment')).toBeInTheDocument();
+  expect(await screen.findByText('https://fastgen.example/api')).toBeInTheDocument();
+  expect(await screen.findByText('Configured in environment')).toBeInTheDocument();
+  expect(screen.queryByText(/super-secret/i)).not.toBeInTheDocument();
+
+  await user.clear(screen.getByLabelText(/default concurrency/i));
+  await user.type(screen.getByLabelText(/default concurrency/i), '8');
+  await user.click(screen.getByRole('button', {name: /save preferences/i}));
+  expect(mockApi.updateSettings).toHaveBeenCalledWith(expect.objectContaining({default_concurrency: 8}));
 });

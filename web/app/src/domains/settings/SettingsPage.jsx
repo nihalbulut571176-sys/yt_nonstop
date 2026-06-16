@@ -6,6 +6,7 @@ export function SettingsPage() {
   const {settings, saveSettings} = useSettingsStore();
   const preferences = settings.find((item) => item.category === 'operator_preferences' && item.key === 'studio_preferences')?.value || {};
   const environment = settings.find((item) => item.category === 'environment')?.value || {};
+  const fastgen = settings.find((item) => item.category === 'provider_metadata' && item.provider === 'fastgen')?.value || {};
   const workspace = settings.find((item) => item.category === 'workspace')?.value || {};
   const auth = settings.find((item) => item.category === 'auth' && item.key === 'local_operator')?.value || {};
   const [form, setForm] = useState({
@@ -45,9 +46,12 @@ export function SettingsPage() {
         <dl className="details">
           <div><dt>Workspace root</dt><dd>{workspace.workspace_root || 'n/a'}</dd></div>
           <div><dt>Runtime dir</dt><dd>{workspace.runtime_dir || 'n/a'}</dd></div>
-          <div><dt>FastGen URL</dt><dd>{environment.fastgen_api_url || 'n/a'}</dd></div>
-          <div><dt>FastGen model</dt><dd>{environment.fastgen_model || 'n/a'}</dd></div>
-          <div><dt>FASTGEN key configured</dt><dd>{environment.fastgen_api_key_configured ? 'Configured' : 'Missing'}</dd></div>
+          <div><dt>Default profile</dt><dd>{environment.default_profile || 'n/a'}</dd></div>
+          <div><dt>Provider</dt><dd>FastGen</dd></div>
+          <div><dt>FastGen URL</dt><dd>{fastgen.api_url || 'n/a'}</dd></div>
+          <div><dt>FastGen model</dt><dd>{fastgen.model || 'n/a'}</dd></div>
+          <div><dt>FASTGEN_API_KEY</dt><dd>{fastgen.api_key_configured ? 'Configured in environment' : 'Missing'}</dd></div>
+          <div><dt>Secret storage</dt><dd>{fastgen.secret_storage || 'environment'}</dd></div>
           <div><dt>Operator account</dt><dd>{auth.username || 'operator'} / {auth.role || 'Admin'}</dd></div>
           <div><dt>Session TTL</dt><dd>{auth.session_ttl_hours || 12} hours</dd></div>
           <div><dt>Default credentials</dt><dd>{auth.default_credentials_active ? 'Active locally' : 'Changed'}</dd></div>
