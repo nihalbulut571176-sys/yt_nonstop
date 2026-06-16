@@ -78,6 +78,21 @@ def _review_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def _studio_command(args: argparse.Namespace) -> int:
+    try:
+        import uvicorn
+    except ImportError as exc:  # pragma: no cover
+        raise SystemExit("uvicorn is required for `yt-nonstop studio`. Install web dependencies first.") from exc
+    uvicorn.run(
+        "yt_nonstop.webapi.app:create_app",
+        factory=True,
+        host=args.host,
+        port=args.port,
+        reload=args.reload,
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="yt-nonstop")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -139,6 +154,12 @@ def build_parser() -> argparse.ArgumentParser:
     review_parser.add_argument("--failed", action="store_true")
     review_parser.add_argument("--dry-run", action="store_true")
     review_parser.set_defaults(func=_review_command)
+
+    studio_parser = subparsers.add_parser("studio", help="Run the local FastAPI + React studio.")
+    studio_parser.add_argument("--host", default="127.0.0.1")
+    studio_parser.add_argument("--port", type=int, default=8787)
+    studio_parser.add_argument("--reload", action="store_true")
+    studio_parser.set_defaults(func=_studio_command)
     return parser
 
 

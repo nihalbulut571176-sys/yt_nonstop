@@ -7,6 +7,10 @@ name = "yt-nonstop"
 version = "0.1.0"
 description = "SRT-first visual generation workflow for narrated video."
 requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn>=0.30,<1",
+]
 
 [project.scripts]
 yt-nonstop = "yt_nonstop.cli:main"

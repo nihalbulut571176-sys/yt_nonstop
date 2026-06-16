@@ -46,3 +46,12 @@ The future web app should:
 - eventually expose controls for planning, generation, QC, and render
 
 The current prototype is a source artifact and reference implementation, not the finished web product.
+
+## Current Status
+
+That next step now exists as the first local studio implementation:
+
+- backend: `src/yt_nonstop/webapi/`
+- frontend: `web/app/`
+
+The Remotion prototype remains valuable as a motion/reference source, but it is no longer the only web-facing artifact in the repo.

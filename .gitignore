@@ -45,6 +45,8 @@ deliverables/partial_*_avatar/clips/
 
 # Python cache
 scripts/__pycache__/
+*.egg-info/
+.pytest_tmp/
 
 # Web prototype local installs / outputs
 web/**/node_modules/

@@ -25,6 +25,7 @@ The old `visual` working area is no longer the active source of truth for code.
 - [Project Workspace Convention](docs/project_workspace.md)
 - [Production Workflow](docs/production_workflow.md)
 - [Web Prototype](docs/web_prototype.md)
+- [Web Studio](docs/web_studio.md)
 - [Technical FastGen Pilot](docs/technical_fastgen_pilot.md)
 
 ## Current Workflow
@@ -62,3 +63,20 @@ web/remotion-fastgen-first120/
 ```
 
 It is intentionally kept small and source-only. Generated assets and dependency folders stay outside git.
+
+## Web Studio
+
+The first local web studio now lives inside the same repo:
+
+```text
+src/yt_nonstop/webapi/
+web/app/
+```
+
+Run the backend with:
+
+```bash
+yt-nonstop studio --reload
+```
+
+See [Web Studio](docs/web_studio.md) for the operator workflow and frontend dev setup.
