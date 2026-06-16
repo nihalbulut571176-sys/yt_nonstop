@@ -822,6 +822,22 @@ class AppStateStore:
                 updated_by_username="system",
             )
         )
+        items.append(
+            SettingRecord(
+                category="auth",
+                key="local_operator",
+                provider="studio",
+                value={
+                    "username": self.config.default_operator_username,
+                    "role": "Admin",
+                    "session_ttl_hours": self.config.session_ttl_hours,
+                    "default_credentials_active": self.config.default_operator_username == "operator"
+                    and self.config.default_operator_password == "operator",
+                },
+                updated_at=_iso_now(),
+                updated_by_username="system",
+            )
+        )
         return items
 
     def upsert_provider_config(self, *, key: str, provider: str, value: dict[str, Any], updated_by: int | None) -> SettingRecord:

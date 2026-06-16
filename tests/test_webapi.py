@@ -53,6 +53,64 @@ def _login(client: TestClient) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+def test_auth_rejects_invalid_login_and_protects_routes(tmp_path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    _make_repo_native_project(workspace)
+    monkeypatch.setenv("YT_NONSTOP_WORKSPACE_ROOT", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_ALLOWED_PROJECT_ROOTS", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_WEB_RUNTIME_DIR", str(tmp_path / "runtime"))
+
+    app = create_app()
+    client = TestClient(app)
+
+    invalid_login = client.post("/api/auth/login", json={"username": "operator", "password": "wrong"})
+    assert invalid_login.status_code == 401
+    assert invalid_login.json()["code"] == "auth_error"
+
+    protected = client.get("/api/projects")
+    assert protected.status_code == 401
+    assert protected.json()["code"] == "auth_error"
+
+
+def test_auth_logout_invalidates_session(tmp_path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    _make_repo_native_project(workspace)
+    monkeypatch.setenv("YT_NONSTOP_WORKSPACE_ROOT", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_ALLOWED_PROJECT_ROOTS", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_WEB_RUNTIME_DIR", str(tmp_path / "runtime"))
+
+    app = create_app()
+    client = TestClient(app)
+    headers = _login(client)
+
+    me = client.get("/api/auth/me", headers=headers)
+    assert me.status_code == 200
+
+    logout = client.post("/api/auth/logout", headers=headers)
+    assert logout.status_code == 200
+
+    after_logout = client.get("/api/auth/me", headers=headers)
+    assert after_logout.status_code == 401
+    assert after_logout.json()["code"] == "auth_error"
+
+
+def test_auth_expires_sessions(tmp_path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    _make_repo_native_project(workspace)
+    monkeypatch.setenv("YT_NONSTOP_WORKSPACE_ROOT", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_ALLOWED_PROJECT_ROOTS", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_WEB_RUNTIME_DIR", str(tmp_path / "runtime"))
+    monkeypatch.setenv("YT_NONSTOP_STUDIO_SESSION_TTL_HOURS", "-1")
+
+    app = create_app()
+    client = TestClient(app)
+    headers = _login(client)
+
+    expired = client.get("/api/auth/me", headers=headers)
+    assert expired.status_code == 401
+    assert expired.json()["code"] == "auth_error"
+
+
 def test_project_discovery_handles_repo_and_artifact_projects(tmp_path, monkeypatch):
     workspace = tmp_path / "workspace"
     _make_repo_native_project(workspace)
@@ -198,6 +256,9 @@ def test_webapi_pipeline_runs_review_and_settings(tmp_path, monkeypatch):
     settings = client.get("/api/settings", headers=headers)
     assert settings.status_code == 200
     assert any(item["category"] == "environment" for item in settings.json())
+    auth_settings = next(item for item in settings.json() if item["category"] == "auth")
+    assert auth_settings["value"]["default_credentials_active"] is True
+    assert "password" not in json.dumps(auth_settings["value"])
 
     update = client.patch("/api/settings", json={"default_profile": "no_vlm_production", "default_concurrency": 6}, headers=headers)
     assert update.status_code == 200

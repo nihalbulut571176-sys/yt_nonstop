@@ -7,6 +7,7 @@ export function SettingsPage() {
   const preferences = settings.find((item) => item.category === 'operator_preferences' && item.key === 'studio_preferences')?.value || {};
   const environment = settings.find((item) => item.category === 'environment')?.value || {};
   const workspace = settings.find((item) => item.category === 'workspace')?.value || {};
+  const auth = settings.find((item) => item.category === 'auth' && item.key === 'local_operator')?.value || {};
   const [form, setForm] = useState({
     default_profile: '',
     default_concurrency: 10,
@@ -46,7 +47,10 @@ export function SettingsPage() {
           <div><dt>Runtime dir</dt><dd>{workspace.runtime_dir || 'n/a'}</dd></div>
           <div><dt>FastGen URL</dt><dd>{environment.fastgen_api_url || 'n/a'}</dd></div>
           <div><dt>FastGen model</dt><dd>{environment.fastgen_model || 'n/a'}</dd></div>
-          <div><dt>FASTGEN key configured</dt><dd>{String(environment.fastgen_api_key_configured ?? false)}</dd></div>
+          <div><dt>FASTGEN key configured</dt><dd>{environment.fastgen_api_key_configured ? 'Configured' : 'Missing'}</dd></div>
+          <div><dt>Operator account</dt><dd>{auth.username || 'operator'} / {auth.role || 'Admin'}</dd></div>
+          <div><dt>Session TTL</dt><dd>{auth.session_ttl_hours || 12} hours</dd></div>
+          <div><dt>Default credentials</dt><dd>{auth.default_credentials_active ? 'Active locally' : 'Changed'}</dd></div>
         </dl>
       </div>
     </section>

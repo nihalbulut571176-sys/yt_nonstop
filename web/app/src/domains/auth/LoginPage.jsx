@@ -3,7 +3,7 @@ import {useStudioShell} from '../../state/StudioProvider.jsx';
 
 export function LoginPage() {
   const {signIn, error} = useStudioShell();
-  const [form, setForm] = useState({username: 'operator', password: 'operator'});
+  const [form, setForm] = useState({username: 'operator', password: ''});
 
   const onSubmit = async (event) => {
     event.preventDefault();

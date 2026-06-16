@@ -313,7 +313,7 @@ class SettingsUpdateRequest(BaseModel):
 
 
 class SettingRecord(BaseModel):
-    category: Literal["workspace", "operator_preferences", "provider_metadata", "environment"]
+    category: Literal["workspace", "operator_preferences", "provider_metadata", "environment", "auth"]
     key: str
     provider: str | None = None
     value: dict[str, Any] = Field(default_factory=dict)

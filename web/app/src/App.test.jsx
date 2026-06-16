@@ -160,6 +160,7 @@ test('shows login screen and signs in', async () => {
   );
 
   expect(await screen.findByRole('heading', {name: /sign in to yt_nonstop/i})).toBeInTheDocument();
+  await user.type(screen.getByLabelText(/password/i), 'operator');
   await user.click(screen.getByRole('button', {name: /sign in/i}));
 
   await waitFor(() => {
