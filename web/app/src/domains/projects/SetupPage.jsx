@@ -5,16 +5,16 @@ import {SectionTitle} from '../../shared/ui/SectionTitle.jsx';
 import {useSettingsStore, useStudioShell} from '../../state/StudioProvider.jsx';
 
 const intakeSteps = [
-  'Add source SRT, audio, and narration text.',
+  'Add source audio, narration text, and optional style notes.',
   'Studio creates a clean project folder in YT_visual.',
-  'Open Overview, then run Validate or Resume from Pipeline.'
+  'The render pipeline starts immediately from transcription to final video.'
 ];
 
 export function SetupPage() {
   const navigate = useNavigate();
-  const {createProject, intakeProject} = useSettingsStore();
+  const {createProject, intakeProject, intakeAudioTextProject} = useSettingsStore();
   const {busyAction} = useStudioShell();
-  const [mode, setMode] = useState('upload');
+  const [mode, setMode] = useState('audio_text');
   const [result, setResult] = useState(null);
   const [validationError, setValidationError] = useState('');
   const [files, setFiles] = useState({
@@ -48,26 +48,47 @@ export function SetupPage() {
 
   const validateUploadMode = () => {
     if (!form.project_name.trim()) return 'Project name is required.';
-    if (!files.source_srt) return 'Source SRT file is required.';
     if (!files.source_audio) return 'Source audio file is required.';
     if (!files.raw_text) return 'Raw text file is required.';
     return '';
   };
 
+  const validateSrtUploadMode = () => {
+    const uploadError = validateUploadMode();
+    if (uploadError) return uploadError;
+    if (!files.source_srt) return 'Source SRT file is required.';
+    return '';
+  };
+
   const onSubmit = async (event) => {
     event.preventDefault();
-    const error = mode === 'upload' ? validateUploadMode() : validatePathMode();
+    const error = mode === 'audio_text' ? validateUploadMode() : mode === 'srt_upload' ? validateSrtUploadMode() : validatePathMode();
     if (error) {
       setValidationError(error);
       return;
     }
     setValidationError('');
-    const payload = mode === 'upload' ? await submitUploads() : await createProject(form);
+    const payload = mode === 'audio_text' ? await submitAudioTextUploads() : mode === 'srt_upload' ? await submitSrtUploads() : await createProject(form);
     setResult(payload);
     navigate(payload.next_route || `/projects/${payload.project_id}/overview`);
   };
 
-  const submitUploads = async () => {
+  const submitAudioTextUploads = async () => {
+    const body = new FormData();
+    body.append('project_name', form.project_name);
+    body.append('profile', form.profile || 'no_vlm_production');
+    body.append('to_stage', 'render');
+    body.append('real_generation', 'true');
+    body.append('concurrency', '10');
+    body.append('source_audio', files.source_audio);
+    body.append('raw_text', files.raw_text);
+    if (files.setup_notes) {
+      body.append('style_notes', files.setup_notes);
+    }
+    return intakeAudioTextProject(body);
+  };
+
+  const submitSrtUploads = async () => {
     const body = new FormData();
     body.append('project_name', form.project_name);
     body.append('profile', form.profile || 'no_vlm_production');
@@ -83,16 +104,24 @@ export function SetupPage() {
   return (
     <section className="grid-two">
       <div className="panel">
-        <SectionTitle title="New Project Intake" meta={mode === 'upload' ? 'Upload files' : 'Local paths'} />
+        <SectionTitle title="New Project Intake" meta={mode === 'audio_text' ? 'Audio + script' : mode === 'srt_upload' ? 'Advanced SRT timing' : 'Local paths'} />
         <div className="mode-switch">
-          <button type="button" className={mode === 'upload' ? 'active' : ''} onClick={() => setMode('upload')}>Upload source files</button>
+          <button type="button" className={mode === 'audio_text' ? 'active' : ''} onClick={() => setMode('audio_text')}>Upload audio + script</button>
+          <button type="button" className={mode === 'srt_upload' ? 'active' : ''} onClick={() => setMode('srt_upload')}>Advanced: I already have SRT timing</button>
           <button type="button" className={mode === 'paths' ? 'active' : ''} onClick={() => setMode('paths')}>Use local paths</button>
         </div>
         <form className="stack compact" onSubmit={onSubmit}>
           <label><span>Project name</span><input value={form.project_name} onChange={(event) => setField('project_name', event.target.value)} placeholder="illyuziya_vybora" /></label>
           <label><span>Profile</span><input value={form.profile} onChange={(event) => setField('profile', event.target.value)} /></label>
 
-          {mode === 'upload' ? (
+          {mode === 'audio_text' ? (
+            <div className="stack compact">
+              <FileInput label="Source audio" file={files.source_audio} accept="audio/*,.mp3,.wav,.m4a" onChange={(file) => setFile('source_audio', file)} />
+              <FileInput label="Raw narration text" file={files.raw_text} accept=".txt,.md,text/plain" onChange={(file) => setFile('raw_text', file)} />
+              <FileInput label="Style / setup notes" file={files.setup_notes} accept=".txt,.md,text/plain" optional onChange={(file) => setFile('setup_notes', file)} />
+              <p className="muted">Studio will create the project, transcribe the audio, generate timing, produce images with real generation, and render the final video.</p>
+            </div>
+          ) : mode === 'srt_upload' ? (
             <div className="stack compact">
               <FileInput label="Source SRT" file={files.source_srt} accept=".srt,text/plain" onChange={(file) => setFile('source_srt', file)} />
               <FileInput label="Source audio" file={files.source_audio} accept="audio/*,.mp3,.wav,.m4a" onChange={(file) => setFile('source_audio', file)} />
@@ -110,8 +139,8 @@ export function SetupPage() {
 
           {validationError ? <p className="error-inline">{validationError}</p> : null}
           <div className="action-row">
-            <button type="submit" disabled={busyAction === 'intake_project' || busyAction === 'create_project'}>
-              {busyAction === 'intake_project' || busyAction === 'create_project' ? 'Creating...' : 'Create project and open overview'}
+            <button type="submit" disabled={busyAction === 'intake_audio_text_project' || busyAction === 'intake_project' || busyAction === 'create_project'}>
+              {busyAction ? 'Creating...' : mode === 'audio_text' ? 'Create project and start render pipeline' : 'Create project and open overview'}
             </button>
           </div>
         </form>
@@ -125,7 +154,7 @@ export function SetupPage() {
               <span>{item}</span>
             </div>
           ))}
-          <p className="muted">For now the repo-native intake requires SRT timing. If you only have MP3 and script text, the next product step is a draft intake that runs transcription before project bootstrap.</p>
+          <p className="muted">The default intake no longer requires SRT. Use the advanced SRT mode only when you already trust external timing and want to bypass transcription.</p>
           {result ? (
             <dl className="details">
               <div><dt>Project ID</dt><dd>{result.project_id}</dd></div>

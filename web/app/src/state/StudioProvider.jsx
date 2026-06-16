@@ -174,6 +174,21 @@ export function StudioProvider({children}) {
     }
   };
 
+  const intakeAudioTextProject = async (payload) => {
+    try {
+      setBusyAction('intake_audio_text_project');
+      const response = await api.intakeAudioTextProject(payload);
+      await refreshWorkspace();
+      setSelectedProjectId(response.project_id);
+      return response;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setBusyAction('');
+    }
+  };
+
   const saveSettings = async (payload) => {
     try {
       setBusyAction('settings');
@@ -273,6 +288,7 @@ export function StudioProvider({children}) {
       saveReviewDecision,
       createProject,
       intakeProject,
+      intakeAudioTextProject,
       saveSettings
     }),
     [
@@ -334,8 +350,8 @@ export function useReviewStore() {
 }
 
 export function useSettingsStore() {
-  const {settings, saveSettings, createProject, intakeProject} = useStudioContext();
-  return {settings, saveSettings, createProject, intakeProject};
+  const {settings, saveSettings, createProject, intakeProject, intakeAudioTextProject} = useStudioContext();
+  return {settings, saveSettings, createProject, intakeProject, intakeAudioTextProject};
 }
 
 export function useStudioShell() {

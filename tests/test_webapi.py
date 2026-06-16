@@ -9,7 +9,8 @@ from fastapi.testclient import TestClient
 
 from yt_nonstop.webapi.app import create_app
 from yt_nonstop.webapi.config import WebConfig
-from yt_nonstop.webapi.jobs import JobStore
+from yt_nonstop.webapi.jobs import JobStartResult, JobStore
+from yt_nonstop.webapi.models import RunSummary
 from yt_nonstop.webapi.project_discovery import discover_projects
 
 
@@ -504,3 +505,98 @@ def test_webapi_can_create_project_from_uploaded_sources(tmp_path, monkeypatch):
 
     projects = client.get("/api/projects", headers=headers)
     assert any(item["id"] == payload["project_id"] for item in projects.json())
+
+
+def test_webapi_audio_text_intake_creates_project_and_starts_render_run(tmp_path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("YT_NONSTOP_WORKSPACE_ROOT", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_ALLOWED_PROJECT_ROOTS", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_WEB_RUNTIME_DIR", str(tmp_path / "runtime"))
+    captured: dict[str, list[str]] = {}
+
+    def fake_start_job(self, *, project_id, command, read_only=False, user_id=None):
+        captured["command"] = command
+        job = RunSummary(
+            run_id="run-audio-text",
+            project_id=project_id,
+            action_type="run",
+            command=command,
+            status="queued",
+            started_at="2026-01-01T00:00:00Z",
+            finished_at=None,
+            exit_code=None,
+            log_path=str(tmp_path / "runtime" / "logs" / "run-audio-text.log"),
+            read_only=read_only,
+            user_id=user_id,
+        )
+        return JobStartResult(accepted=True, job=job)
+
+    monkeypatch.setattr(JobStore, "start_job", fake_start_job)
+
+    app = create_app()
+    client = TestClient(app)
+    headers = _login(client)
+
+    response = client.post(
+        "/api/projects/intake/audio-text",
+        data={"project_name": "Audio Text Project", "profile": "no_vlm_production", "to_stage": "render", "real_generation": "true", "concurrency": "10"},
+        files={
+            "source_audio": ("source_audio.mp3", b"fake audio", "audio/mpeg"),
+            "raw_text": ("raw_text.md", b"# raw script\nhello\n", "text/markdown"),
+            "style_notes": ("style.md", b"# style\ncinematic documentary\n", "text/markdown"),
+        },
+        headers=headers,
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    project_root = Path(payload["project_root"])
+    project_json_path = Path(payload["project_json_path"])
+    project_config = json.loads(project_json_path.read_text(encoding="utf-8"))
+
+    assert payload["run_id"] == "run-audio-text"
+    assert payload["started"] is True
+    assert payload["next_route"] == f"/projects/{payload['project_id']}/pipeline"
+    assert (project_root / "project.json").exists()
+    assert not (project_root / "input" / "source.srt").exists()
+    assert (project_root / "input" / "source_audio.mp3").exists()
+    assert (project_root / "input" / "raw_text.md").read_text(encoding="utf-8").startswith("# raw script")
+    assert (project_root / "input" / "project_setup_notes.md").read_text(encoding="utf-8").startswith("# style")
+    assert project_config["current_stage"] == "transcription"
+    assert project_config["transcription"]["status"] == "pending"
+    assert Path(project_config["transcription"]["audio_path"]).parts[-2:] == ("input", "source_audio.mp3")
+    assert Path(project_config["transcription"]["raw_srt_path"]).parts[-2:] == ("transcript", "source_audio.srt")
+    assert Path(project_config["transcription"]["segments_json_path"]).parts[-2:] == ("transcript", "source_audio.segments.json")
+    assert project_config["transcript_cleanup"]["status"] == "pending"
+    assert project_config["workflow"]["render_dry_run"] is False
+    assert project_config["workflow"]["image_generation_enabled"] is True
+    assert project_config["render"]["render_mode"] == "full"
+
+    command = captured["command"]
+    assert "run" in command
+    assert "--from" in command and command[command.index("--from") + 1] == "transcription"
+    assert "--to" in command and command[command.index("--to") + 1] == "render"
+    assert "--real-generation" in command
+    assert "--resume" in command
+    assert "--concurrency" in command and command[command.index("--concurrency") + 1] == "10"
+
+
+def test_webapi_audio_text_intake_requires_audio_and_text(tmp_path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("YT_NONSTOP_WORKSPACE_ROOT", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_ALLOWED_PROJECT_ROOTS", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_WEB_RUNTIME_DIR", str(tmp_path / "runtime"))
+
+    app = create_app()
+    client = TestClient(app)
+    headers = _login(client)
+
+    response = client.post(
+        "/api/projects/intake/audio-text",
+        data={"project_name": "Missing Audio", "profile": "no_vlm_production"},
+        files={"raw_text": ("raw_text.md", b"# raw\n", "text/markdown")},
+        headers=headers,
+    )
+    assert response.status_code == 400
+    assert response.json()["code"] == "validation_error"

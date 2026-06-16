@@ -20,6 +20,7 @@ from yt_nonstop.webapi.jobs import JobStore, build_cli_command
 from yt_nonstop.webapi.models import (
     ApiErrorEnvelope,
     AssetCollection,
+    AudioTextIntakeResponse,
     CommandResponse,
     CreateProjectRequest,
     CreateProjectResponse,
@@ -355,6 +356,62 @@ async def _run_intake_bootstrap(
     )
 
 
+def _run_audio_text_bootstrap(
+    config: WebConfig,
+    *,
+    project_name: str,
+    source_audio: Path,
+    raw_text: Path,
+    setup_notes: Path | None,
+    profile: str,
+) -> CreateProjectResponse:
+    if not project_name.strip():
+        raise ProductApiError(status_code=400, code="validation_error", message="Project name is required", details={"project_name": project_name})
+    slug = _slugify_project_name(project_name)
+    project_root = (config.workspace_root / slug).resolve(strict=False)
+    if not config.project_allowed(project_root):
+        raise ProductApiError(status_code=403, code="filesystem_error", message="Project root is outside allowed roots", details={"project_root": str(project_root)})
+    if project_root.exists():
+        raise ProductApiError(status_code=409, code="project_state_error", message=f"Project folder already exists: {project_root}", details={"project_root": str(project_root)})
+
+    command = [
+        sys.executable,
+        str(config.repo_root / "scripts" / "bootstrap_real_pilot_project.py"),
+        "--project-root",
+        str(project_root),
+        "--source-audio",
+        str(source_audio),
+        "--raw-text",
+        str(raw_text),
+        "--profile",
+        profile or config.default_profile,
+    ]
+    if setup_notes:
+        command.extend(["--setup-notes", str(setup_notes)])
+    completed = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=str(config.repo_root))
+    if completed.returncode != 0:
+        raise ProductApiError(
+            status_code=500,
+            code="system_error",
+            message=completed.stderr.strip() or completed.stdout.strip() or "Audio/text project bootstrap failed",
+            retryable=False,
+        )
+
+    project_json_path = project_root / "project.json"
+    return CreateProjectResponse(
+        project_id=slug,
+        project_name=project_name,
+        project_root=str(project_root),
+        project_json_path=str(project_json_path),
+        support="full",
+        next_route=f"/projects/{slug}/pipeline",
+        notes=[
+            "Project folder bootstrapped from uploaded audio and script text.",
+            "Transcription starts as the first pipeline stage.",
+        ],
+    )
+
+
 def _review_queue_for_project(*, project_id: str, project_path: Path, project_json_path: Path | None, app_state: AppStateStore) -> ReviewQueue:
     review_payload = load_review(project_id, project_path, project_json_path)
     timeline_payload = load_timeline(project_id, project_path, project_json_path)
@@ -511,6 +568,68 @@ def create_app() -> FastAPI:
         app_state.record_audit_event(actor_user_id=current.user.id, event_type="project_intake_created", target_type="project", target_id=payload.project_id, payload=payload.model_dump())
         _discover_projects(config, app_state)
         return payload.model_dump()
+
+    @app.post("/api/projects/intake/audio-text")
+    async def create_project_audio_text_intake(
+        project_name: str = Form(...),
+        profile: str = Form("no_vlm_production"),
+        to_stage: str = Form("render"),
+        real_generation: bool = Form(True),
+        concurrency: int = Form(10),
+        source_audio: UploadFile | None = File(default=None),
+        raw_text: UploadFile | None = File(default=None),
+        style_notes: UploadFile | None = File(default=None),
+        current: AuthSession = Depends(require_session),
+    ):
+        if concurrency < 1 or concurrency > 50:
+            raise ProductApiError(status_code=400, code="validation_error", message="Concurrency must be between 1 and 50", details={"concurrency": concurrency})
+        if source_audio is None:
+            raise ProductApiError(status_code=400, code="validation_error", message="Source audio file is required", details={"field": "source_audio"})
+        if raw_text is None:
+            raise ProductApiError(status_code=400, code="validation_error", message="Raw script text file is required", details={"field": "raw_text"})
+        slug = _slugify_project_name(project_name)
+        intake_dir = config.runtime_dir / "uploads" / f"{slug}-{uuid4().hex[:8]}"
+        staged_audio = await _stage_upload(source_audio, intake_dir, "source_audio.mp3")
+        staged_raw_text = await _stage_upload(raw_text, intake_dir, "raw_text.md")
+        staged_notes = await _stage_upload(style_notes, intake_dir, "project_setup_notes.md") if style_notes else None
+        payload = _run_audio_text_bootstrap(
+            config,
+            project_name=project_name,
+            source_audio=staged_audio,
+            raw_text=staged_raw_text,
+            setup_notes=staged_notes,
+            profile=profile,
+        )
+        app_state.upsert_user_preference(
+            key="studio_preferences",
+            value={
+                "default_profile": profile or config.default_profile,
+                "default_concurrency": concurrency,
+                "default_real_generation": real_generation,
+                "last_bootstrapped_project": payload.project_id,
+                "last_intake_mode": "audio_text",
+            },
+            user_id=current.user.id,
+        )
+        app_state.record_audit_event(actor_user_id=current.user.id, event_type="project_audio_text_intake_created", target_type="project", target_id=payload.project_id, payload=payload.model_dump())
+        _discover_projects(config, app_state)
+        result = jobs.start_job(
+            project_id=payload.project_id,
+            command=build_cli_command(
+                project_json_path=payload.project_json_path,
+                action="run",
+                from_stage="transcription",
+                to_stage=to_stage or "render",
+                profile=profile,
+                real_generation=real_generation,
+                concurrency=concurrency,
+                resume=True,
+            ),
+            read_only=False,
+            user_id=current.user.id,
+        )
+        message = "Audio/text project created and render pipeline started." if result.accepted else result.reason or "Pipeline run rejected."
+        return AudioTextIntakeResponse(**payload.model_dump(), run_id=result.job.run_id, started=result.accepted, message=message).model_dump()
 
     @app.get("/api/projects/{project_id}")
     def project_details(project_id: str, _current: AuthSession = Depends(require_session)):

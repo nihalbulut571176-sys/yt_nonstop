@@ -14,6 +14,7 @@ const {mockApi} = vi.hoisted(() => ({
     listProjects: vi.fn(),
     createProject: vi.fn(),
     intakeProject: vi.fn(),
+    intakeAudioTextProject: vi.fn(),
     getProject: vi.fn(),
     getOverview: vi.fn(),
     getPipelineState: vi.fn(),
@@ -197,6 +198,7 @@ function primeMocks() {
   mockApi.listProjects.mockResolvedValue([project]);
   mockApi.createProject.mockResolvedValue({project_id: 'demo-project'});
   mockApi.intakeProject.mockResolvedValue({project_id: 'demo-project', next_route: '/projects/demo-project/overview'});
+  mockApi.intakeAudioTextProject.mockResolvedValue({project_id: 'demo-project', run_id: 'run-render', started: true, next_route: '/projects/demo-project/pipeline'});
   mockApi.getProject.mockResolvedValue(project);
   mockApi.getOverview.mockResolvedValue(overview);
   mockApi.getPipelineState.mockResolvedValue(pipelineState);
@@ -279,10 +281,12 @@ test('project setup validates required fields before calling api', async () => {
   );
 
   expect(await screen.findByText('New Project Intake')).toBeInTheDocument();
-  await user.click(screen.getByRole('button', {name: /create project and open overview/i}));
+  await user.click(screen.getByRole('button', {name: /create project and start render pipeline/i}));
 
   expect(await screen.findByText(/project name is required/i)).toBeInTheDocument();
   expect(mockApi.createProject).not.toHaveBeenCalled();
+  expect(mockApi.intakeProject).not.toHaveBeenCalled();
+  expect(mockApi.intakeAudioTextProject).not.toHaveBeenCalled();
 });
 
 test('project setup submits required input paths', async () => {
@@ -295,9 +299,9 @@ test('project setup submits required input paths', async () => {
   );
 
   expect(await screen.findByText('New Project Intake')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', {name: /use local paths/i}));
   const setupForm = screen.getByRole('button', {name: /create project and open overview/i}).closest('form');
   const controls = within(setupForm);
-  await user.click(screen.getByRole('button', {name: /use local paths/i}));
   await user.type(controls.getByLabelText(/project name/i), 'New Project');
   await user.type(controls.getByLabelText(/source srt path/i), 'C:\\input\\source.srt');
   await user.type(controls.getByLabelText(/source audio path/i), 'C:\\input\\source.mp3');
@@ -314,9 +318,9 @@ test('project setup submits required input paths', async () => {
   });
 });
 
-test('project setup uploads source files through intake flow', async () => {
+test('project setup uploads audio and script through default render intake flow', async () => {
   const user = userEvent.setup();
-  mockApi.intakeProject.mockResolvedValue({project_id: 'upload-project', next_route: '/projects/upload-project/overview'});
+  mockApi.intakeAudioTextProject.mockResolvedValue({project_id: 'upload-project', run_id: 'run-upload', started: true, next_route: '/projects/upload-project/pipeline'});
   render(
     <MemoryRouter initialEntries={['/projects/new']}>
       <App />
@@ -325,6 +329,29 @@ test('project setup uploads source files through intake flow', async () => {
 
   expect(await screen.findByText('New Project Intake')).toBeInTheDocument();
   await user.type(screen.getByLabelText(/project name/i), 'Upload Project');
+  await user.upload(screen.getByLabelText(/source audio/i), new File(['audio'], 'source.mp3', {type: 'audio/mpeg'}));
+  await user.upload(screen.getByLabelText(/raw narration text/i), new File(['# raw'], 'raw_text.md', {type: 'text/markdown'}));
+  await user.click(screen.getByRole('button', {name: /create project and start render pipeline/i}));
+
+  await waitFor(() => {
+    expect(mockApi.intakeAudioTextProject).toHaveBeenCalledWith(expect.any(FormData));
+  });
+  expect(mockApi.createProject).not.toHaveBeenCalled();
+  expect(mockApi.intakeProject).not.toHaveBeenCalled();
+});
+
+test('project setup keeps advanced SRT intake flow available', async () => {
+  const user = userEvent.setup();
+  mockApi.intakeProject.mockResolvedValue({project_id: 'srt-project', next_route: '/projects/srt-project/overview'});
+  render(
+    <MemoryRouter initialEntries={['/projects/new']}>
+      <App />
+    </MemoryRouter>
+  );
+
+  expect(await screen.findByText('New Project Intake')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', {name: /advanced: i already have srt timing/i}));
+  await user.type(screen.getByLabelText(/project name/i), 'SRT Project');
   await user.upload(screen.getByLabelText(/source srt/i), new File(['1\n00:00:00,000 --> 00:00:03,000\nHello'], 'source.srt', {type: 'text/plain'}));
   await user.upload(screen.getByLabelText(/source audio/i), new File(['audio'], 'source.mp3', {type: 'audio/mpeg'}));
   await user.upload(screen.getByLabelText(/raw narration text/i), new File(['# raw'], 'raw_text.md', {type: 'text/markdown'}));
@@ -333,7 +360,7 @@ test('project setup uploads source files through intake flow', async () => {
   await waitFor(() => {
     expect(mockApi.intakeProject).toHaveBeenCalledWith(expect.any(FormData));
   });
-  expect(mockApi.createProject).not.toHaveBeenCalled();
+  expect(mockApi.intakeAudioTextProject).not.toHaveBeenCalled();
 });
 
 test('overview and pipeline expose warning and active-run state', async () => {

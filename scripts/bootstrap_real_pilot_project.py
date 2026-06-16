@@ -77,8 +77,10 @@ def stage_audio(source_audio: Path, project_root: Path) -> Path:
 def bootstrap_project(
     *,
     project_root: Path,
-    source_srt: Path,
+    source_srt: Path | None,
     source_audio: Path | None,
+    raw_text: Path | None = None,
+    setup_notes: Path | None = None,
     profile: str,
 ) -> Path:
     if profile not in SUPPORTED_PROFILES:
@@ -86,20 +88,31 @@ def bootstrap_project(
 
     ensure_project_dirs(project_root)
 
-    input_srt_path = copy_input_file(source_srt, project_root / "input" / "source.srt")
-    raw_whisper_path = copy_input_file(source_srt, project_root / "transcript" / "raw_whisper.srt")
-    cleaned_srt_path = copy_input_file(source_srt, project_root / "transcript" / "cleaned.srt")
+    if not source_srt and not source_audio:
+        raise ValueError("Either source_srt or source_audio is required")
+
     audio_path = stage_audio(source_audio, project_root) if source_audio else None
+    audio_stem = audio_path.stem if audio_path else "raw_whisper"
+    raw_whisper_path = project_root / "transcript" / f"{audio_stem}.srt"
+    raw_segments_path = project_root / "transcript" / f"{audio_stem}.segments.json"
+    raw_meta_path = project_root / "transcript" / f"{audio_stem}.meta.json"
+    cleaned_srt_path = project_root / "transcript" / "cleaned.srt"
+
+    if source_srt:
+        input_srt_path = copy_input_file(source_srt, project_root / "input" / "source.srt")
+        raw_whisper_path = copy_input_file(source_srt, project_root / "transcript" / "raw_whisper.srt")
+        cleaned_srt_path = copy_input_file(source_srt, cleaned_srt_path)
 
     project = deep_merge(load_json(BASE_TEMPLATE_PATH), load_json(PROFILE_TEMPLATE_PATH))
     now = iso_now()
     project_id = project_root.name
+    has_srt = source_srt is not None
     project["profile_id"] = profile
     project["project_id"] = project_id
     project["created_at"] = now
     project["updated_at"] = now
     project["status"] = "draft"
-    project["current_stage"] = "ingest_srt"
+    project["current_stage"] = "ingest_srt" if has_srt else "transcription"
     project.setdefault("meta", {})
     project["meta"]["project_root"] = str(project_root.resolve())
     project["meta"]["title"] = project_id.replace("_", " ")
@@ -118,15 +131,15 @@ def bootstrap_project(
     project["rewrite"]["approved_script_path"] = str(project_root / "input" / "voice_script_approved.md")
 
     project.setdefault("transcription", {})
-    project["transcription"]["status"] = "completed"
+    project["transcription"]["status"] = "completed" if has_srt else "pending"
     project["transcription"]["audio_path"] = str(audio_path) if audio_path else None
     project["transcription"]["raw_srt_path"] = str(raw_whisper_path)
     project["transcription"]["srt_path"] = str(raw_whisper_path)
-    project["transcription"]["segments_json_path"] = None
-    project["transcription"]["meta_json_path"] = None
+    project["transcription"]["segments_json_path"] = None if has_srt else str(raw_segments_path)
+    project["transcription"]["meta_json_path"] = None if has_srt else str(raw_meta_path)
 
     project.setdefault("transcript_cleanup", {})
-    project["transcript_cleanup"]["status"] = "completed"
+    project["transcript_cleanup"]["status"] = "completed" if has_srt else "pending"
     project["transcript_cleanup"]["source_text_path"] = str(project_root / "input" / "raw_text.md")
     project["transcript_cleanup"]["used_source_path"] = None
     project["transcript_cleanup"]["cleaned_srt_path"] = str(cleaned_srt_path)
@@ -164,8 +177,8 @@ def bootstrap_project(
 
     project.setdefault("workflow", {})
     project["workflow"]["profile"] = profile
-    project["workflow"]["render_dry_run"] = True
-    project["workflow"]["image_generation_enabled"] = False
+    project["workflow"]["render_dry_run"] = bool(has_srt)
+    project["workflow"]["image_generation_enabled"] = not has_srt
 
     project.setdefault("images", {})
     project["images"]["status"] = "pending"
@@ -182,7 +195,7 @@ def bootstrap_project(
     project.setdefault("render", {})
     project["render"]["status"] = "pending"
     project["render"]["render_strategy"] = "images_only"
-    project["render"]["render_mode"] = "dry_run"
+    project["render"]["render_mode"] = "dry_run" if has_srt else "full"
 
     project.setdefault("qc", {})
     project["qc"]["image_semantic_qc_mode"] = "disabled"
@@ -193,7 +206,7 @@ def bootstrap_project(
     project["notes"] = [
         "Bootstrapped by scripts/bootstrap_real_pilot_project.py",
         "Default profile disables real LLM, VLM, and image generation providers.",
-        "Enable providers explicitly before running external generation stages.",
+        "Audio/text intake can run external image generation only when CLI --real-generation and provider env are configured.",
     ]
 
     project_json = project_root / "project.json"
@@ -203,7 +216,12 @@ def bootstrap_project(
     normalized_project = load_project(project_json)
     save_project(project_json, normalized_project)
 
-    (project_root / "input" / "raw_text.md").write_text("", encoding="utf-8")
+    if raw_text:
+        copy_input_file(raw_text, project_root / "input" / "raw_text.md")
+    else:
+        (project_root / "input" / "raw_text.md").write_text("", encoding="utf-8")
+    if setup_notes:
+        copy_input_file(setup_notes, project_root / "input" / "project_setup_notes.md")
     (project_root / "input" / "voice_script.md").write_text("", encoding="utf-8")
     (project_root / "input" / "voice_script_approved.md").write_text("", encoding="utf-8")
     return project_json
@@ -212,8 +230,10 @@ def bootstrap_project(
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Bootstrap a real 60-90 second pilot project from an existing SRT/audio pair.")
     parser.add_argument("--project-root", required=True)
-    parser.add_argument("--source-srt", required=True)
+    parser.add_argument("--source-srt")
     parser.add_argument("--source-audio")
+    parser.add_argument("--raw-text")
+    parser.add_argument("--setup-notes")
     parser.add_argument("--profile", default="no_vlm_production", choices=sorted(SUPPORTED_PROFILES))
     return parser
 
@@ -221,18 +241,28 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     project_root = Path(args.project_root).expanduser().resolve()
-    source_srt = Path(args.source_srt).expanduser().resolve()
+    source_srt = Path(args.source_srt).expanduser().resolve() if args.source_srt else None
     source_audio = Path(args.source_audio).expanduser().resolve() if args.source_audio else None
+    raw_text = Path(args.raw_text).expanduser().resolve() if args.raw_text else None
+    setup_notes = Path(args.setup_notes).expanduser().resolve() if args.setup_notes else None
 
-    if not source_srt.exists():
+    if source_srt and not source_srt.exists():
         raise FileNotFoundError(f"Source SRT not found: {source_srt}")
     if source_audio and not source_audio.exists():
         raise FileNotFoundError(f"Source audio not found: {source_audio}")
+    if not source_srt and not source_audio:
+        raise ValueError("Either --source-srt or --source-audio is required")
+    if raw_text and not raw_text.exists():
+        raise FileNotFoundError(f"Raw text not found: {raw_text}")
+    if setup_notes and not setup_notes.exists():
+        raise FileNotFoundError(f"Setup notes not found: {setup_notes}")
 
     project_json = bootstrap_project(
         project_root=project_root,
         source_srt=source_srt,
         source_audio=source_audio,
+        raw_text=raw_text,
+        setup_notes=setup_notes,
         profile=args.profile,
     )
 

@@ -48,15 +48,14 @@ Important rule: browser write actions are bounded to project intake/bootstrap, l
 The intended operator path for a new video is:
 
 1. Open `New Project`.
-2. Choose `Upload source files`.
+2. Keep the default `Upload audio + script` mode.
 3. Add:
-   - source SRT
    - source audio
    - raw narration text
    - optional style/setup notes
-4. Click `Create project and open overview`.
-5. Review project state on `Overview`.
-6. Start `Validate` or `Resume` from `Pipeline`.
+4. Click `Create project and start render pipeline`.
+5. Studio creates the project folder, marks transcription as pending, and starts a CLI-backed run from `transcription` to `render`.
+6. Follow active run state, logs, blockers, and final outputs from `Overview` and `Pipeline`.
 
 Uploaded files are staged under:
 
@@ -66,7 +65,7 @@ Uploaded files are staged under:
 
 The backend then calls the same repo-native bootstrap logic used by the path-based API. The final project folder is created under `YT_visual`, and project artifacts remain there.
 
-The current repo-native intake still requires an SRT timing source. If the operator only has MP3 + script text, the next product step is a draft intake mode that runs transcription before bootstrap.
+Advanced mode `I already have SRT timing` stays available for cases where timing has already been prepared externally. That flow uploads SRT + audio + raw text and opens the project for manual validation/resume, instead of auto-starting transcription.
 
 ## App-State Database
 
@@ -148,9 +147,9 @@ Use this checklist before treating a branch as a usable local studio build:
 1. Start the app with `yt-nonstop studio --reload`.
 2. Sign in with the configured local operator account.
 3. Open `Projects` and confirm local projects are discovered under `YT_visual`.
-4. Create/bootstrap a small project from `/projects/new` by uploading SRT, audio, raw text, and optional style notes.
-5. Open the project overview and confirm lifecycle, blockers, next action, and recent runs render.
-6. Launch `validate` or `resume` from `Pipeline`.
+4. Create/bootstrap a small project from `/projects/new` by uploading audio, raw text, and optional style notes.
+5. Confirm Studio starts a `transcription` to `render` run and routes you to the project.
+6. Open the project overview and confirm lifecycle, blockers, next action, active run, and recent runs render.
 7. Inspect active run status, logs, and project/global run history.
 8. Open `Review`, save a decision, refresh, and confirm it persists.
 9. Open `Assets`, preview a text artifact, image, and video if available.

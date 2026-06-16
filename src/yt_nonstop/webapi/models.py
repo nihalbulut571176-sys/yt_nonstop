@@ -281,6 +281,12 @@ class CreateProjectResponse(BaseModel):
     notes: list[str] = Field(default_factory=list)
 
 
+class AudioTextIntakeResponse(CreateProjectResponse):
+    run_id: str
+    started: bool
+    message: str
+
+
 class ProjectOverview(BaseModel):
     project_id: str
     project_name: str
