@@ -309,12 +309,23 @@ def _review_queue_for_project(*, project_id: str, project_path: Path, project_js
     raw_rows = review_payload.rows if review_payload.rows else timeline_payload.rows
     items = app_state.sync_review_items(project_id=project_id, source=source or "review", rows=raw_rows)
     decisions = app_state.list_review_decisions(project_id)
-    summary = {"items": len(items), "decisions": len(decisions), "manual_review": 0, "regenerate": 0}
-    for decision in decisions:
-        if decision.decision == "manual_review":
-            summary["manual_review"] += 1
-        if decision.decision == "regenerate":
-            summary["regenerate"] += 1
+    summary = {
+        "items": len(items),
+        "decisions": len(decisions),
+        "pending": 0,
+        "approved": 0,
+        "warning": 0,
+        "manual_review": 0,
+        "regenerate": 0,
+        "rejected": 0,
+        "finalized": 0,
+    }
+    decisions_by_item = {decision.item_id: decision for decision in decisions}
+    for item in items:
+        decision = decisions_by_item.get(item.item_id)
+        review_state = decision.decision if decision else "pending"
+        if review_state in summary:
+            summary[review_state] += 1
     return ReviewQueue(project_id=project_id, source=source, items=items, decisions=decisions, summary=summary, raw_rows=raw_rows)
 
 

@@ -360,6 +360,7 @@ def test_webapi_pipeline_runs_review_and_settings(tmp_path, monkeypatch):
     review_after = client.get(f"/api/projects/{project_id}/review", headers=headers)
     assert review_after.status_code == 200
     assert review_after.json()["decisions"][0]["item_id"] == "B0001"
+    assert review_after.json()["summary"]["approved"] == 1
 
     settings = client.get("/api/settings", headers=headers)
     assert settings.status_code == 200

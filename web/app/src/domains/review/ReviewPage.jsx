@@ -9,6 +9,7 @@ export function ReviewPage() {
   const [selectedRowId, setSelectedRowId] = useState('');
   const [decision, setDecision] = useState('pending');
   const [note, setNote] = useState('');
+  const [filter, setFilter] = useState('all');
 
   const items = reviewQueue?.items || [];
 
@@ -36,6 +37,11 @@ export function ReviewPage() {
     }
   }, [selectedRowId, decisionLookup]);
 
+  const visibleItems = useMemo(() => {
+    if (filter === 'all') return items;
+    return items.filter((item) => (decisionLookup.get(item.item_id)?.decision || 'pending') === filter);
+  }, [items, decisionLookup, filter]);
+
   const selectedItem = items.find((item) => item.item_id === selectedRowId);
 
   const onSave = async () => {
@@ -56,12 +62,22 @@ export function ReviewPage() {
   return (
     <section className="stack">
       <div className="panel">
-        <SectionTitle title="Review Queue" meta={`${items.length} items`} />
+        <SectionTitle title="Review Queue" meta={`${visibleItems.length}/${items.length} items`} />
         <div className="meta-row">
           <Badge tone="neutral">{reviewQueue.source || 'no source'}</Badge>
           <Badge tone="warn">manual review {reviewQueue.summary.manual_review || 0}</Badge>
           <Badge tone="accent">regenerate {reviewQueue.summary.regenerate || 0}</Badge>
+          <Badge tone="success">approved {reviewQueue.summary.approved || 0}</Badge>
           <Badge tone="success">decisions {reviewQueue.decisions.length}</Badge>
+        </div>
+        <div className="filter-row">
+          <label>
+            <span>Decision filter</span>
+            <select value={filter} onChange={(event) => setFilter(event.target.value)}>
+              <option value="all">all</option>
+              {reviewDecisionOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </label>
         </div>
       </div>
       <div className="grid-two">
@@ -72,19 +88,24 @@ export function ReviewPage() {
                 <tr>
                   <th>Item</th>
                   <th>Status</th>
+                  <th>Decision</th>
                   <th>Warning</th>
                   <th>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {items.map((item) => (
-                  <tr key={item.item_id} className={selectedRowId === item.item_id ? 'row-selected' : ''} onClick={() => setSelectedRowId(item.item_id)}>
-                    <td className="cell-highlight">{item.label}</td>
-                    <td>{item.status || 'n/a'}</td>
-                    <td>{item.warning || 'n/a'}</td>
-                    <td>{item.action || 'n/a'}</td>
-                  </tr>
-                ))}
+                {visibleItems.map((item) => {
+                  const savedDecision = decisionLookup.get(item.item_id);
+                  return (
+                    <tr key={item.item_id} className={selectedRowId === item.item_id ? 'row-selected' : ''} onClick={() => setSelectedRowId(item.item_id)}>
+                      <td className="cell-highlight">{item.label}</td>
+                      <td>{item.status || 'n/a'}</td>
+                      <td>{savedDecision?.decision || 'pending'}</td>
+                      <td>{item.warning || 'n/a'}</td>
+                      <td>{item.action || 'n/a'}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -181,6 +181,11 @@ button {
   flex-wrap: wrap;
 }
 
+.filter-row {
+  margin-top: 14px;
+  max-width: 260px;
+}
+
 .subnav {
   border-top: 1px solid var(--line);
   padding-top: 14px;

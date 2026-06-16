@@ -141,6 +141,20 @@ const runSummary = {
   username: 'operator'
 };
 
+const reviewQueue = {
+  project_id: 'demo-project',
+  source: 'review_sheet.csv',
+  items: [
+    {item_id: 'B0001', label: 'B0001', source: 'review_sheet.csv', status: 'pending', warning: '', action: '', payload: {text: 'first'}},
+    {item_id: 'B0002', label: 'B0002', source: 'review_sheet.csv', status: 'pending', warning: 'needs attention', action: '', payload: {text: 'second'}}
+  ],
+  decisions: [
+    {id: 1, project_id: 'demo-project', item_id: 'B0001', source: 'review_sheet.csv', decision: 'approved', note: 'ok', payload: {}, user_id: 1, username: 'operator', created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z'}
+  ],
+  summary: {items: 2, decisions: 1, pending: 1, approved: 1, warning: 0, manual_review: 0, regenerate: 0, rejected: 0, finalized: 0},
+  raw_rows: []
+};
+
 function primeMocks() {
   mockApi.getToken.mockReturnValue('token-1');
   mockApi.me.mockResolvedValue(authPayload);
@@ -303,4 +317,22 @@ test('runs page renders product run history and events', async () => {
   expect(await screen.findByText('Run accepted and queued.')).toBeInTheDocument();
   expect((await screen.findAllByText('run-history')).length).toBeGreaterThan(0);
   expect((await screen.findAllByText('validate')).length).toBeGreaterThan(0);
+});
+
+test('review page shows saved decisions and filters queue rows', async () => {
+  const user = userEvent.setup();
+  mockApi.getReviewQueue.mockResolvedValue(reviewQueue);
+  render(
+    <MemoryRouter initialEntries={['/projects/demo-project/review']}>
+      <App />
+    </MemoryRouter>
+  );
+
+  expect(await screen.findByText('Review Queue')).toBeInTheDocument();
+  expect(await screen.findByText('approved 1')).toBeInTheDocument();
+  expect((await screen.findAllByText('approved')).length).toBeGreaterThan(0);
+
+  await user.selectOptions(screen.getByLabelText(/decision filter/i), 'approved');
+  expect((await screen.findAllByText('B0001')).length).toBeGreaterThan(0);
+  expect(screen.queryByText('B0002')).not.toBeInTheDocument();
 });
