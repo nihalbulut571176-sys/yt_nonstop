@@ -6,6 +6,7 @@ from pathlib import Path
 
 from yt_nonstop.pipeline.project_config import load_project
 from yt_nonstop.pipeline.project_status import build_project_status
+from yt_nonstop.webapi.app_state import lifecycle_status_for
 from yt_nonstop.webapi.config import WebConfig
 from yt_nonstop.webapi.models import ProjectDetails, ProjectSummary
 
@@ -64,12 +65,31 @@ def discover_projects(config: WebConfig) -> list[ProjectSummary]:
         project_id = _stable_project_id(child)
         name = child.name
         status = "limited_support"
+        current_stage = None
+        next_stage = None
+        blocked_count = 0
+        warning_count = 0
+        lifecycle_status = "draft" if support == "limited" else "ready_for_validation"
         if project_json:
             try:
                 project = load_project(project_json)
                 status = str(project.get("current_stage") or "ready")
                 project_id = str(project.get("project_id") or project_id)
                 name = str(project.get("project_name") or project.get("project_id") or name)
+                dashboard = build_project_status(project_json)
+                current_stage = dashboard.current_stage
+                next_stage = dashboard.next_stage
+                blocked_count = len(dashboard.blocked)
+                warning_count = len(dashboard.warnings)
+                lifecycle_status = lifecycle_status_for(
+                    support=support,
+                    blocked=dashboard.blocked,
+                    ready_for_render=dashboard.ready_for_render,
+                    ready_for_human_review=dashboard.ready_for_human_review,
+                    completed=dashboard.completed,
+                    active_run=None,
+                    next_stage=dashboard.next_stage,
+                )
             except Exception:
                 status = "project_json_error"
         projects.append(
@@ -83,6 +103,11 @@ def discover_projects(config: WebConfig) -> list[ProjectSummary]:
                 last_updated=_iso_from_ts(stat.st_mtime),
                 available_outputs=_available_outputs(child),
                 project_json_path=str(project_json.resolve(strict=False)) if project_json else None,
+                current_stage=current_stage,
+                next_stage=next_stage,
+                blocked_count=blocked_count,
+                warning_count=warning_count,
+                lifecycle_status=lifecycle_status,
             )
         )
     return projects
@@ -98,6 +123,7 @@ def get_project(config: WebConfig, project_id: str) -> ProjectDetails:
         next_stage = None
         next_command = None
         markers = item.available_outputs.copy()
+        payload = item.model_dump()
         if item.project_json_path:
             try:
                 status = build_project_status(Path(item.project_json_path))
@@ -107,11 +133,11 @@ def get_project(config: WebConfig, project_id: str) -> ProjectDetails:
                 next_command = status.next_command
             except Exception as exc:
                 markers.append(f"status_error:{exc.__class__.__name__}")
+        payload["current_stage"] = current_stage or payload.get("current_stage")
+        payload["next_stage"] = next_stage or payload.get("next_stage")
         return ProjectDetails(
-            **item.model_dump(),
+            **payload,
             markers=markers,
-            current_stage=current_stage,
-            next_stage=next_stage,
             next_command=next_command,
             dashboard=dashboard,
         )

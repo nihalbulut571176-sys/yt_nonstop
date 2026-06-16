@@ -21,6 +21,14 @@ class WebConfig:
     runtime_dir: Path
     allowed_project_roots: list[Path]
     default_poll_interval: float
+    default_operator_username: str
+    default_operator_password: str
+    session_ttl_hours: int
+    default_profile: str
+    default_concurrency: int
+    fastgen_api_url: str
+    fastgen_model: str
+    fastgen_api_key: str
 
     @classmethod
     def from_env(cls) -> "WebConfig":
@@ -30,12 +38,28 @@ class WebConfig:
         allowed_value = os.environ.get("YT_NONSTOP_ALLOWED_PROJECT_ROOTS", "")
         allowed_roots = _split_paths(allowed_value) if allowed_value else [workspace_root]
         default_poll_interval = float(os.environ.get("YT_NONSTOP_WEB_POLL_SECONDS", "2.5"))
+        default_operator_username = os.environ.get("YT_NONSTOP_STUDIO_USERNAME", "operator")
+        default_operator_password = os.environ.get("YT_NONSTOP_STUDIO_PASSWORD", "operator")
+        session_ttl_hours = int(os.environ.get("YT_NONSTOP_STUDIO_SESSION_TTL_HOURS", "12"))
+        default_profile = os.environ.get("YT_NONSTOP_WEB_DEFAULT_PROFILE", "no_vlm_production")
+        default_concurrency = int(os.environ.get("YT_NONSTOP_WEB_DEFAULT_CONCURRENCY", "10"))
+        fastgen_api_url = os.environ.get("FASTGEN_API_URL", "")
+        fastgen_model = os.environ.get("FASTGEN_MODEL", "")
+        fastgen_api_key = os.environ.get("FASTGEN_API_KEY", "")
         return cls(
             repo_root=repo_root,
             workspace_root=workspace_root,
             runtime_dir=runtime_dir,
             allowed_project_roots=allowed_roots,
             default_poll_interval=default_poll_interval,
+            default_operator_username=default_operator_username,
+            default_operator_password=default_operator_password,
+            session_ttl_hours=session_ttl_hours,
+            default_profile=default_profile,
+            default_concurrency=default_concurrency,
+            fastgen_api_url=fastgen_api_url,
+            fastgen_model=fastgen_model,
+            fastgen_api_key=fastgen_api_key,
         )
 
     def ensure_runtime_dirs(self) -> None:

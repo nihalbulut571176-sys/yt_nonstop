@@ -46,6 +46,13 @@ def _make_artifact_project(root: Path) -> Path:
     return project_root
 
 
+def _login(client: TestClient) -> dict[str, str]:
+    response = client.post("/api/auth/login", json={"username": "operator", "password": "operator"})
+    assert response.status_code == 200
+    token = response.json()["session"]["token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
 def test_project_discovery_handles_repo_and_artifact_projects(tmp_path, monkeypatch):
     workspace = tmp_path / "workspace"
     _make_repo_native_project(workspace)
@@ -68,6 +75,14 @@ def test_job_store_rejects_conflicting_write_jobs(tmp_path):
         runtime_dir=tmp_path / "runtime",
         allowed_project_roots=[tmp_path],
         default_poll_interval=1.0,
+        default_operator_username="operator",
+        default_operator_password="operator",
+        session_ttl_hours=12,
+        default_profile="no_vlm_production",
+        default_concurrency=10,
+        fastgen_api_url="",
+        fastgen_model="",
+        fastgen_api_key="",
     )
     store = JobStore(config)
     accepted = store.start_job(
@@ -83,11 +98,11 @@ def test_job_store_rejects_conflicting_write_jobs(tmp_path):
     assert accepted.accepted is True
     assert rejected.accepted is False
     time.sleep(0.8)
-    finished = store.get_job(accepted.job.job_id)
+    finished = store.get_job(accepted.job.run_id)
     assert finished.status == "completed"
 
 
-def test_webapi_endpoints_expose_projects_and_artifacts(tmp_path, monkeypatch):
+def test_webapi_workspace_projects_and_assets(tmp_path, monkeypatch):
     workspace = tmp_path / "workspace"
     project_root = _make_repo_native_project(workspace)
     monkeypatch.setenv("YT_NONSTOP_WORKSPACE_ROOT", str(workspace))
@@ -96,29 +111,137 @@ def test_webapi_endpoints_expose_projects_and_artifacts(tmp_path, monkeypatch):
 
     app = create_app()
     client = TestClient(app)
+    headers = _login(client)
 
-    projects = client.get("/api/projects")
+    summary = client.get("/api/workspace/summary", headers=headers)
+    assert summary.status_code == 200
+    assert summary.json()["total_projects"] == 1
+
+    projects = client.get("/api/projects", headers=headers)
     assert projects.status_code == 200
     payload = projects.json()
     assert len(payload) == 1
     project_id = payload[0]["id"]
 
-    details = client.get(f"/api/projects/{project_id}")
+    details = client.get(f"/api/projects/{project_id}", headers=headers)
     assert details.status_code == 200
     assert details.json()["name"] == "Demo Project"
 
-    artifacts = client.get(f"/api/projects/{project_id}/artifacts")
-    assert artifacts.status_code == 200
-    assert any(item["label"].endswith("notes.md") for item in artifacts.json())
+    overview = client.get(f"/api/projects/{project_id}/overview", headers=headers)
+    assert overview.status_code == 200
+    assert overview.json()["project_id"] == "demo-project"
 
-    timeline = client.get(f"/api/projects/{project_id}/timeline")
+    assets = client.get(f"/api/projects/{project_id}/assets", headers=headers)
+    assert assets.status_code == 200
+    assert assets.json()["total_count"] >= 1
+
+    timeline = client.get(f"/api/projects/{project_id}/timeline", headers=headers)
     assert timeline.status_code == 200
     assert timeline.json()["rows"][0]["shot_id"] == "S001"
 
-    review = client.get(f"/api/projects/{project_id}/review")
-    assert review.status_code == 200
-    assert review.json()["rows"][0]["beat_id"] == "B0001"
-
-    preview = client.get(f"/api/projects/{project_id}/preview", params={"path": str(project_root / "reports" / "notes.md")})
+    preview = client.get(f"/api/projects/{project_id}/preview", params={"path": str(project_root / "reports" / "notes.md")}, headers=headers)
     assert preview.status_code == 200
     assert "world" in preview.json()["content"]
+
+
+def test_webapi_pipeline_runs_review_and_settings(tmp_path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    source_project = _make_repo_native_project(workspace)
+    monkeypatch.setenv("YT_NONSTOP_WORKSPACE_ROOT", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_ALLOWED_PROJECT_ROOTS", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_WEB_RUNTIME_DIR", str(tmp_path / "runtime"))
+
+    app = create_app()
+    client = TestClient(app)
+    headers = _login(client)
+    project_id = client.get("/api/projects", headers=headers).json()[0]["id"]
+
+    pipeline_state = client.get(f"/api/projects/{project_id}/pipeline", headers=headers)
+    assert pipeline_state.status_code == 200
+    state_payload = pipeline_state.json()
+    assert state_payload["project_id"] == "demo-project"
+    assert "available_actions" in state_payload
+
+    action = client.post(
+        f"/api/projects/{project_id}/pipeline/actions",
+        json={"action": "validate", "to_stage": "render", "concurrency": 10},
+        headers=headers,
+    )
+    assert action.status_code == 200
+    assert action.json()["accepted"] is True
+    run_id = action.json()["run_id"]
+
+    run_details = client.get(f"/api/runs/{run_id}", headers=headers)
+    assert run_details.status_code == 200
+    assert run_details.json()["run_id"] == run_id
+
+    runs = client.get(f"/api/projects/{project_id}/runs", headers=headers)
+    assert runs.status_code == 200
+    assert runs.json()
+
+    review = client.get(f"/api/projects/{project_id}/review", headers=headers)
+    assert review.status_code == 200
+    assert review.json()["items"][0]["item_id"] == "B0001"
+
+    decision = client.post(
+        f"/api/projects/{project_id}/review/decisions",
+        json={"item_id": "B0001", "source": "review_sheet.csv", "decision": "approved", "note": "Looks good"},
+        headers=headers,
+    )
+    assert decision.status_code == 200
+    assert decision.json()["decision"] == "approved"
+
+    review_after = client.get(f"/api/projects/{project_id}/review", headers=headers)
+    assert review_after.status_code == 200
+    assert review_after.json()["decisions"][0]["item_id"] == "B0001"
+
+    settings = client.get("/api/settings", headers=headers)
+    assert settings.status_code == 200
+    assert any(item["category"] == "environment" for item in settings.json())
+
+    update = client.patch("/api/settings", json={"default_profile": "no_vlm_production", "default_concurrency": 6}, headers=headers)
+    assert update.status_code == 200
+    assert update.json()["value"]["default_concurrency"] == 6
+
+    preview_media = client.get(
+        f"/api/projects/{project_id}/media",
+        params={"path": str(source_project / "reports" / "notes.md"), "token": headers["Authorization"].split(" ", 1)[1]},
+    )
+    assert preview_media.status_code == 200
+
+
+def test_webapi_can_bootstrap_project(tmp_path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir(parents=True, exist_ok=True)
+    source_srt = tmp_path / "source.srt"
+    source_audio = tmp_path / "source.mp3"
+    raw_text = tmp_path / "raw_text.md"
+    source_srt.write_text("1\n00:00:00,000 --> 00:00:03,000\nHello world\n", encoding="utf-8")
+    source_audio.write_bytes(b"fake audio")
+    raw_text.write_text("# raw\nhello\n", encoding="utf-8")
+    monkeypatch.setenv("YT_NONSTOP_WORKSPACE_ROOT", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_ALLOWED_PROJECT_ROOTS", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_WEB_RUNTIME_DIR", str(tmp_path / "runtime"))
+
+    app = create_app()
+    client = TestClient(app)
+    headers = _login(client)
+    response = client.post(
+        "/api/projects",
+        json={
+            "project_name": "My Web MVP",
+            "source_srt_path": str(source_srt),
+            "source_audio_path": str(source_audio),
+            "raw_text_path": str(raw_text),
+        },
+        headers=headers,
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    project_root = Path(payload["project_root"])
+    assert (project_root / "project.json").exists()
+    assert (project_root / "input" / "raw_text.md").read_text(encoding="utf-8").startswith("# raw")
+
+    projects = client.get("/api/projects", headers=headers)
+    assert projects.status_code == 200
+    assert any(item["id"] == payload["project_id"] for item in projects.json())
