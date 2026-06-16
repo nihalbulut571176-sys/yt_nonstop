@@ -50,6 +50,8 @@ scripts/__pycache__/
 .runtime/
 
 # Web prototype local installs / outputs
+!web/app/src/domains/projects/
+!web/app/src/domains/projects/**
 !web/app/src/domains/assets/
 !web/app/src/domains/assets/**
 web/**/node_modules/

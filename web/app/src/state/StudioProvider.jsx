@@ -159,6 +159,21 @@ export function StudioProvider({children}) {
     }
   };
 
+  const intakeProject = async (payload) => {
+    try {
+      setBusyAction('intake_project');
+      const response = await api.intakeProject(payload);
+      await refreshWorkspace();
+      setSelectedProjectId(response.project_id);
+      return response;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setBusyAction('');
+    }
+  };
+
   const saveSettings = async (payload) => {
     try {
       setBusyAction('settings');
@@ -257,6 +272,7 @@ export function StudioProvider({children}) {
       applyReview,
       saveReviewDecision,
       createProject,
+      intakeProject,
       saveSettings
     }),
     [
@@ -318,8 +334,8 @@ export function useReviewStore() {
 }
 
 export function useSettingsStore() {
-  const {settings, saveSettings, createProject} = useStudioContext();
-  return {settings, saveSettings, createProject};
+  const {settings, saveSettings, createProject, intakeProject} = useStudioContext();
+  return {settings, saveSettings, createProject, intakeProject};
 }
 
 export function useStudioShell() {

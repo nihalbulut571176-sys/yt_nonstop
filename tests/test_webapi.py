@@ -469,3 +469,38 @@ def test_webapi_can_bootstrap_project(tmp_path, monkeypatch):
     projects = client.get("/api/projects", headers=headers)
     assert projects.status_code == 200
     assert any(item["id"] == payload["project_id"] for item in projects.json())
+
+
+def test_webapi_can_create_project_from_uploaded_sources(tmp_path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("YT_NONSTOP_WORKSPACE_ROOT", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_ALLOWED_PROJECT_ROOTS", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_WEB_RUNTIME_DIR", str(tmp_path / "runtime"))
+
+    app = create_app()
+    client = TestClient(app)
+    headers = _login(client)
+
+    response = client.post(
+        "/api/projects/intake",
+        data={"project_name": "Uploaded Web Project", "profile": "no_vlm_production"},
+        files={
+            "source_srt": ("source.srt", b"1\n00:00:00,000 --> 00:00:03,000\nHello upload\n", "text/plain"),
+            "source_audio": ("source.mp3", b"fake audio", "audio/mpeg"),
+            "raw_text": ("raw_text.md", b"# raw upload\nhello\n", "text/markdown"),
+            "setup_notes": ("style.md", b"# style\nnoir documentary\n", "text/markdown"),
+        },
+        headers=headers,
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    project_root = Path(payload["project_root"])
+    assert payload["next_route"] == f"/projects/{payload['project_id']}/overview"
+    assert (project_root / "project.json").exists()
+    assert (project_root / "input" / "source.srt").exists()
+    assert (project_root / "input" / "raw_text.md").read_text(encoding="utf-8").startswith("# raw upload")
+    assert (project_root / "input" / "project_setup_notes.md").read_text(encoding="utf-8").startswith("# style")
+
+    projects = client.get("/api/projects", headers=headers)
+    assert any(item["id"] == payload["project_id"] for item in projects.json())

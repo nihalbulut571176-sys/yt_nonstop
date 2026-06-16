@@ -5,8 +5,9 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from uuid import uuid4
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -248,6 +249,27 @@ def _resolve_optional_file(value: str | None, *, label: str, details_key: str) -
     return path
 
 
+def _safe_upload_filename(upload: UploadFile, fallback: str) -> str:
+    raw_name = Path(upload.filename or fallback).name
+    normalized = re.sub(r"[^a-zA-Z0-9_.-]+", "_", raw_name).strip("._")
+    return normalized or fallback
+
+
+async def _stage_upload(upload: UploadFile, destination_dir: Path, fallback_name: str) -> Path:
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    destination = destination_dir / _safe_upload_filename(upload, fallback_name)
+    content = await upload.read()
+    if not content:
+        raise ProductApiError(
+            status_code=400,
+            code="validation_error",
+            message=f"Uploaded file is empty: {upload.filename or fallback_name}",
+            details={"filename": upload.filename or fallback_name},
+        )
+    destination.write_bytes(content)
+    return destination
+
+
 def _run_bootstrap(config: WebConfig, request: CreateProjectRequest) -> CreateProjectResponse:
     if not request.project_name.strip():
         raise ProductApiError(status_code=400, code="validation_error", message="Project name is required", details={"project_name": request.project_name})
@@ -299,6 +321,37 @@ def _run_bootstrap(config: WebConfig, request: CreateProjectRequest) -> CreatePr
             "Project folder bootstrapped from the repo-native real pilot template.",
             "CLI remains the execution source of truth for all stage runs.",
         ],
+    )
+
+
+async def _run_intake_bootstrap(
+    config: WebConfig,
+    *,
+    project_name: str,
+    source_srt: UploadFile,
+    source_audio: UploadFile,
+    raw_text: UploadFile,
+    setup_notes: UploadFile | None,
+    profile: str,
+) -> CreateProjectResponse:
+    if not project_name.strip():
+        raise ProductApiError(status_code=400, code="validation_error", message="Project name is required", details={"project_name": project_name})
+    slug = _slugify_project_name(project_name)
+    intake_dir = config.runtime_dir / "uploads" / f"{slug}-{uuid4().hex[:8]}"
+    staged_srt = await _stage_upload(source_srt, intake_dir, "source.srt")
+    staged_audio = await _stage_upload(source_audio, intake_dir, "source_audio.mp3")
+    staged_raw_text = await _stage_upload(raw_text, intake_dir, "raw_text.md")
+    staged_notes = await _stage_upload(setup_notes, intake_dir, "project_setup_notes.md") if setup_notes else None
+    return _run_bootstrap(
+        config,
+        CreateProjectRequest(
+            project_name=project_name,
+            source_srt_path=str(staged_srt),
+            source_audio_path=str(staged_audio),
+            raw_text_path=str(staged_raw_text),
+            setup_notes_path=str(staged_notes) if staged_notes else None,
+            profile=profile,
+        ),
     )
 
 
@@ -424,6 +477,40 @@ def create_app() -> FastAPI:
     @app.post("/api/projects/bootstrap")
     def project_bootstrap_compat(request: CreateProjectRequest, current: AuthSession = Depends(require_session)):
         return create_project(request, current)
+
+    @app.post("/api/projects/intake")
+    async def create_project_intake(
+        project_name: str = Form(...),
+        profile: str = Form("no_vlm_production"),
+        source_srt: UploadFile = File(...),
+        source_audio: UploadFile = File(...),
+        raw_text: UploadFile = File(...),
+        setup_notes: UploadFile | None = File(default=None),
+        current: AuthSession = Depends(require_session),
+    ):
+        payload = await _run_intake_bootstrap(
+            config,
+            project_name=project_name,
+            source_srt=source_srt,
+            source_audio=source_audio,
+            raw_text=raw_text,
+            setup_notes=setup_notes,
+            profile=profile,
+        )
+        app_state.upsert_user_preference(
+            key="studio_preferences",
+            value={
+                "default_profile": profile or config.default_profile,
+                "default_concurrency": config.default_concurrency,
+                "default_real_generation": False,
+                "last_bootstrapped_project": payload.project_id,
+                "last_intake_mode": "upload",
+            },
+            user_id=current.user.id,
+        )
+        app_state.record_audit_event(actor_user_id=current.user.id, event_type="project_intake_created", target_type="project", target_id=payload.project_id, payload=payload.model_dump())
+        _discover_projects(config, app_state)
+        return payload.model_dump()
 
     @app.get("/api/projects/{project_id}")
     def project_details(project_id: str, _current: AuthSession = Depends(require_session)):

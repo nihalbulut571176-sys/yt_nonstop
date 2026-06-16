@@ -58,6 +58,7 @@ export const api = {
   getWorkspaceSummary: () => request('/api/workspace/summary'),
   listProjects: () => request('/api/projects'),
   createProject: (body) => request('/api/projects', {method: 'POST', headers: jsonHeaders, body: JSON.stringify(body)}),
+  intakeProject: (body) => request('/api/projects/intake', {method: 'POST', body}),
   getProject: (id) => request(`/api/projects/${id}`),
   getOverview: (id) => request(`/api/projects/${id}/overview`),
   getPipelineState: (id) => request(`/api/projects/${id}/pipeline`),
