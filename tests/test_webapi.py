@@ -12,6 +12,7 @@ from yt_nonstop.webapi.config import WebConfig
 from yt_nonstop.webapi.jobs import JobStartResult, JobStore
 from yt_nonstop.webapi.models import RunSummary
 from yt_nonstop.webapi.project_discovery import discover_projects
+from yt_nonstop.providers.provider_config import provider_from_environment, provider_from_project
 
 
 def _write_json(path: Path, payload: dict) -> None:
@@ -146,6 +147,12 @@ def test_job_store_rejects_conflicting_write_jobs(tmp_path):
         fastgen_api_url="",
         fastgen_model="",
         fastgen_api_key="",
+        llm_provider_mode="",
+        llm_provider_model="",
+        llm_provider_api_key="",
+        llm_provider_base_url="",
+        google_api_key="",
+        gemini_model="",
     )
     store = JobStore(config)
     accepted = store.start_job(
@@ -346,6 +353,9 @@ def test_webapi_pipeline_runs_review_and_settings(tmp_path, monkeypatch):
     monkeypatch.setenv("FASTGEN_API_URL", "https://fastgen.example/api")
     monkeypatch.setenv("FASTGEN_MODEL", "fastgen-test")
     monkeypatch.setenv("FASTGEN_API_KEY", "super-secret-fastgen-key")
+    monkeypatch.setenv("YT_NONSTOP_LLM_PROVIDER_MODE", "google_gemini")
+    monkeypatch.setenv("GOOGLE_API_KEY", "super-secret-google-key")
+    monkeypatch.setenv("GOOGLE_GEMINI_MODEL", "gemini-test")
 
     app = create_app()
     client = TestClient(app)
@@ -396,10 +406,15 @@ def test_webapi_pipeline_runs_review_and_settings(tmp_path, monkeypatch):
     assert settings.status_code == 200
     settings_text = json.dumps(settings.json())
     assert "super-secret-fastgen-key" not in settings_text
+    assert "super-secret-google-key" not in settings_text
     assert any(item["category"] == "environment" for item in settings.json())
     provider_settings = next(item for item in settings.json() if item["category"] == "provider_metadata" and item["provider"] == "fastgen")
     assert provider_settings["value"]["api_key_configured"] is True
     assert provider_settings["value"]["api_url"] == "https://fastgen.example/api"
+    llm_settings = next(item for item in settings.json() if item["category"] == "provider_metadata" and item["key"] == "llm_authoring")
+    assert llm_settings["value"]["mode"] == "google_gemini"
+    assert llm_settings["value"]["model"] == "gemini-test"
+    assert llm_settings["value"]["api_key_configured"] is True
     auth_settings = next(item for item in settings.json() if item["category"] == "auth")
     assert auth_settings["value"]["default_credentials_active"] is True
     assert "password" not in json.dumps(auth_settings["value"])
@@ -600,3 +615,36 @@ def test_webapi_audio_text_intake_requires_audio_and_text(tmp_path, monkeypatch)
     )
     assert response.status_code == 400
     assert response.json()["code"] == "validation_error"
+
+
+def test_llm_provider_resolves_google_gemini_from_env(monkeypatch):
+    monkeypatch.delenv("YT_NONSTOP_LLM_PROVIDER_API_KEY", raising=False)
+    monkeypatch.delenv("YT_NONSTOP_LLM_PROVIDER_MODEL", raising=False)
+    monkeypatch.setenv("YT_NONSTOP_LLM_PROVIDER_MODE", "google_gemini")
+    monkeypatch.setenv("GOOGLE_API_KEY", "google-key")
+    monkeypatch.setenv("GOOGLE_GEMINI_MODEL", "gemini-test")
+
+    config = provider_from_environment(stage_name="auto_author_llm_prompts")
+
+    assert config.provider_mode == "google_gemini"
+    assert config.api_key == "google-key"
+    assert config.model == "gemini-test"
+
+
+def test_prompt_authoring_stage_env_overrides_project_disabled_llm(monkeypatch, tmp_path):
+    monkeypatch.delenv("YT_NONSTOP_PROMPT_AUTHORING_API_KEY", raising=False)
+    monkeypatch.delenv("YT_NONSTOP_PROMPT_AUTHORING_MODEL", raising=False)
+    monkeypatch.setenv("YT_NONSTOP_PROMPT_AUTHORING_MODE", "gemini")
+    monkeypatch.setenv("GOOGLE_API_KEY", "google-key")
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-stage")
+    project = {
+        "meta": {"project_root": str(tmp_path)},
+        "providers": {"llm_provider": {"mode": "disabled"}},
+        "prompts": {"prompt_authoring_llm": {"mode": "disabled"}},
+    }
+
+    config = provider_from_project(project, stage_name="auto_author_llm_prompts")
+
+    assert config.provider_mode == "google_gemini"
+    assert config.api_key == "google-key"
+    assert config.model == "gemini-stage"

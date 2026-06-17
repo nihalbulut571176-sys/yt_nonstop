@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 
-ALLOWED_LLM_PROVIDER_MODES = {"disabled", "file", "command", "http", "openai_compatible"}
+ALLOWED_LLM_PROVIDER_MODES = {"disabled", "file", "command", "http", "openai_compatible", "google_gemini"}
 GENERAL_LLM_ENV_PREFIX = "YT_NONSTOP_LLM_PROVIDER"
 ENV_PATH = Path(__file__).resolve().parents[3] / ".env"
 
@@ -56,6 +56,10 @@ def normalize_provider_mode(value: Any) -> str:
         "heuristic": "disabled",
         "openai": "openai_compatible",
         "chat_completions": "openai_compatible",
+        "google": "google_gemini",
+        "gemini": "google_gemini",
+        "google_ai": "google_gemini",
+        "google_genai": "google_gemini",
     }
     resolved = aliases.get(text, text or "disabled")
     if resolved == "external":
@@ -125,6 +129,21 @@ def _env_value(field: str, *, alias_prefixes: list[str]) -> str | None:
     return None
 
 
+def _stage_env_value(field: str, *, alias_prefixes: list[str]) -> str | None:
+    suffixes = [field]
+    if field == "MODE":
+        suffixes.append("PROVIDER")
+    for prefix in alias_prefixes:
+        for suffix in suffixes:
+            value = os.environ.get(f"{prefix}_{suffix}")
+            if value not in {None, ""}:
+                return value
+            dotenv_value = _dotenv_value(f"{prefix}_{suffix}")
+            if dotenv_value not in {None, ""}:
+                return dotenv_value
+    return None
+
+
 def _load_dotenv_map() -> dict[str, str]:
     if not ENV_PATH.exists():
         return {}
@@ -143,6 +162,17 @@ def _load_dotenv_map() -> dict[str, str]:
 
 def _dotenv_value(key: str) -> str | None:
     return _load_dotenv_map().get(key)
+
+
+def _first_env_or_dotenv(*keys: str) -> str | None:
+    for key in keys:
+        value = os.environ.get(key)
+        if value not in {None, ""}:
+            return value
+        dotenv_value = _dotenv_value(key)
+        if dotenv_value not in {None, ""}:
+            return dotenv_value
+    return None
 
 
 def provider_from_project(
@@ -173,17 +203,44 @@ def provider_from_project(
             or "disabled"
         )
 
-    project_root = Path(str(project.get("meta", {}).get("project_root") or Path.cwd()))
-    return LLMProviderConfig(
-        provider_mode=resolved_mode,
-        model=_env_value("MODEL", alias_prefixes=alias_prefixes) or raw.get("model"),
-        api_key=_env_value("API_KEY", alias_prefixes=alias_prefixes) or raw.get("api_key"),
-        base_url=(
+    if resolved_mode == "google_gemini":
+        provider_api_key = (
+            _stage_env_value("API_KEY", alias_prefixes=alias_prefixes)
+            or _first_env_or_dotenv("GOOGLE_API_KEY", "GEMINI_API_KEY")
+            or _env_value("API_KEY", alias_prefixes=[])
+            or raw.get("api_key")
+        )
+        provider_model = (
+            _stage_env_value("MODEL", alias_prefixes=alias_prefixes)
+            or _first_env_or_dotenv("GOOGLE_GEMINI_MODEL", "GEMINI_MODEL")
+            or _env_value("MODEL", alias_prefixes=[])
+            or raw.get("model")
+        )
+        provider_base_url = (
+            _stage_env_value("BASE_URL", alias_prefixes=alias_prefixes)
+            or _stage_env_value("URL", alias_prefixes=alias_prefixes)
+            or _first_env_or_dotenv("GOOGLE_GEMINI_BASE_URL", "GEMINI_BASE_URL")
+            or _env_value("BASE_URL", alias_prefixes=[])
+            or _env_value("URL", alias_prefixes=[])
+            or raw.get("base_url")
+            or raw.get("endpoint_url")
+        )
+    else:
+        provider_api_key = _env_value("API_KEY", alias_prefixes=alias_prefixes) or raw.get("api_key")
+        provider_model = _env_value("MODEL", alias_prefixes=alias_prefixes) or raw.get("model")
+        provider_base_url = (
             _env_value("BASE_URL", alias_prefixes=alias_prefixes)
             or _env_value("URL", alias_prefixes=alias_prefixes)
             or raw.get("base_url")
             or raw.get("endpoint_url")
-        ),
+        )
+
+    project_root = Path(str(project.get("meta", {}).get("project_root") or Path.cwd()))
+    return LLMProviderConfig(
+        provider_mode=resolved_mode,
+        model=provider_model,
+        api_key=provider_api_key,
+        base_url=provider_base_url,
         command=_env_value("COMMAND", alias_prefixes=alias_prefixes) or _env_value("CMD", alias_prefixes=alias_prefixes) or raw.get("command"),
         input_json_path=input_json_path or _env_value("INPUT_JSON", alias_prefixes=alias_prefixes) or raw.get("input_json_path"),
         timeout_seconds=_int_from_any(
@@ -205,15 +262,24 @@ def provider_from_project(
 
 
 def provider_from_environment(*, stage_name: str = "") -> LLMProviderConfig:
+    mode = normalize_provider_mode(
+        os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_MODE")
+        or _dotenv_value(f"{GENERAL_LLM_ENV_PREFIX}_MODE")
+        or "disabled"
+    )
+    if mode == "google_gemini":
+        api_key = _first_env_or_dotenv("GOOGLE_API_KEY", "GEMINI_API_KEY") or os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_API_KEY") or _dotenv_value(f"{GENERAL_LLM_ENV_PREFIX}_API_KEY")
+        model = _first_env_or_dotenv("GOOGLE_GEMINI_MODEL", "GEMINI_MODEL") or os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_MODEL") or _dotenv_value(f"{GENERAL_LLM_ENV_PREFIX}_MODEL")
+        base_url = _first_env_or_dotenv("GOOGLE_GEMINI_BASE_URL", "GEMINI_BASE_URL") or os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_BASE_URL") or _dotenv_value(f"{GENERAL_LLM_ENV_PREFIX}_BASE_URL")
+    else:
+        api_key = os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_API_KEY") or _dotenv_value(f"{GENERAL_LLM_ENV_PREFIX}_API_KEY")
+        model = os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_MODEL") or _dotenv_value(f"{GENERAL_LLM_ENV_PREFIX}_MODEL")
+        base_url = os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_BASE_URL") or _dotenv_value(f"{GENERAL_LLM_ENV_PREFIX}_BASE_URL")
     return LLMProviderConfig(
-        provider_mode=normalize_provider_mode(
-            os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_MODE")
-            or _dotenv_value(f"{GENERAL_LLM_ENV_PREFIX}_MODE")
-            or "disabled"
-        ),
-        model=os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_MODEL") or _dotenv_value(f"{GENERAL_LLM_ENV_PREFIX}_MODEL"),
-        api_key=os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_API_KEY") or _dotenv_value(f"{GENERAL_LLM_ENV_PREFIX}_API_KEY"),
-        base_url=os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_BASE_URL") or _dotenv_value(f"{GENERAL_LLM_ENV_PREFIX}_BASE_URL"),
+        provider_mode=mode,
+        model=model,
+        api_key=api_key,
+        base_url=base_url,
         command=os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_COMMAND") or _dotenv_value(f"{GENERAL_LLM_ENV_PREFIX}_COMMAND"),
         input_json_path=os.environ.get(f"{GENERAL_LLM_ENV_PREFIX}_INPUT_JSON") or _dotenv_value(f"{GENERAL_LLM_ENV_PREFIX}_INPUT_JSON"),
         timeout_seconds=_int_from_any(

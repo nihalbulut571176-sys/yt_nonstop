@@ -186,6 +186,7 @@ const settingsPayload = [
   {category: 'workspace', key: 'workspace', provider: 'studio', value: {workspace_root: 'C:\\YT_visual', runtime_dir: 'C:\\runtime'}, updated_at: '2026-01-01T00:00:00Z'},
   {category: 'environment', key: 'environment', provider: 'studio', value: {default_profile: 'no_vlm_production', default_concurrency: 10}, updated_at: '2026-01-01T00:00:00Z'},
   {category: 'provider_metadata', key: 'fastgen', provider: 'fastgen', value: {api_url: 'https://fastgen.example/api', model: 'fastgen-test', api_key_configured: true, secret_storage: 'environment'}, updated_at: '2026-01-01T00:00:00Z'},
+  {category: 'provider_metadata', key: 'llm_authoring', provider: 'llm', value: {mode: 'google_gemini', model: 'gemini-test', api_key_configured: true, secret_storage: 'environment'}, updated_at: '2026-01-01T00:00:00Z'},
   {category: 'auth', key: 'local_operator', provider: 'studio', value: {username: 'operator', role: 'Admin', session_ttl_hours: 12, default_credentials_active: true}, updated_at: '2026-01-01T00:00:00Z'}
 ];
 
@@ -450,7 +451,9 @@ test('settings page shows provider metadata without exposing secrets and saves p
 
   expect(await screen.findByText('Workspace / Environment')).toBeInTheDocument();
   expect(await screen.findByText('https://fastgen.example/api')).toBeInTheDocument();
-  expect(await screen.findByText('Configured in environment')).toBeInTheDocument();
+  expect(await screen.findByText('google_gemini')).toBeInTheDocument();
+  expect(await screen.findByText('gemini-test')).toBeInTheDocument();
+  expect((await screen.findAllByText('Configured in environment')).length).toBeGreaterThanOrEqual(2);
   expect(screen.queryByText(/super-secret/i)).not.toBeInTheDocument();
 
   await user.clear(screen.getByLabelText(/default concurrency/i));

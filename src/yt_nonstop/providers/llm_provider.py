@@ -27,6 +27,8 @@ from yt_nonstop.utils.json_io import save_json
 
 DEFAULT_OPENAI_COMPATIBLE_URL = "https://api.openai.com/v1/chat/completions"
 FAST_GEN_OPENAI_COMPATIBLE_URL = "https://googler.fast-gen.ai/v1/chat/completions"
+DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+DEFAULT_GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 
 
 class LLMProviderError(Exception):
@@ -162,6 +164,8 @@ class LLMProvider:
             raw_text = self._call_http(request_payload, task_name=task_name, schema_name=schema_name)
         elif mode == "openai_compatible":
             raw_text = self._call_openai_compatible(request_payload, task_name=task_name, schema_name=schema_name)
+        elif mode == "google_gemini":
+            raw_text = self._call_google_gemini(request_payload, task_name=task_name, schema_name=schema_name)
         else:  # pragma: no cover
             raise LLMProviderNotConfiguredError(_format_error(task_name, schema_name, f"Unsupported LLM provider mode `{mode}`"))
         response_log_path = self._log("response", {"task_name": task_name, "schema_name": schema_name, "raw_text": raw_text})
@@ -243,6 +247,59 @@ class LLMProvider:
             raise LLMProviderResponseError(_format_error(task_name, schema_name, f"openai_compatible provider returned {exc.code}: {detail}")) from exc
         except urllib.error.URLError as exc:  # pragma: no cover
             raise LLMProviderResponseError(_format_error(task_name, schema_name, f"openai_compatible provider failed: {exc.reason}")) from exc
+
+    def _call_google_gemini(self, request_payload: dict[str, Any], *, task_name: str, schema_name: str | None) -> str:
+        if not self.config.api_key:
+            raise LLMProviderNotConfiguredError(_format_error(task_name, schema_name, "google_gemini provider requires api_key"))
+        model = self.config.model or DEFAULT_GEMINI_MODEL
+        base_url = (self.config.base_url or DEFAULT_GEMINI_BASE_URL).rstrip("/")
+        url = f"{base_url}/models/{model}:generateContent"
+        body = {
+            "systemInstruction": {
+                "parts": [{"text": request_payload["system_prompt"]}],
+            },
+            "contents": [
+                {
+                    "role": "user",
+                    "parts": [
+                        {
+                            "text": json.dumps(request_payload["user_payload"], ensure_ascii=False, indent=2),
+                        }
+                    ],
+                }
+            ],
+            "generationConfig": {
+                "temperature": self.config.temperature,
+                "maxOutputTokens": self.config.max_tokens,
+                "responseMimeType": "application/json",
+            },
+        }
+        raw_text = self._call_http_like_gemini(url, body, api_key=self.config.api_key, task_name=task_name, schema_name=schema_name)
+        try:
+            payload = json.loads(raw_text)
+        except json.JSONDecodeError as exc:
+            raise LLMProviderResponseError(_format_error(task_name, schema_name, "google_gemini provider returned non-JSON response")) from exc
+        if isinstance(payload, dict):
+            candidates = payload.get("candidates") or []
+            if candidates and isinstance(candidates[0], dict):
+                parts = candidates[0].get("content", {}).get("parts", [])
+                text_parts = [str(part.get("text") or "") for part in parts if isinstance(part, dict) and part.get("text")]
+                if text_parts:
+                    return "".join(text_parts)
+        raise LLMProviderResponseError(_format_error(task_name, schema_name, "google_gemini provider returned no candidate text"))
+
+    def _call_http_like_gemini(self, url: str, payload: dict[str, Any], *, api_key: str, task_name: str, schema_name: str | None) -> str:
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        headers = {"Content-Type": "application/json", "x-goog-api-key": api_key}
+        request = urllib.request.Request(url, data=body, headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(request, timeout=self.config.timeout_seconds) as response:
+                return response.read().decode("utf-8")
+        except urllib.error.HTTPError as exc:  # pragma: no cover
+            detail = exc.read().decode("utf-8", errors="replace")
+            raise LLMProviderResponseError(_format_error(task_name, schema_name, f"google_gemini provider returned {exc.code}: {detail}")) from exc
+        except urllib.error.URLError as exc:  # pragma: no cover
+            raise LLMProviderResponseError(_format_error(task_name, schema_name, f"google_gemini provider failed: {exc.reason}")) from exc
 
     def invoke(self, request: LLMRequest) -> LLMResponse:
         raw_text, request_log_path, response_log_path = self._invoke_raw(

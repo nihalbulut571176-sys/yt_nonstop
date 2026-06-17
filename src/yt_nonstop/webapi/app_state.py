@@ -823,6 +823,24 @@ class AppStateStore:
         )
         items.append(
             SettingRecord(
+                category="provider_metadata",
+                key="llm_authoring",
+                provider="llm",
+                value={
+                    "mode": self.config.llm_provider_mode or ("google_gemini" if self.config.google_api_key else "disabled"),
+                    "model": self.config.gemini_model if (self.config.llm_provider_mode == "google_gemini" or (not self.config.llm_provider_mode and self.config.google_api_key)) else self.config.llm_provider_model,
+                    "base_url": self.config.llm_provider_base_url,
+                    "api_key_configured": bool(self.config.llm_provider_api_key or self.config.google_api_key),
+                    "google_api_key_configured": bool(self.config.google_api_key),
+                    "secret_storage": "environment",
+                    "used_for": ["visual_bible", "prompt_authoring"],
+                },
+                updated_at=_iso_now(),
+                updated_by_username="system",
+            )
+        )
+        items.append(
+            SettingRecord(
                 category="environment",
                 key="environment",
                 provider="studio",

@@ -5,9 +5,9 @@ import {SectionTitle} from '../../shared/ui/SectionTitle.jsx';
 import {useSettingsStore, useStudioShell} from '../../state/StudioProvider.jsx';
 
 const intakeSteps = [
-  'Add source audio, narration text, and optional style notes.',
+  'Add source audio, narration text, and optional creative brief.',
   'Studio creates a clean project folder in YT_visual.',
-  'The render pipeline starts immediately from transcription to final video.'
+  'Studio transcribes, cleans timing against the script, authors visual style/prompts, then renders.'
 ];
 
 export function SetupPage() {
@@ -118,15 +118,15 @@ export function SetupPage() {
             <div className="stack compact">
               <FileInput label="Source audio" file={files.source_audio} accept="audio/*,.mp3,.wav,.m4a" onChange={(file) => setFile('source_audio', file)} />
               <FileInput label="Raw narration text" file={files.raw_text} accept=".txt,.md,text/plain" onChange={(file) => setFile('raw_text', file)} />
-              <FileInput label="Style / setup notes" file={files.setup_notes} accept=".txt,.md,text/plain" optional onChange={(file) => setFile('setup_notes', file)} />
-              <p className="muted">Studio will create the project, transcribe the audio, generate timing, produce images with real generation, and render the final video.</p>
+              <FileInput label="Creative brief" file={files.setup_notes} accept=".txt,.md,text/plain" optional onChange={(file) => setFile('setup_notes', file)} />
+              <p className="muted">Studio will create the project, transcribe audio, clean timing against the script, auto-author visual style and prompts through the configured LLM provider, generate images, and render the final video.</p>
             </div>
           ) : mode === 'srt_upload' ? (
             <div className="stack compact">
               <FileInput label="Source SRT" file={files.source_srt} accept=".srt,text/plain" onChange={(file) => setFile('source_srt', file)} />
               <FileInput label="Source audio" file={files.source_audio} accept="audio/*,.mp3,.wav,.m4a" onChange={(file) => setFile('source_audio', file)} />
               <FileInput label="Raw narration text" file={files.raw_text} accept=".txt,.md,text/plain" onChange={(file) => setFile('raw_text', file)} />
-              <FileInput label="Style / setup notes" file={files.setup_notes} accept=".txt,.md,text/plain" optional onChange={(file) => setFile('setup_notes', file)} />
+              <FileInput label="Creative brief" file={files.setup_notes} accept=".txt,.md,text/plain" optional onChange={(file) => setFile('setup_notes', file)} />
             </div>
           ) : (
             <div className="stack compact">
@@ -154,7 +154,7 @@ export function SetupPage() {
               <span>{item}</span>
             </div>
           ))}
-          <p className="muted">The default intake no longer requires SRT. Use the advanced SRT mode only when you already trust external timing and want to bypass transcription.</p>
+          <p className="muted">The default intake no longer requires SRT or a style file. If an LLM authoring provider is configured, Studio derives the visual bible and shot prompts from the script/timed transcript automatically.</p>
           {result ? (
             <dl className="details">
               <div><dt>Project ID</dt><dd>{result.project_id}</dd></div>

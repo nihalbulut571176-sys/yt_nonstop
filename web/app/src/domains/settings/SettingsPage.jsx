@@ -7,6 +7,7 @@ export function SettingsPage() {
   const preferences = settings.find((item) => item.category === 'operator_preferences' && item.key === 'studio_preferences')?.value || {};
   const environment = settings.find((item) => item.category === 'environment')?.value || {};
   const fastgen = settings.find((item) => item.category === 'provider_metadata' && item.provider === 'fastgen')?.value || {};
+  const llmAuthoring = settings.find((item) => item.category === 'provider_metadata' && item.key === 'llm_authoring')?.value || {};
   const workspace = settings.find((item) => item.category === 'workspace')?.value || {};
   const auth = settings.find((item) => item.category === 'auth' && item.key === 'local_operator')?.value || {};
   const [form, setForm] = useState({
@@ -51,6 +52,9 @@ export function SettingsPage() {
           <div><dt>FastGen URL</dt><dd>{fastgen.api_url || 'n/a'}</dd></div>
           <div><dt>FastGen model</dt><dd>{fastgen.model || 'n/a'}</dd></div>
           <div><dt>FASTGEN_API_KEY</dt><dd>{fastgen.api_key_configured ? 'Configured in environment' : 'Missing'}</dd></div>
+          <div><dt>LLM authoring mode</dt><dd>{llmAuthoring.mode || 'disabled'}</dd></div>
+          <div><dt>LLM authoring model</dt><dd>{llmAuthoring.model || 'n/a'}</dd></div>
+          <div><dt>LLM authoring key</dt><dd>{llmAuthoring.api_key_configured ? 'Configured in environment' : 'Missing'}</dd></div>
           <div><dt>Secret storage</dt><dd>{fastgen.secret_storage || 'environment'}</dd></div>
           <div><dt>Operator account</dt><dd>{auth.username || 'operator'} / {auth.role || 'Admin'}</dd></div>
           <div><dt>Session TTL</dt><dd>{auth.session_ttl_hours || 12} hours</dd></div>

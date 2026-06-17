@@ -52,7 +52,7 @@ The intended operator path for a new video is:
 3. Add:
    - source audio
    - raw narration text
-   - optional style/setup notes
+   - optional creative brief
 4. Click `Create project and start render pipeline`.
 5. Studio creates the project folder, marks transcription as pending, and starts a CLI-backed run from `transcription` to `render`.
 6. Follow active run state, logs, blockers, and final outputs from `Overview` and `Pipeline`.
@@ -66,6 +66,37 @@ Uploaded files are staged under:
 The backend then calls the same repo-native bootstrap logic used by the path-based API. The final project folder is created under `YT_visual`, and project artifacts remain there.
 
 Advanced mode `I already have SRT timing` stays available for cases where timing has already been prepared externally. That flow uploads SRT + audio + raw text and opens the project for manual validation/resume, instead of auto-starting transcription.
+
+The default audio+script flow does not require the operator to upload a style file. The prompt stage should derive the visual bible and shot prompts from the cleaned timed transcript through the configured LLM authoring provider. If a creative brief is uploaded, treat it as an optional direction override, not as the source of truth.
+
+## LLM Style And Prompt Authoring
+
+The web flow can auto-author `visual_bible` and prompt drafts during the `generate_fastgen_prompt_drafts` stage. Configure one of these `.env` options in the repo root:
+
+```env
+YT_NONSTOP_LLM_PROVIDER_MODE=google_gemini
+GOOGLE_API_KEY=...
+GOOGLE_GEMINI_MODEL=gemini-2.5-flash
+```
+
+Or use the FastGen OpenAI-compatible LLM endpoint as an alternative:
+
+```env
+YT_NONSTOP_LLM_PROVIDER_MODE=openai_compatible
+YT_NONSTOP_LLM_PROVIDER_BASE_URL=https://fast-gen.ai/v1
+YT_NONSTOP_LLM_PROVIDER_API_KEY=...
+YT_NONSTOP_LLM_PROVIDER_MODEL=...
+```
+
+Stage-specific overrides are also supported for prompt authoring:
+
+```env
+YT_NONSTOP_PROMPT_AUTHORING_MODE=google_gemini
+YT_NONSTOP_PROMPT_AUTHORING_API_KEY=...
+YT_NONSTOP_PROMPT_AUTHORING_MODEL=gemini-2.5-flash
+```
+
+Secrets are read from env or repo-local `.env` and are surfaced in Studio only as presence flags.
 
 ## App-State Database
 
@@ -147,7 +178,7 @@ Use this checklist before treating a branch as a usable local studio build:
 1. Start the app with `yt-nonstop studio --reload`.
 2. Sign in with the configured local operator account.
 3. Open `Projects` and confirm local projects are discovered under `YT_visual`.
-4. Create/bootstrap a small project from `/projects/new` by uploading audio, raw text, and optional style notes.
+4. Create/bootstrap a small project from `/projects/new` by uploading audio, raw text, and optional creative brief.
 5. Confirm Studio starts a `transcription` to `render` run and routes you to the project.
 6. Open the project overview and confirm lifecycle, blockers, next action, active run, and recent runs render.
 7. Inspect active run status, logs, and project/global run history.
