@@ -29,6 +29,17 @@ def partial_pilot_mode(project: dict[str, Any]) -> bool:
     return str(project.get("images", {}).get("status", "")).strip().lower() in {"partial", "pilot_partial"}
 
 
+def runtime_time_range(project: dict[str, Any]) -> dict[str, Any]:
+    time_range = project.get("runtime", {}).get("time_range", {})
+    if not isinstance(time_range, dict) or not time_range.get("enabled") or time_range.get("audio_pretrimmed"):
+        return {"enabled": False}
+    start = max(0.0, float(time_range.get("start_sec", 0) or 0))
+    end = float(time_range.get("end_sec", 0) or 0)
+    if end <= start:
+        return {"enabled": False}
+    return {"enabled": True, "start_sec": start, "end_sec": end, "duration_sec": end - start}
+
+
 def resolve_scene_image(scene: dict, selected_row: dict, montage_row: dict, previous_image: str | None) -> str:
     image_path_str = (
         scene.get("render_asset_path")
@@ -80,7 +91,10 @@ def main() -> None:
     ffconcat_path = renders_dir / "timeline.ffconcat"
     timeline_json_path = renders_dir / "slideshow_timeline.json"
     edit_decision_list_path = Path(project["render"]["edit_decision_list_path"])
+    time_range = runtime_time_range(project)
     audio_duration = float(project["inputs"].get("audio_duration_seconds") or 0)
+    if time_range.get("enabled"):
+        audio_duration = float(time_range["duration_sec"])
     if audio_duration <= 0:
         audio_duration = float(scenes[-1]["end"])
 
@@ -227,6 +241,7 @@ def main() -> None:
         json.dumps(
             {
                 "project_id": project["project_id"],
+                "time_range": time_range,
                 "edl": edit_decision_list,
                 "skipped_by_human_review": skipped_by_review,
                 "skipped_by_review": skipped_by_review,
@@ -245,6 +260,7 @@ def main() -> None:
     project["render"]["edit_decision_list_path"] = str(edit_decision_list_path)
     project["render"]["timeline_skipped_by_human_review"] = skipped_by_review
     project["render"]["timeline_skipped_unavailable_for_pilot"] = skipped_unavailable
+    project["render"]["time_range"] = time_range
     project["render"]["partial_pilot"] = allow_partial_pilot and bool(skipped_unavailable)
     project["render"]["status"] = "timeline_built"
     project["current_stage"] = "render"

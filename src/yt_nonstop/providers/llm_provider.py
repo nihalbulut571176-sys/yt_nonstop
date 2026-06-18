@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -29,6 +30,9 @@ DEFAULT_OPENAI_COMPATIBLE_URL = "https://api.openai.com/v1/chat/completions"
 FAST_GEN_OPENAI_COMPATIBLE_URL = "https://googler.fast-gen.ai/v1/chat/completions"
 DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
 DEFAULT_GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
+TRANSIENT_PROVIDER_STATUS_CODES = {429, 500, 502, 503, 504}
+DEFAULT_TRANSIENT_MAX_ATTEMPTS = 8
+DEFAULT_TRANSIENT_BASE_DELAY_SECONDS = 12
 
 
 class LLMProviderError(Exception):
@@ -291,15 +295,27 @@ class LLMProvider:
     def _call_http_like_gemini(self, url: str, payload: dict[str, Any], *, api_key: str, task_name: str, schema_name: str | None) -> str:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         headers = {"Content-Type": "application/json", "x-goog-api-key": api_key}
-        request = urllib.request.Request(url, data=body, headers=headers, method="POST")
-        try:
-            with urllib.request.urlopen(request, timeout=self.config.timeout_seconds) as response:
-                return response.read().decode("utf-8")
-        except urllib.error.HTTPError as exc:  # pragma: no cover
-            detail = exc.read().decode("utf-8", errors="replace")
-            raise LLMProviderResponseError(_format_error(task_name, schema_name, f"google_gemini provider returned {exc.code}: {detail}")) from exc
-        except urllib.error.URLError as exc:  # pragma: no cover
-            raise LLMProviderResponseError(_format_error(task_name, schema_name, f"google_gemini provider failed: {exc.reason}")) from exc
+        max_attempts = int(os.environ.get("YT_NONSTOP_LLM_RETRY_ATTEMPTS", DEFAULT_TRANSIENT_MAX_ATTEMPTS))
+        base_delay = float(os.environ.get("YT_NONSTOP_LLM_RETRY_BASE_SECONDS", DEFAULT_TRANSIENT_BASE_DELAY_SECONDS))
+        for attempt in range(1, max_attempts + 1):
+            request = urllib.request.Request(url, data=body, headers=headers, method="POST")
+            try:
+                with urllib.request.urlopen(request, timeout=self.config.timeout_seconds) as response:
+                    return response.read().decode("utf-8")
+            except urllib.error.HTTPError as exc:  # pragma: no cover
+                detail = exc.read().decode("utf-8", errors="replace")
+                if exc.code in TRANSIENT_PROVIDER_STATUS_CODES and attempt < max_attempts:
+                    retry_after = exc.headers.get("Retry-After")
+                    delay = float(retry_after) if retry_after and retry_after.isdigit() else base_delay * attempt
+                    time.sleep(delay)
+                    continue
+                raise LLMProviderResponseError(_format_error(task_name, schema_name, f"google_gemini provider returned {exc.code}: {detail}")) from exc
+            except urllib.error.URLError as exc:  # pragma: no cover
+                if attempt < max_attempts:
+                    time.sleep(base_delay * attempt)
+                    continue
+                raise LLMProviderResponseError(_format_error(task_name, schema_name, f"google_gemini provider failed: {exc.reason}")) from exc
+        raise LLMProviderResponseError(_format_error(task_name, schema_name, "google_gemini provider failed after retries"))
 
     def invoke(self, request: LLMRequest) -> LLMResponse:
         raw_text, request_log_path, response_log_path = self._invoke_raw(

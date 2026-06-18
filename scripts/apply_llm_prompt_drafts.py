@@ -7,6 +7,10 @@ from prompt_safety import lint_prompt_observability
 
 
 REQUIRED_FIELDS = ["scene_id", "visual_goal", "final_prompt"]
+DEFAULT_NEGATIVE_PROMPT = (
+    "text, subtitles, logo, watermark, fake UI, unreadable signage, "
+    "distorted hands, plastic skin, low quality, blurry, cartoon, anime, collage"
+)
 
 
 def validate_record(record: dict) -> list[str]:
@@ -112,7 +116,7 @@ def main() -> None:
         item["event_clarity_required"] = draft.get("event_clarity_required", item.get("event_clarity_required", False))
         item["event_type"] = draft.get("event_type", item.get("event_type", ""))
         item["event_priority_reason"] = draft.get("event_priority_reason", item.get("event_priority_reason", ""))
-        item["negative_prompt"] = draft.get("negative_prompt")
+        item["negative_prompt"] = draft.get("negative_prompt") or item.get("negative_prompt") or DEFAULT_NEGATIVE_PROMPT
         item["beat_priority"] = draft.get("beat_priority", item.get("beat_priority", "supporting"))
         item["key_beat"] = draft.get("key_beat", item.get("key_beat", False))
         item["variant_count"] = int(draft.get("variant_count", item.get("variant_count", 1)) or 1)
@@ -161,7 +165,7 @@ def main() -> None:
             scene["event_clarity_required"] = draft.get("event_clarity_required", scene.get("event_clarity_required", False))
             scene["event_type"] = draft.get("event_type", scene.get("event_type", ""))
             scene["event_priority_reason"] = draft.get("event_priority_reason", scene.get("event_priority_reason", ""))
-            scene["negative_prompt"] = draft.get("negative_prompt")
+            scene["negative_prompt"] = draft.get("negative_prompt") or scene.get("negative_prompt") or DEFAULT_NEGATIVE_PROMPT
             scene["beat_priority"] = draft.get("beat_priority", scene.get("beat_priority", "supporting"))
             scene["key_beat"] = draft.get("key_beat", scene.get("key_beat", False))
             scene["variant_count"] = int(draft.get("variant_count", scene.get("variant_count", 1)) or 1)

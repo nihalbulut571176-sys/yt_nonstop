@@ -134,6 +134,25 @@ def stage_done(project: dict[str, Any], stage: str) -> bool:
     raise KeyError(stage)
 
 
+def _runtime_time_range_from_args(args: argparse.Namespace) -> dict[str, Any]:
+    start_sec = getattr(args, "start_sec", None)
+    end_sec = getattr(args, "end_sec", None)
+    if start_sec is None and end_sec is None:
+        return {}
+    if start_sec is None or end_sec is None:
+        raise ValueError("--start-sec and --end-sec must be provided together")
+    start = max(0.0, float(start_sec))
+    end = float(end_sec)
+    if end <= start:
+        raise ValueError("--end-sec must be greater than --start-sec")
+    return {
+        "enabled": True,
+        "start_sec": round(start, 3),
+        "end_sec": round(end, 3),
+        "duration_sec": round(end - start, 3),
+    }
+
+
 def stage_output_paths(project: dict[str, Any], stage: str) -> list[Path]:
     stage = normalize_stage_name(stage)
     planning = project.get("planning", {})
@@ -515,6 +534,15 @@ def run_pipeline(args: argparse.Namespace) -> int:
             project.setdefault("runtime", {})["real_generation"] = bool(getattr(args, "real_generation", False))
             project["runtime"]["limit_frames"] = int(getattr(args, "limit_frames", 0) or 0)
             project["runtime"]["render_dry_run"] = bool(getattr(args, "render_dry_run", False))
+            runtime_time_range = _runtime_time_range_from_args(args)
+            if runtime_time_range:
+                existing_time_range = project.get("runtime", {}).get("time_range", {})
+                if isinstance(existing_time_range, dict) and existing_time_range.get("audio_pretrimmed"):
+                    runtime_time_range["audio_pretrimmed"] = True
+                    for key in ("original_audio_path", "trimmed_audio_path"):
+                        if existing_time_range.get(key):
+                            runtime_time_range[key] = existing_time_range[key]
+                project["runtime"]["time_range"] = runtime_time_range
 
             if stage == "generate_fastgen_prompt_drafts":
                 context_cmd = [sys.executable, str(ROOT / "scripts" / "build_scene_context_pack.py"), "--project-json", str(project_json)]
@@ -623,6 +651,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--profile", default="")
     parser.add_argument("--real-generation", action="store_true")
     parser.add_argument("--limit-frames", type=int, default=0)
+    parser.add_argument("--start-sec", type=float, default=None)
+    parser.add_argument("--end-sec", type=float, default=None)
     parser.add_argument("--auto-author-llm", dest="auto_author_llm", action="store_true")
     parser.add_argument("--no-auto-author-llm", dest="auto_author_llm", action="store_false")
     parser.add_argument("--require-filled-prompts", action="store_true")

@@ -22,6 +22,14 @@ def _job_file(runtime_dir: Path) -> Path:
     return runtime_dir / "jobs.json"
 
 
+def _append_stale_log(path: Path, run_id: str) -> None:
+    if not str(path):
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(f"[{_iso_now()}] Run {run_id} was marked failed after Studio restart; no worker thread was attached.\n")
+
+
 @dataclass(slots=True)
 class JobStartResult:
     accepted: bool
@@ -44,13 +52,27 @@ class JobStore:
             return {}
         payload = json.loads(path.read_text(encoding="utf-8"))
         jobs: dict[str, RunSummary] = {}
+        changed = False
         for item in payload:
             normalized = dict(item)
             if "run_id" not in normalized and "job_id" in normalized:
                 normalized["run_id"] = normalized.pop("job_id")
             if "action_type" not in normalized:
                 normalized["action_type"] = _infer_action_type(normalized.get("command", []))
-            jobs[normalized["run_id"]] = RunSummary(**normalized)
+            if normalized.get("status") in {"queued", "running"}:
+                normalized["status"] = "failed"
+                normalized["finished_at"] = normalized.get("finished_at") or _iso_now()
+                normalized["exit_code"] = normalized.get("exit_code") if normalized.get("exit_code") is not None else -1
+                normalized["error_category"] = normalized.get("error_category") or "system_error"
+                _append_stale_log(Path(str(normalized.get("log_path") or "")), normalized.get("run_id", "unknown"))
+                changed = True
+            job = RunSummary(**normalized)
+            jobs[job.run_id] = job
+            if changed and self.app_state and job.status == "failed":
+                self.app_state.record_run(job, user_id=job.user_id, error_category=job.error_category)
+                self.app_state.record_run_event(job.run_id, event_type="failed", message="Run was marked failed because the Studio server restarted before the worker started or finished.")
+        if changed:
+            path.write_text(json.dumps([job.model_dump() for job in jobs.values()], ensure_ascii=False, indent=2), encoding="utf-8")
         return jobs
 
     def _save_jobs(self) -> None:
@@ -212,6 +234,8 @@ def build_cli_command(
     to_stage: str | None = None,
     profile: str | None = None,
     limit_frames: int = 0,
+    start_sec: float | None = None,
+    end_sec: float | None = None,
     real_generation: bool = False,
     concurrency: int = 10,
     resume: bool = False,
@@ -230,6 +254,10 @@ def build_cli_command(
             command.extend(["--profile", profile])
         if limit_frames:
             command.extend(["--limit-frames", str(limit_frames)])
+        if start_sec is not None:
+            command.extend(["--start-sec", f"{float(start_sec):.3f}"])
+        if end_sec is not None:
+            command.extend(["--end-sec", f"{float(end_sec):.3f}"])
         if real_generation:
             command.append("--real-generation")
         if concurrency:

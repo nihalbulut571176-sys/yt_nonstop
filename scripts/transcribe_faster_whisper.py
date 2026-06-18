@@ -23,6 +23,13 @@ def write_srt(segments, output_path: Path) -> None:
     output_path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def normalize_language(value: str | None) -> str | None:
+    normalized = str(value or "").strip().lower()
+    if not normalized or normalized in {"auto", "detect", "none", "null"}:
+        return None
+    return normalized
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("audio_path")
@@ -45,9 +52,10 @@ def main() -> None:
             initial_prompt = prompt_path.read_text(encoding="utf-8-sig").strip()
 
     model = WhisperModel(args.model, device=args.device, compute_type=args.compute_type)
+    language = normalize_language(args.language)
     segments_iter, info = model.transcribe(
         str(audio_path),
-        language=args.language,
+        language=language,
         vad_filter=True,
         beam_size=5,
         word_timestamps=False,

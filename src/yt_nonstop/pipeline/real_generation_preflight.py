@@ -50,14 +50,17 @@ def run_real_generation_preflight(
     if not real_generation:
         raise RuntimeError("Real FastGen pilot requires --real-generation before any external image API call")
 
+    generation_lock_path = Path(project.get("prompts", {}).get("generation_locked_json_path") or "")
+    has_lock_based_plan = generation_lock_path.exists()
+
     allocation_path = Path(project["planning"]["visual_allocation_plan_path"])
-    if not allocation_path.exists():
+    if not allocation_path.exists() and not has_lock_based_plan:
         raise FileNotFoundError(f"visual_allocation_plan is missing: {allocation_path}")
 
     calibration_json_path = Path(project["reports"]["visual_calibration_report_json_path"])
-    if not calibration_json_path.exists():
+    if not calibration_json_path.exists() and not has_lock_based_plan:
         raise FileNotFoundError(f"visual_calibration_report is missing: {calibration_json_path}")
-    calibration_payload = __import__("json").loads(calibration_json_path.read_text(encoding="utf-8"))
+    calibration_payload = __import__("json").loads(calibration_json_path.read_text(encoding="utf-8")) if calibration_json_path.exists() else {}
     strict_calibration = bool(project.get("workflow", {}).get("strict_visual_calibration")) or bool(profile and profile.strict_visual_calibration)
     calibration_status = _clean_text(
         calibration_payload.get("status")

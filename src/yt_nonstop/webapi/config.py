@@ -19,7 +19,7 @@ def _load_dotenv_map(path: Path = DEFAULT_ENV_PATH) -> dict[str, str]:
     if not path.exists():
         return {}
     values: dict[str, str] = {}
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
+    for raw_line in path.read_text(encoding="utf-8-sig").splitlines():
         line = raw_line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
@@ -78,9 +78,9 @@ class WebConfig:
         session_ttl_hours = int(_env_value(env_values, "YT_NONSTOP_STUDIO_SESSION_TTL_HOURS", "12"))
         default_profile = _env_value(env_values, "YT_NONSTOP_WEB_DEFAULT_PROFILE", "no_vlm_production")
         default_concurrency = int(_env_value(env_values, "YT_NONSTOP_WEB_DEFAULT_CONCURRENCY", "10"))
-        fastgen_api_url = _env_value(env_values, "FASTGEN_API_URL", "")
-        fastgen_model = _env_value(env_values, "FASTGEN_MODEL", "")
-        fastgen_api_key = _env_value(env_values, "FASTGEN_API_KEY", "")
+        fastgen_api_url = _first_env_value(env_values, "FASTGEN_API_URL", "FAST_GEN_API_URL")
+        fastgen_model = _first_env_value(env_values, "FASTGEN_MODEL", "FAST_GEN_MODEL")
+        fastgen_api_key = _first_env_value(env_values, "FASTGEN_API_KEY", "FAST_GEN_API_KEY")
         llm_provider_mode = _env_value(env_values, "YT_NONSTOP_LLM_PROVIDER_MODE", "")
         llm_provider_model = _env_value(env_values, "YT_NONSTOP_LLM_PROVIDER_MODEL", "")
         llm_provider_api_key = _env_value(env_values, "YT_NONSTOP_LLM_PROVIDER_API_KEY", "")

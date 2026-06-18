@@ -1,7 +1,7 @@
 export function SectionTitle({title, meta}) {
   return (
     <div className="panel-head">
-      <span>{title}</span>
+      <h2>{title}</h2>
       {meta ? <span>{meta}</span> : null}
     </div>
   );

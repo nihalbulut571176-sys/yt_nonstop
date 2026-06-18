@@ -110,6 +110,8 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--profile", default="")
     run_parser.add_argument("--real-generation", action="store_true")
     run_parser.add_argument("--limit-frames", type=int, default=0)
+    run_parser.add_argument("--start-sec", type=float, default=None)
+    run_parser.add_argument("--end-sec", type=float, default=None)
     run_parser.add_argument("--auto-author-llm", dest="auto_author_llm", action="store_true")
     run_parser.add_argument("--no-auto-author-llm", dest="auto_author_llm", action="store_false")
     run_parser.add_argument("--require-filled-prompts", action="store_true")

@@ -312,6 +312,27 @@ class AppStateStore:
                 """,
                 (SCHEMA_VERSION, _iso_now()),
             )
+            self._migrate_legacy_schema(connection)
+
+    def _migrate_legacy_schema(self, connection: sqlite3.Connection) -> None:
+        run_event_columns = {str(row["name"]) for row in connection.execute("PRAGMA table_info(run_events)").fetchall()}
+        if "job_id" in run_event_columns and "run_id" not in run_event_columns:
+            connection.executescript(
+                """
+                ALTER TABLE run_events RENAME TO run_events_legacy;
+                CREATE TABLE run_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    run_id TEXT NOT NULL,
+                    event_type TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY(run_id) REFERENCES runs(run_id)
+                );
+                INSERT INTO run_events (id, run_id, event_type, message, created_at)
+                SELECT id, job_id, event_type, message, created_at FROM run_events_legacy;
+                DROP TABLE run_events_legacy;
+                """
+            )
 
     def _seed_workspace(self) -> None:
         with self.connect() as connection:
@@ -966,6 +987,10 @@ class AppStateStore:
             recent_runs=recent_runs,
             review_decision_count=len(review_decisions),
             active_run=pipeline_state.get("active_run"),
+            stage_groups=pipeline_state.get("stage_groups", []),
+            progress=pipeline_state.get("progress", {}),
+            current_activity=pipeline_state.get("current_activity"),
+            recent_events=pipeline_state.get("recent_events", []),
         )
 
     def record_audit_event(

@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from yt_nonstop.pipeline.project_config import load_project, save_project
 from yt_nonstop.pipeline.project_status import build_project_status
 from yt_nonstop.webapi.app_state import AppStateStore, AuthSession, lifecycle_status_for
 from yt_nonstop.webapi.artifacts import list_artifacts, load_review, load_timeline, preview_file
@@ -26,7 +27,11 @@ from yt_nonstop.webapi.models import (
     CreateProjectResponse,
     PipelineAction,
     PipelineActionRequest,
+    ActivityEvent,
+    CurrentActivity,
+    PipelineProgress,
     PipelineState,
+    PipelineStageView,
     ProjectOverview,
     ReviewApplyRequest,
     ReviewDecisionRequest,
@@ -43,6 +48,193 @@ from yt_nonstop.webapi.models import (
     LoginRequest,
 )
 from yt_nonstop.webapi.project_discovery import discover_projects, get_project
+
+
+USER_STAGE_GROUPS: tuple[dict, ...] = (
+    {"key": "upload", "label": "Upload", "stages": {"upload", "created", "draft"}},
+    {"key": "transcribe", "label": "Transcribe", "stages": {"transcription"}},
+    {"key": "clean_srt", "label": "Clean SRT", "stages": {"cleanup_transcript_from_source", "ingest_srt"}},
+    {
+        "key": "scene_plan",
+        "label": "Scene Plan",
+        "stages": {
+            "build_scene_map",
+            "allocate_frames",
+            "build_narration_beats",
+            "author_narration_beats",
+            "build_visual_shot_plan",
+        },
+    },
+    {
+        "key": "prompts",
+        "label": "Prompts",
+        "stages": {
+            "build_frame_briefs",
+            "attach_reference_assets",
+            "build_scene_context_pack",
+            "generate_fastgen_prompt_drafts",
+            "generation_lock",
+            "export_montage_map",
+            "export_generation_batches",
+        },
+    },
+    {"key": "images", "label": "Images", "stages": {"generate_images", "normalize_images"}},
+    {"key": "qc", "label": "QC", "stages": {"image_qc", "final_review", "review"}},
+    {"key": "render", "label": "Render", "stages": {"timeline", "render"}},
+    {"key": "done", "label": "Done", "stages": {"done", "completed"}},
+)
+
+
+def _stage_group_for(stage_name: str | None) -> dict:
+    normalized = str(stage_name or "").strip()
+    for group in USER_STAGE_GROUPS:
+        if normalized == group["key"] or normalized in group["stages"]:
+            return group
+    return USER_STAGE_GROUPS[0]
+
+
+def _group_index(group_key: str | None) -> int:
+    for index, group in enumerate(USER_STAGE_GROUPS):
+        if group["key"] == group_key:
+            return index
+    return 0
+
+
+def _run_elapsed_sec(run: RunSummary | None) -> float | None:
+    if not run or not run.started_at:
+        return None
+    from datetime import datetime, timezone
+
+    try:
+        started = datetime.fromisoformat(run.started_at.replace("Z", "+00:00"))
+        finished = datetime.fromisoformat(run.finished_at.replace("Z", "+00:00")) if run.finished_at else datetime.now(timezone.utc)
+    except ValueError:
+        return None
+    return max(0.0, (finished - started).total_seconds())
+
+
+def _tail_for_run(jobs: JobStore, run: RunSummary | None, *, tail: int = 12) -> list[str]:
+    if not run:
+        return []
+    try:
+        return jobs.read_logs(run.run_id, tail=tail)
+    except KeyError:
+        return []
+
+
+def _recent_activity_events(app_state: AppStateStore, jobs: JobStore, runs: list[RunSummary], active_run: RunSummary | None) -> list[ActivityEvent]:
+    events: list[ActivityEvent] = []
+    seen: set[str] = set()
+    for run in [active_run, *runs[:4]]:
+        if not run or run.run_id in seen:
+            continue
+        seen.add(run.run_id)
+        try:
+            details = app_state.get_run(run.run_id, log_tail=_tail_for_run(jobs, run, tail=6))
+        except KeyError:
+            continue
+        for event in details.events[-4:]:
+            tone = "success" if event.event_type == "completed" else "danger" if event.event_type in {"failed", "rejected"} else "info"
+            events.append(ActivityEvent(timestamp=event.created_at, message=event.message, tone=tone))
+        for line in details.log_tail[-3:]:
+            cleaned = line.strip()
+            if cleaned:
+                events.append(ActivityEvent(timestamp=None, message=cleaned[:240], tone="neutral"))
+    return events[-8:]
+
+
+def _build_progress_contract(
+    *,
+    dashboard,
+    lifecycle_status: str,
+    active_run: RunSummary | None,
+    recent_runs: list[RunSummary],
+    blocked: list[str],
+    jobs: JobStore,
+    app_state: AppStateStore,
+) -> tuple[list[PipelineStageView], PipelineProgress, CurrentActivity, list[ActivityEvent]]:
+    failed = lifecycle_status == "failed" or bool(recent_runs and recent_runs[0].status == "failed" and not active_run)
+    blocked_now = lifecycle_status == "blocked" and not active_run and not failed
+    internal_stage = dashboard.next_stage or dashboard.current_stage or "upload"
+    if active_run:
+        internal_stage = dashboard.current_stage or dashboard.next_stage or "transcription"
+    if dashboard.completed:
+        internal_stage = "done"
+    active_group = _stage_group_for(internal_stage)
+    active_index = _group_index(active_group["key"])
+    stage_views: list[PipelineStageView] = []
+    for index, group in enumerate(USER_STAGE_GROUPS):
+        status = "pending"
+        if dashboard.completed:
+            status = "done"
+        elif index < active_index:
+            status = "done"
+        elif index == active_index:
+            if active_run:
+                status = "running"
+            elif failed:
+                status = "failed"
+            elif blocked_now:
+                status = "blocked"
+            elif dashboard.warnings and group["key"] in {"images", "qc"}:
+                status = "warning"
+            else:
+                status = "pending"
+        progress_current = None
+        progress_total = None
+        output_label = None
+        if group["key"] == "images":
+            progress_current = int(dashboard.generated_images_success or dashboard.selected_images_count or 0)
+            progress_total = int(dashboard.planned_variants_count or dashboard.generated_images_total or dashboard.selected_images_expected or 0)
+            output_label = f"{progress_current} / {progress_total}" if progress_total else None
+        elif group["key"] == "scene_plan":
+            progress_current = int(dashboard.visual_slots_count or dashboard.narration_beats_count or 0)
+            output_label = f"{progress_current} planned shots" if progress_current else None
+        elif group["key"] == "render" and dashboard.final_video_path:
+            output_label = dashboard.final_video_path
+        message = None
+        error_message = None
+        if status == "running":
+            message = "Running now. Green means Studio is actively working."
+        elif status == "failed":
+            error_message = blocked[0] if blocked else "Latest run failed. Open logs for details."
+        elif status == "blocked":
+            error_message = blocked[0] if blocked else "Blocked before this step can continue."
+        stage_views.append(
+            PipelineStageView(
+                key=group["key"],
+                label=group["label"],
+                status=status,
+                progress_current=progress_current,
+                progress_total=progress_total,
+                message=message,
+                error_message=error_message,
+                output_label=output_label,
+            )
+        )
+    done_count = sum(1 for item in stage_views if item.status == "done")
+    partial = 0.5 if active_run else 0
+    percent = 100 if dashboard.completed else min(99, int(((done_count + partial) / len(stage_views)) * 100))
+    progress = PipelineProgress(
+        percent=percent,
+        current_stage_key=active_group["key"],
+        current_stage_label=str(active_group["label"]),
+        elapsed_sec=_run_elapsed_sec(active_run or (recent_runs[0] if recent_runs else None)),
+        active_run_id=active_run.run_id if active_run else None,
+        is_running=active_run is not None,
+        is_failed=failed,
+    )
+    current_status = "running" if active_run else "failed" if failed else "blocked" if blocked_now else "done" if dashboard.completed else "pending"
+    log_tail = _tail_for_run(jobs, active_run or (recent_runs[0] if failed and recent_runs else None), tail=14)
+    activity = CurrentActivity(
+        title=str(active_group["label"]),
+        detail=active_run.action_type if active_run else dashboard.next_command or dashboard.next_stage or "",
+        status=current_status,
+        run_id=active_run.run_id if active_run else recent_runs[0].run_id if recent_runs else None,
+        log_tail=log_tail,
+    )
+    events = _recent_activity_events(app_state, jobs, recent_runs, active_run)
+    return stage_views, progress, activity, events
 
 
 class ProductApiError(Exception):
@@ -88,13 +280,56 @@ def _discover_projects(config: WebConfig, app_state: AppStateStore):
     return projects
 
 
+def _failed_run_blocker(run: RunSummary | None) -> str | None:
+    if not run or run.status != "failed":
+        return None
+    message = f"Last run failed during {run.action_type}"
+    log_path = Path(run.log_path)
+    if log_path.exists():
+        lines = [line.strip() for line in log_path.read_text(encoding="utf-8", errors="replace").splitlines() if line.strip()]
+        interesting = [
+            line
+            for line in lines[-80:]
+            if "error" in line.lower()
+            or "runtimeerror" in line.lower()
+            or "traceback" in line.lower()
+            or "calledprocesserror" in line.lower()
+            or "unable to" in line.lower()
+        ]
+        if interesting:
+            message = f"{message}: {interesting[-1][:360]}"
+    return message
+
+
 def _build_pipeline_state(project, jobs: JobStore, app_state: AppStateStore) -> PipelineState:
     active_run = jobs.active_job_for_project(project.id)
     recent_runs = app_state.list_runs(project_id=project.id, limit=10)
     if not project.project_json_path:
+        blocked_reason = "Project has limited support in the studio because no project.json was discovered."
+        limited_stages = [
+            PipelineStageView(
+                key=group["key"],
+                label=group["label"],
+                status="blocked" if group["key"] == "upload" else "pending",
+                error_message=blocked_reason if group["key"] == "upload" else None,
+            )
+            for group in USER_STAGE_GROUPS
+        ]
+        limited_progress = PipelineProgress(
+            percent=0,
+            current_stage_key="upload",
+            current_stage_label="Upload",
+            is_running=False,
+            is_failed=False,
+        )
+        limited_activity = CurrentActivity(
+            title="Limited project support",
+            detail=blocked_reason,
+            status="blocked",
+        )
         lifecycle_status = lifecycle_status_for(
             support=project.support,
-            blocked=["Project has limited support in the studio because no project.json was discovered."],
+            blocked=[blocked_reason],
             ready_for_render=False,
             ready_for_human_review=False,
             completed=False,
@@ -109,7 +344,7 @@ def _build_pipeline_state(project, jobs: JobStore, app_state: AppStateStore) -> 
             current_stage=project.current_stage,
             next_stage=project.next_stage,
             next_command=project.next_command,
-            blocked=["Project has limited support in the studio because no project.json was discovered."],
+            blocked=[blocked_reason],
             warnings=[],
             info=["Artifact browsing remains available.", "CLI-backed write actions are disabled for limited-support projects."],
             blocked_count=1,
@@ -117,27 +352,36 @@ def _build_pipeline_state(project, jobs: JobStore, app_state: AppStateStore) -> 
             active_run=active_run,
             blocked_by_active_run=active_run is not None,
             recent_runs=recent_runs,
+            stage_groups=limited_stages,
+            progress=limited_progress,
+            current_activity=limited_activity,
+            recent_events=[ActivityEvent(message=blocked_reason, tone="warning")],
         )
         state.available_actions = _available_pipeline_actions(project, state)
         return state
 
     dashboard = build_project_status(Path(project.project_json_path))
+    failed_blocker = _failed_run_blocker(recent_runs[0] if recent_runs and not active_run else None)
+    blocked = ([failed_blocker] if failed_blocker else []) + list(dashboard.blocked)
+    warnings = list(dashboard.warnings)
     lifecycle_status = lifecycle_status_for(
         support=project.support,
-        blocked=dashboard.blocked,
+        blocked=blocked,
         ready_for_render=dashboard.ready_for_render,
         ready_for_human_review=dashboard.ready_for_human_review,
         completed=dashboard.completed,
         active_run=active_run,
         next_stage=dashboard.next_stage,
     )
+    if failed_blocker and not active_run:
+        lifecycle_status = "failed"
     app_state.update_project_snapshot(
         project_id=project.id,
         lifecycle_status=lifecycle_status,
         next_command=dashboard.next_command,
         dashboard=dashboard.to_dict(),
-        blocked_count=len(dashboard.blocked),
-        warning_count=len(dashboard.warnings),
+        blocked_count=len(blocked),
+        warning_count=len(warnings),
         available_outputs=project.available_outputs,
     )
     state = PipelineState(
@@ -148,11 +392,11 @@ def _build_pipeline_state(project, jobs: JobStore, app_state: AppStateStore) -> 
         current_stage=dashboard.current_stage,
         next_stage=dashboard.next_stage,
         next_command=dashboard.next_command,
-        blocked=dashboard.blocked,
-        warnings=dashboard.warnings,
+        blocked=blocked,
+        warnings=warnings,
         info=dashboard.info,
-        blocked_count=len(dashboard.blocked),
-        warning_count=len(dashboard.warnings),
+        blocked_count=len(blocked),
+        warning_count=len(warnings),
         ready_for_generation=dashboard.ready_for_generation,
         ready_for_qc=dashboard.ready_for_qc,
         ready_for_render=dashboard.ready_for_render,
@@ -162,6 +406,19 @@ def _build_pipeline_state(project, jobs: JobStore, app_state: AppStateStore) -> 
         blocked_by_active_run=active_run is not None,
         recent_runs=recent_runs,
     )
+    stage_groups, progress, activity, recent_events = _build_progress_contract(
+        dashboard=dashboard,
+        lifecycle_status=lifecycle_status,
+        active_run=active_run,
+        recent_runs=recent_runs,
+        blocked=blocked,
+        jobs=jobs,
+        app_state=app_state,
+    )
+    state.stage_groups = stage_groups
+    state.progress = progress
+    state.current_activity = activity
+    state.recent_events = recent_events
     state.available_actions = _available_pipeline_actions(project, state)
     return state
 
@@ -230,6 +487,55 @@ def _session_from_request(app: FastAPI, authorization: str | None, token: str | 
 def _slugify_project_name(value: str) -> str:
     normalized = re.sub(r"[^a-zA-Z0-9]+", "_", value.strip()).strip("_").lower()
     return normalized or "project"
+
+
+def _normalize_time_range(start_sec: float | None, end_sec: float | None) -> dict[str, float | bool]:
+    if start_sec is None and end_sec is None:
+        return {"enabled": False}
+    if start_sec is None or end_sec is None:
+        raise ProductApiError(status_code=400, code="validation_error", message="Both start and end time are required for a custom range", details={"start_sec": start_sec, "end_sec": end_sec})
+    start = max(0.0, float(start_sec))
+    end = float(end_sec)
+    if end <= start:
+        raise ProductApiError(status_code=400, code="validation_error", message="End time must be greater than start time", details={"start_sec": start, "end_sec": end})
+    return {"enabled": True, "start_sec": round(start, 3), "end_sec": round(end, 3), "duration_sec": round(end - start, 3)}
+
+
+def _trim_audio_for_time_range(source_audio: Path, intake_dir: Path, time_range: dict[str, float | bool]) -> Path:
+    if not time_range.get("enabled"):
+        return source_audio
+    if shutil.which("ffmpeg") is None:
+        raise ProductApiError(status_code=500, code="system_error", message="ffmpeg is required for custom timing range audio trimming", retryable=False)
+    output_path = intake_dir / "source_audio_range.mp3"
+    command = [
+        "ffmpeg",
+        "-y",
+        "-ss",
+        f"{float(time_range['start_sec']):.3f}",
+        "-t",
+        f"{float(time_range['duration_sec']):.3f}",
+        "-i",
+        str(source_audio),
+        "-vn",
+        "-acodec",
+        "libmp3lame",
+        "-q:a",
+        "2",
+        str(output_path),
+    ]
+    completed = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if completed.returncode != 0 or not output_path.exists():
+        raise ProductApiError(
+            status_code=500,
+            code="system_error",
+            message="Could not trim source audio for the selected timing range",
+            details={"stderr": completed.stderr[-2000:]},
+            retryable=True,
+        )
+    time_range["audio_pretrimmed"] = True
+    time_range["original_audio_path"] = str(source_audio)
+    time_range["trimmed_audio_path"] = str(output_path)
+    return output_path
 
 
 def _resolve_required_file(value: str | None, *, label: str, details_key: str) -> Path:
@@ -364,6 +670,7 @@ def _run_audio_text_bootstrap(
     raw_text: Path,
     setup_notes: Path | None,
     profile: str,
+    time_range: dict[str, float | bool] | None = None,
 ) -> CreateProjectResponse:
     if not project_name.strip():
         raise ProductApiError(status_code=400, code="validation_error", message="Project name is required", details={"project_name": project_name})
@@ -398,6 +705,26 @@ def _run_audio_text_bootstrap(
         )
 
     project_json_path = project_root / "project.json"
+    project = load_project(project_json_path)
+    project.setdefault("runtime", {})["web_intake_flow"] = {
+        "mode": "audio_text",
+        "timing_contract": "audio range is pretrimmed before transcription; do not pass start/end again to CLI for pretrimmed audio",
+        "semantic_source": "cleanup_transcript_from_source selects the matching source text window from raw_text using Whisper transcript text",
+        "render_timing_source": "cleaned.srt -> semantic scene plan -> prompts -> generation -> render",
+        "steps": [
+            "stage uploads",
+            "optional audio range trim",
+            "Whisper SRT",
+            "source-window cleaned SRT",
+            "semantic scene plan",
+            "LLM-authored prompts",
+            "image generation",
+            "timeline render",
+        ],
+    }
+    if time_range and time_range.get("enabled"):
+        project.setdefault("runtime", {})["time_range"] = time_range
+    save_project(project_json_path, project)
     return CreateProjectResponse(
         project_id=slug,
         project_name=project_name,
@@ -408,6 +735,7 @@ def _run_audio_text_bootstrap(
         notes=[
             "Project folder bootstrapped from uploaded audio and script text.",
             "Transcription starts as the first pipeline stage.",
+            "Timing contract: audio range -> Whisper SRT -> source-window cleaned SRT -> semantic scene plan -> prompts -> generation -> render.",
         ],
     )
 
@@ -575,7 +903,9 @@ def create_app() -> FastAPI:
         profile: str = Form("no_vlm_production"),
         to_stage: str = Form("render"),
         real_generation: bool = Form(True),
-        concurrency: int = Form(10),
+        concurrency: int = Form(4),
+        start_sec: float | None = Form(default=None),
+        end_sec: float | None = Form(default=None),
         source_audio: UploadFile | None = File(default=None),
         raw_text: UploadFile | None = File(default=None),
         style_notes: UploadFile | None = File(default=None),
@@ -587,18 +917,21 @@ def create_app() -> FastAPI:
             raise ProductApiError(status_code=400, code="validation_error", message="Source audio file is required", details={"field": "source_audio"})
         if raw_text is None:
             raise ProductApiError(status_code=400, code="validation_error", message="Raw script text file is required", details={"field": "raw_text"})
+        time_range = _normalize_time_range(start_sec, end_sec)
         slug = _slugify_project_name(project_name)
         intake_dir = config.runtime_dir / "uploads" / f"{slug}-{uuid4().hex[:8]}"
         staged_audio = await _stage_upload(source_audio, intake_dir, "source_audio.mp3")
         staged_raw_text = await _stage_upload(raw_text, intake_dir, "raw_text.md")
         staged_notes = await _stage_upload(style_notes, intake_dir, "project_setup_notes.md") if style_notes else None
+        effective_audio = _trim_audio_for_time_range(staged_audio, intake_dir, time_range)
         payload = _run_audio_text_bootstrap(
             config,
             project_name=project_name,
-            source_audio=staged_audio,
+            source_audio=effective_audio,
             raw_text=staged_raw_text,
             setup_notes=staged_notes,
             profile=profile,
+            time_range=time_range,
         )
         app_state.upsert_user_preference(
             key="studio_preferences",
@@ -621,6 +954,8 @@ def create_app() -> FastAPI:
                 from_stage="transcription",
                 to_stage=to_stage or "render",
                 profile=profile,
+                start_sec=float(time_range["start_sec"]) if time_range.get("enabled") and not time_range.get("audio_pretrimmed") else None,
+                end_sec=float(time_range["end_sec"]) if time_range.get("enabled") and not time_range.get("audio_pretrimmed") else None,
                 real_generation=real_generation,
                 concurrency=concurrency,
                 resume=True,

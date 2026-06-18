@@ -89,12 +89,168 @@ def merge_into_sentence_blocks(segments: list[dict]) -> list[dict]:
     return sentence_blocks
 
 
+def runtime_time_range(project: dict) -> dict:
+    time_range = project.get("runtime", {}).get("time_range", {})
+    if not isinstance(time_range, dict) or not time_range.get("enabled") or time_range.get("audio_pretrimmed"):
+        return {"enabled": False}
+    start = max(0.0, float(time_range.get("start_sec", 0) or 0))
+    end = float(time_range.get("end_sec", 0) or 0)
+    if end <= start:
+        return {"enabled": False}
+    return {"enabled": True, "start_sec": start, "end_sec": end, "duration_sec": end - start}
+
+
+def apply_time_range_to_blocks(blocks: list[dict], time_range: dict) -> list[dict]:
+    if not time_range.get("enabled"):
+        return blocks
+    start = float(time_range["start_sec"])
+    end = float(time_range["end_sec"])
+    filtered = []
+    for block in blocks:
+        block_start = float(block["start"])
+        block_end = float(block["end"])
+        if block_end <= start or block_start >= end:
+            continue
+        clipped = dict(block)
+        clipped["original_start"] = block_start
+        clipped["original_end"] = block_end
+        clipped["start"] = round(max(block_start, start) - start, 6)
+        clipped["end"] = round(min(block_end, end) - start, 6)
+        clipped["duration"] = round(clipped["end"] - clipped["start"], 6)
+        clipped["source_time_range"] = {"start_sec": start, "end_sec": end}
+        filtered.append(clipped)
+    for index, block in enumerate(filtered, start=1):
+        block["segment_id"] = index
+    return filtered
+
+
+def clamp_blocks_to_audio_duration(blocks: list[dict], project: dict) -> list[dict]:
+    audio_duration = project.get("inputs", {}).get("audio_duration_seconds")
+    if not audio_duration:
+        return blocks
+    duration = float(audio_duration)
+    clamped = []
+    for block in blocks:
+        if float(block["start"]) >= duration:
+            continue
+        item = dict(block)
+        if float(item["end"]) > duration:
+            item["end"] = duration
+            item["duration"] = round(duration - float(item["start"]), 6)
+        clamped.append(item)
+    return clamped
+
+
 def split_duration(total: float, parts: int) -> list[float]:
     base = total / parts
     durations = [round(base, 6) for _ in range(parts)]
     correction = round(total - sum(durations), 6)
     durations[-1] = round(durations[-1] + correction, 6)
     return durations
+
+
+def split_text_into_fragments(text: str) -> list[str]:
+    text = re.sub(r"\s+", " ", repair_mojibake_text(text or "")).strip()
+    if not text:
+        return []
+    primary = re.split(r"(?<=[.!?\u2026])\s+", text)
+    fragments: list[str] = []
+    for chunk in primary:
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        if len(chunk) > 220:
+            fragments.extend(part.strip() for part in re.split(r"(?<=[;:])\s+|,\s+(?=\S)", chunk) if part.strip())
+        else:
+            fragments.append(chunk)
+    return fragments or [text]
+
+
+def split_words_evenly(text: str, parts: int) -> list[str]:
+    words = text.split()
+    if parts <= 1 or len(words) <= 1:
+        return [text]
+    chunks: list[str] = []
+    cursor = 0
+    for index in range(parts):
+        remaining_words = len(words) - cursor
+        remaining_parts = parts - index
+        take = max(1, round(remaining_words / remaining_parts))
+        next_cursor = min(len(words), cursor + take)
+        chunks.append(" ".join(words[cursor:next_cursor]).strip())
+        cursor = next_cursor
+    if cursor < len(words):
+        chunks[-1] = f"{chunks[-1]} {' '.join(words[cursor:])}".strip()
+    return [chunk for chunk in chunks if chunk]
+
+
+def rebalance_text_fragments(fragments: list[str], parts: int) -> list[str]:
+    if parts <= 1:
+        return [" ".join(fragments).strip()] if fragments else []
+    current = [fragment for fragment in fragments if fragment.strip()]
+    if not current:
+        return []
+    while len(current) < parts:
+        longest_index = max(range(len(current)), key=lambda idx: len(current[idx]))
+        longest = current.pop(longest_index)
+        split_parts = split_words_evenly(longest, 2)
+        if len(split_parts) < 2:
+            current.insert(longest_index, longest)
+            break
+        for offset, part in enumerate(split_parts):
+            current.insert(longest_index + offset, part)
+    if len(current) <= parts:
+        return current
+
+    merged: list[str] = []
+    start = 0
+    total = len(current)
+    for bucket in range(parts):
+        end = round((bucket + 1) * total / parts)
+        if end <= start:
+            end = start + 1
+        merged.append(re.sub(r"\s+", " ", " ".join(current[start:end])).strip())
+        start = end
+    return [chunk for chunk in merged if chunk]
+
+
+def split_block_for_scenes(block: dict, max_duration: float) -> list[dict]:
+    semantic_chunks = split_text_into_fragments(block["text"])
+    if not semantic_chunks:
+        semantic_chunks = [block["text"]]
+
+    duration = max(0.001, float(block["end"]) - float(block["start"]))
+    total_chars_seed = sum(max(1, len(chunk)) for chunk in semantic_chunks)
+    text_chunks: list[str] = []
+    for chunk in semantic_chunks:
+        estimated_duration = duration * (max(1, len(chunk)) / total_chars_seed)
+        if estimated_duration > max_duration * 1.35 and len(chunk.split()) > 14:
+            text_chunks.extend(split_words_evenly(chunk, int(math.ceil(estimated_duration / max_duration))))
+        else:
+            text_chunks.append(chunk)
+
+    total_chars = sum(max(1, len(chunk)) for chunk in text_chunks)
+    total_duration = duration
+    cursor = float(block["start"])
+    chunks: list[dict] = []
+    for index, text_chunk in enumerate(text_chunks, start=1):
+        if index == len(text_chunks):
+            end = float(block["end"])
+        else:
+            ratio = max(1, len(text_chunk)) / total_chars
+            end = min(float(block["end"]), cursor + total_duration * ratio)
+        chunks.append(
+            {
+                "part_index": index,
+                "parts_total": len(text_chunks),
+                "start": round(cursor, 6),
+                "end": round(end, 6),
+                "duration": round(end - cursor, 6),
+                "text": text_chunk,
+            }
+        )
+        cursor = end
+    return chunks
 
 
 def default_scene_fields(voice_text: str, shot_index: int) -> dict:
@@ -154,8 +310,8 @@ def build_scene_plan(sentence_blocks: list[dict], max_duration: float) -> tuple[
 
     for block in sentence_blocks:
         duration = round(block["end"] - block["start"], 6)
-        parts = max(1, int(math.ceil(duration / max_duration)))
-        part_durations = split_duration(duration, parts)
+        text_parts = split_block_for_scenes(block, max_duration)
+        parts = len(text_parts)
 
         if parts > 1:
             long_segments.append(
@@ -169,11 +325,12 @@ def build_scene_plan(sentence_blocks: list[dict], max_duration: float) -> tuple[
                 }
             )
 
-        cursor = block["start"]
-        for idx, part_duration in enumerate(part_durations, start=1):
-            part_start = round(cursor, 6)
-            part_end = round(cursor + part_duration, 6)
-            cursor = part_end
+        for text_part in text_parts:
+            idx = text_part["part_index"]
+            part_start = text_part["start"]
+            part_end = text_part["end"]
+            part_duration = text_part["duration"]
+            voice_text = text_part["text"]
             shot_index = len(scenes) + 1
 
             scene = {
@@ -186,7 +343,7 @@ def build_scene_plan(sentence_blocks: list[dict], max_duration: float) -> tuple[
                 "start": part_start,
                 "end": part_end,
                 "duration": round(part_duration, 6),
-                "voice_text": block["text"],
+                "voice_text": voice_text,
                 "reference_ids": [],
                 "reference_mode": "none",
                 "source_kind": "original" if idx == 1 else "extra",
@@ -200,7 +357,7 @@ def build_scene_plan(sentence_blocks: list[dict], max_duration: float) -> tuple[
                 "render_asset_path": None,
                 "notes": ["Prompt pending", "Still image pending"],
             }
-            scene.update(default_scene_fields(block["text"], shot_index))
+            scene.update(default_scene_fields(voice_text, shot_index))
             scenes.append(scene)
 
     return scenes, long_segments
@@ -247,12 +404,18 @@ def main() -> None:
     max_duration = float(project["scene_plan"]["max_still_duration_seconds"])
     segments = parse_srt(srt_path.read_text(encoding="utf-8-sig"))
     sentence_blocks = merge_into_sentence_blocks(segments)
+    time_range = runtime_time_range(project)
+    sentence_blocks = apply_time_range_to_blocks(sentence_blocks, time_range)
+    sentence_blocks = clamp_blocks_to_audio_duration(sentence_blocks, project)
+    if not sentence_blocks:
+        raise RuntimeError(f"No transcript blocks found inside selected time range: {time_range}")
     scenes, long_segments = build_scene_plan(sentence_blocks, max_duration)
 
     sentence_blocks_json_path = scene_plan_dir / "sentence_blocks.json"
     sentence_blocks_txt_path = scene_plan_dir / "sentence_blocks.txt"
     long_segment_report_path = Path(project["scene_plan"]["long_segment_report_path"])
-    scene_prompts_seed_path = Path(project["prompts"]["prompt_export_path"])
+    prompt_export_path = project.get("prompts", {}).get("prompt_export_path")
+    scene_prompts_seed_path = Path(prompt_export_path) if prompt_export_path else scene_plan_dir / "scene_prompt_seed.md"
 
     sentence_blocks_json_path.write_text(json.dumps(sentence_blocks, ensure_ascii=False, indent=2), encoding="utf-8")
     write_sentence_block_text(sentence_blocks_txt_path, sentence_blocks)
@@ -281,6 +444,7 @@ def main() -> None:
         "source_srt_path": str(srt_path),
         "canonical_timing_source": canonical_source,
         "max_still_duration_seconds": max_duration,
+        "time_range": time_range,
         "timing_locked": False,
         "scene_qa_status": "pending",
         "prompt_qa_status": "pending",

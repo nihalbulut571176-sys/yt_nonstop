@@ -275,6 +275,55 @@ def load_project(project_json: Path) -> dict[str, Any]:
     prompts.setdefault("visual_shot_plan_status", "pending")
     prompts.setdefault("authoring_model", "codex-gpt-5")
 
+    project.setdefault("publishing", {})
+    publishing = project["publishing"]
+    publishing.setdefault("title_generation", {})
+    title_generation = publishing["title_generation"]
+    title_generation["drafts_path"] = project_local_path(
+        title_generation.get("drafts_path"),
+        project_root / "publishing" / "title_drafts.json",
+    )
+    title_generation["approved_title_path"] = project_local_path(
+        title_generation.get("approved_title_path"),
+        project_root / "publishing" / "title_approved.txt",
+    )
+    publishing.setdefault("description_generation", {})
+    description_generation = publishing["description_generation"]
+    description_generation["drafts_path"] = project_local_path(
+        description_generation.get("drafts_path"),
+        project_root / "publishing" / "description_drafts.json",
+    )
+    description_generation["approved_description_path"] = project_local_path(
+        description_generation.get("approved_description_path"),
+        project_root / "publishing" / "description_approved.md",
+    )
+    publishing.setdefault("thumbnail_generation", {})
+    thumbnail_generation = publishing["thumbnail_generation"]
+    thumbnail_generation["thumbnail_brief_path"] = project_local_path(
+        thumbnail_generation.get("thumbnail_brief_path"),
+        project_root / "publishing" / "thumbnail_brief.md",
+    )
+    thumbnail_generation["prompt_candidates_path"] = project_local_path(
+        thumbnail_generation.get("prompt_candidates_path"),
+        project_root / "publishing" / "thumbnail_prompt_candidates.json",
+    )
+    thumbnail_generation["approved_prompt_path"] = project_local_path(
+        thumbnail_generation.get("approved_prompt_path"),
+        project_root / "publishing" / "thumbnail_prompt_approved.txt",
+    )
+    thumbnail_generation["run_manifest_path"] = project_local_path(
+        thumbnail_generation.get("run_manifest_path"),
+        project_root / "publishing" / "thumbnails" / "run_manifest.json",
+    )
+    thumbnail_generation["candidates_dir"] = project_local_path(
+        thumbnail_generation.get("candidates_dir"),
+        project_root / "publishing" / "thumbnails" / "candidates",
+    )
+    thumbnail_generation["approved_thumbnail_path"] = project_local_path(
+        thumbnail_generation.get("approved_thumbnail_path"),
+        project_root / "publishing" / "thumbnails" / "approved.png",
+    )
+
     project.setdefault("workflow", {})
     workflow = project["workflow"]
     workflow.setdefault("task_type", "full_build")

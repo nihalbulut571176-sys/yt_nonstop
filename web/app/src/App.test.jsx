@@ -281,8 +281,8 @@ test('project setup validates required fields before calling api', async () => {
     </MemoryRouter>
   );
 
-  expect(await screen.findByText('New Project Intake')).toBeInTheDocument();
-  await user.click(screen.getByRole('button', {name: /create project and start render pipeline/i}));
+  expect(await screen.findByRole('heading', {name: /new project/i})).toBeInTheDocument();
+  await user.click(screen.getByRole('button', {name: /create project and start pipeline/i}));
 
   expect(await screen.findByText(/project name is required/i)).toBeInTheDocument();
   expect(mockApi.createProject).not.toHaveBeenCalled();
@@ -299,7 +299,7 @@ test('project setup submits required input paths', async () => {
     </MemoryRouter>
   );
 
-  expect(await screen.findByText('New Project Intake')).toBeInTheDocument();
+  expect(await screen.findByRole('heading', {name: /new project/i})).toBeInTheDocument();
   await user.click(screen.getByRole('button', {name: /use local paths/i}));
   const setupForm = screen.getByRole('button', {name: /create project and open overview/i}).closest('form');
   const controls = within(setupForm);
@@ -328,15 +328,24 @@ test('project setup uploads audio and script through default render intake flow'
     </MemoryRouter>
   );
 
-  expect(await screen.findByText('New Project Intake')).toBeInTheDocument();
+  expect(await screen.findByRole('heading', {name: /new project/i})).toBeInTheDocument();
   await user.type(screen.getByLabelText(/project name/i), 'Upload Project');
   await user.upload(screen.getByLabelText(/source audio/i), new File(['audio'], 'source.mp3', {type: 'audio/mpeg'}));
   await user.upload(screen.getByLabelText(/raw narration text/i), new File(['# raw'], 'raw_text.md', {type: 'text/markdown'}));
-  await user.click(screen.getByRole('button', {name: /create project and start render pipeline/i}));
+  await user.click(screen.getByRole('button', {name: /custom range/i}));
+  await user.type(screen.getByLabelText(/start min/i), '2');
+  await user.type(screen.getByLabelText(/start sec/i), '0');
+  await user.type(screen.getByLabelText(/end min/i), '3');
+  await user.type(screen.getByLabelText(/end sec/i), '0');
+  await user.click(screen.getByRole('button', {name: /create project and start pipeline/i}));
 
   await waitFor(() => {
     expect(mockApi.intakeAudioTextProject).toHaveBeenCalledWith(expect.any(FormData));
   });
+  const body = mockApi.intakeAudioTextProject.mock.calls[0][0];
+  expect(body.get('start_sec')).toBe('120');
+  expect(body.get('end_sec')).toBe('180');
+  expect(body.get('concurrency')).toBe('4');
   expect(mockApi.createProject).not.toHaveBeenCalled();
   expect(mockApi.intakeProject).not.toHaveBeenCalled();
 });
@@ -350,7 +359,7 @@ test('project setup keeps advanced SRT intake flow available', async () => {
     </MemoryRouter>
   );
 
-  expect(await screen.findByText('New Project Intake')).toBeInTheDocument();
+  expect(await screen.findByRole('heading', {name: /new project/i})).toBeInTheDocument();
   await user.click(screen.getByRole('button', {name: /advanced: i already have srt timing/i}));
   await user.type(screen.getByLabelText(/project name/i), 'SRT Project');
   await user.upload(screen.getByLabelText(/source srt/i), new File(['1\n00:00:00,000 --> 00:00:03,000\nHello'], 'source.srt', {type: 'text/plain'}));

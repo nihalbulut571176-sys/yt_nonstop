@@ -57,6 +57,17 @@ def load_edl(project: dict[str, Any]) -> list[dict[str, Any]]:
     return rows if isinstance(rows, list) else []
 
 
+def runtime_time_range(project: dict[str, Any]) -> dict[str, Any]:
+    time_range = project.get("runtime", {}).get("time_range", {})
+    if not isinstance(time_range, dict) or not time_range.get("enabled") or time_range.get("audio_pretrimmed"):
+        return {"enabled": False}
+    start = max(0.0, float(time_range.get("start_sec", 0) or 0))
+    end = float(time_range.get("end_sec", 0) or 0)
+    if end <= start:
+        return {"enabled": False}
+    return {"enabled": True, "start_sec": start, "end_sec": end, "duration_sec": end - start}
+
+
 def quote_filter_path(path: Path) -> str:
     return str(path)
 
@@ -133,6 +144,8 @@ def build_motion_ffmpeg_command(
     height: int,
     preset: str,
     crf: str,
+    audio_start_sec: float | None = None,
+    audio_duration_sec: float | None = None,
 ) -> list[str]:
     if not edl:
         raise RuntimeError("Cannot build motion render command without edit_decision_list rows")
@@ -144,6 +157,10 @@ def build_motion_ffmpeg_command(
         duration = max(0.001, float(row.get("duration", 0) or 0))
         cmd.extend(["-loop", "1", "-t", f"{duration:.6f}", "-i", quote_filter_path(image_path)])
     audio_index = len(edl)
+    if audio_start_sec is not None:
+        cmd.extend(["-ss", f"{audio_start_sec:.6f}"])
+    if audio_duration_sec is not None:
+        cmd.extend(["-t", f"{audio_duration_sec:.6f}"])
     cmd.extend(["-i", str(audio_path)])
 
     filters = [motion_filter_for_row(row, index, width=width, height=height, fps=fps) for index, row in enumerate(edl)]
@@ -186,8 +203,10 @@ def build_static_ffconcat_command(
     fps: int,
     preset: str,
     crf: str,
+    audio_start_sec: float | None = None,
+    audio_duration_sec: float | None = None,
 ) -> list[str]:
-    return [
+    cmd = [
         "ffmpeg",
         "-y",
         "-f",
@@ -196,6 +215,13 @@ def build_static_ffconcat_command(
         "0",
         "-i",
         str(ffconcat_path),
+    ]
+    if audio_start_sec is not None:
+        cmd.extend(["-ss", f"{audio_start_sec:.6f}"])
+    if audio_duration_sec is not None:
+        cmd.extend(["-t", f"{audio_duration_sec:.6f}"])
+    cmd.extend(
+        [
         "-i",
         str(audio_path),
         "-map",
@@ -218,7 +244,9 @@ def build_static_ffconcat_command(
         "+faststart",
         "-shortest",
         str(final_video_path),
-    ]
+        ]
+    )
+    return cmd
 
 
 def main() -> None:
@@ -255,6 +283,9 @@ def main() -> None:
     final_qa_report_path.parent.mkdir(parents=True, exist_ok=True)
 
     edl = load_edl(project)
+    time_range = runtime_time_range(project)
+    audio_start_sec = float(time_range["start_sec"]) if time_range.get("enabled") else None
+    audio_duration_sec = float(time_range["duration_sec"]) if time_range.get("enabled") else None
     motion_enabled = bool(edl) and not args.disable_motion
     if motion_enabled:
         cmd = build_motion_ffmpeg_command(
@@ -266,6 +297,8 @@ def main() -> None:
             height=args.height,
             preset=args.preset,
             crf=str(args.crf),
+            audio_start_sec=audio_start_sec,
+            audio_duration_sec=audio_duration_sec,
         )
         render_mode = "motion_edl"
     else:
@@ -276,10 +309,12 @@ def main() -> None:
             fps=args.fps,
             preset=args.preset,
             crf=str(args.crf),
+            audio_start_sec=audio_start_sec,
+            audio_duration_sec=audio_duration_sec,
         )
         render_mode = "static_ffconcat"
 
-    audio_duration = 0.0 if args.dry_run else ffprobe_duration(audio_path)
+    audio_duration = float(audio_duration_sec or 0.0) if time_range.get("enabled") else (0.0 if args.dry_run else ffprobe_duration(audio_path))
     if args.dry_run:
         status = "dry_run"
         output_bytes = 0
@@ -312,6 +347,7 @@ def main() -> None:
         "ffmpeg_command_string": " ".join(shlex.quote(part) for part in cmd),
         "ffconcat_path": str(ffconcat_path),
         "audio_path": str(audio_path),
+        "time_range": time_range,
         "final_video_path": str(final_video_path),
         "output_bytes": output_bytes,
         "audio_duration_seconds": round(audio_duration, 6),

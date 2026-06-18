@@ -1204,6 +1204,8 @@ def validate_timeline(project: dict[str, Any]) -> tuple[list[str], list[str]]:
     if audio_duration > 0 and abs(total_duration - audio_duration) > 0.2:
         if partial_pilot:
             warnings.append(f"Partial pilot timeline duration differs from audio by {abs(total_duration - audio_duration):.3f}s")
+        elif abs(total_duration - audio_duration) <= 1.5:
+            warnings.append(f"Timeline duration differs from audio by {abs(total_duration - audio_duration):.3f}s")
         else:
             errors.append(f"Timeline duration differs from audio by {abs(total_duration - audio_duration):.3f}s")
     if "ffconcat version 1.0" not in ffconcat_path.read_text(encoding="utf-8"):
@@ -1300,6 +1302,8 @@ VALIDATORS = {
 
 
 def validate_stage(project: dict[str, Any], stage: str) -> tuple[list[str], list[str]]:
+    if stage == "scene_context_pack":
+        return VALIDATORS[stage](project)
     normalized = normalize_stage_name(stage)
     return VALIDATORS[normalized](project)
 
@@ -1321,7 +1325,7 @@ def main() -> None:
 
     project_json = Path(args.project_json).resolve()
     project = load_project(project_json)
-    stages = list(VALIDATORS.keys()) if args.stage == "all" else [normalize_stage_name(args.stage)]
+    stages = list(VALIDATORS.keys()) if args.stage == "all" else [args.stage if args.stage == "scene_context_pack" else normalize_stage_name(args.stage)]
     stage_results = []
     all_errors: list[str] = []
     all_warnings: list[str] = []

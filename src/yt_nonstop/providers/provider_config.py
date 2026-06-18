@@ -175,6 +175,11 @@ def _first_env_or_dotenv(*keys: str) -> str | None:
     return None
 
 
+def _is_openai_compatible_base_url(value: str | None) -> bool:
+    text = clean_text(value).lower()
+    return bool(text and ("fast-gen.ai" in text or "googler.fast-gen.ai" in text or text.endswith("/chat/completions")))
+
+
 def provider_from_project(
     project: dict[str, Any],
     *,
@@ -204,6 +209,14 @@ def provider_from_project(
         )
 
     if resolved_mode == "google_gemini":
+        stage_base_url = (
+            _stage_env_value("BASE_URL", alias_prefixes=alias_prefixes)
+            or _stage_env_value("URL", alias_prefixes=alias_prefixes)
+            or _first_env_or_dotenv("GOOGLE_GEMINI_BASE_URL", "GEMINI_BASE_URL")
+            or raw.get("base_url")
+            or raw.get("endpoint_url")
+        )
+        general_base_url = _env_value("BASE_URL", alias_prefixes=[]) or _env_value("URL", alias_prefixes=[])
         provider_api_key = (
             _stage_env_value("API_KEY", alias_prefixes=alias_prefixes)
             or _first_env_or_dotenv("GOOGLE_API_KEY", "GEMINI_API_KEY")
@@ -216,15 +229,7 @@ def provider_from_project(
             or _env_value("MODEL", alias_prefixes=[])
             or raw.get("model")
         )
-        provider_base_url = (
-            _stage_env_value("BASE_URL", alias_prefixes=alias_prefixes)
-            or _stage_env_value("URL", alias_prefixes=alias_prefixes)
-            or _first_env_or_dotenv("GOOGLE_GEMINI_BASE_URL", "GEMINI_BASE_URL")
-            or _env_value("BASE_URL", alias_prefixes=[])
-            or _env_value("URL", alias_prefixes=[])
-            or raw.get("base_url")
-            or raw.get("endpoint_url")
-        )
+        provider_base_url = stage_base_url or (None if _is_openai_compatible_base_url(general_base_url) else general_base_url)
     else:
         provider_api_key = _env_value("API_KEY", alias_prefixes=alias_prefixes) or raw.get("api_key")
         provider_model = _env_value("MODEL", alias_prefixes=alias_prefixes) or raw.get("model")

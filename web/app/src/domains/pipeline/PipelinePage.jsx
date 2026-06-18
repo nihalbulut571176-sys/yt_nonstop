@@ -5,6 +5,8 @@ import {useProjectStore, useRunsStore, useStudioShell} from '../../state/StudioP
 import {formatCommand, formatTime} from '../../shared/types/contracts.js';
 import {useState} from 'react';
 import {RunsTable} from '../../shared/ui/RunsTable.jsx';
+import {PipelineStageRail} from '../../shared/ui/PipelineStageRail.jsx';
+import {RunMonitorCard} from '../../shared/ui/RunMonitorCard.jsx';
 
 function QuickActionButton({label, actionKey, pipelineState, busyAction, onRun}) {
   const descriptor = (pipelineState?.available_actions || []).find((item) => item.key === actionKey);
@@ -52,12 +54,18 @@ export function PipelinePage() {
 
   return (
     <section className="stack wide-gap">
+      <PipelineStageRail pipelineState={pipelineState} />
       <div className="grid-two">
         <div className="panel">
           <SectionTitle title="Primary Action Rail" meta={pipelineState.next_stage || 'n/a'} />
           <div className="hero-action">
             <h3>{pipelineState.next_command || 'No next command detected'}</h3>
             <p className="muted">Current stage: {pipelineState.current_stage || 'n/a'}. Lifecycle: {pipelineState.lifecycle_status}.</p>
+          </div>
+          <div className="pipeline-summary">
+            <strong>{pipelineState.progress?.percent ?? 0}%</strong>
+            <span>{pipelineState.progress?.current_stage_label || 'Waiting'}</span>
+            <div className="mini-progress"><span style={{width: `${pipelineState.progress?.percent ?? 0}%`}} /></div>
           </div>
           <div className="meta-row">
             <Badge tone={pipelineState.ready_for_generation ? 'success' : 'neutral'}>generation {String(pipelineState.ready_for_generation)}</Badge>
@@ -83,6 +91,32 @@ export function PipelinePage() {
         </div>
       </div>
 
+      <div className="panel">
+        <SectionTitle title="Stage Statuses" meta={`${pipelineState.stage_groups?.length || 0} steps`} />
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Step</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Message</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(pipelineState.stage_groups || []).map((stage) => (
+                <tr key={stage.key}>
+                  <td className="cell-highlight">{stage.label}</td>
+                  <td>{stage.status}</td>
+                  <td>{stage.progress_total ? `${stage.progress_current || 0} / ${stage.progress_total}` : stage.output_label || '-'}</td>
+                  <td>{stage.error_message || stage.message || '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div className="grid-two">
         <div className="panel">
           <SectionTitle title="Advanced Controls" />
@@ -105,6 +139,7 @@ export function PipelinePage() {
         </div>
         <div className="panel">
           <SectionTitle title="Active Run" meta={pipelineState.active_run?.run_id || 'No active run'} />
+          <RunMonitorCard pipelineState={pipelineState} title="Live worker monitor" />
           {activeRunDetails ? (
             <div className="stack compact">
               <dl className="details">

@@ -132,6 +132,8 @@ def bootstrap_project(
 
     project.setdefault("transcription", {})
     project["transcription"]["status"] = "completed" if has_srt else "pending"
+    if not has_srt:
+        project["transcription"]["model"] = "base"
     project["transcription"]["audio_path"] = str(audio_path) if audio_path else None
     project["transcription"]["raw_srt_path"] = str(raw_whisper_path)
     project["transcription"]["srt_path"] = str(raw_whisper_path)

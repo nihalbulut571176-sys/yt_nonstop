@@ -12,6 +12,7 @@ UserRole = Literal["Operator", "Reviewer", "Admin"]
 ProjectLifecycleStatus = Literal["draft", "ready_for_validation", "running", "awaiting_review", "ready_for_render", "rendering", "completed", "blocked", "failed"]
 ReviewDecisionStatus = Literal["pending", "approved", "warning", "manual_review", "regenerate", "rejected", "finalized"]
 ErrorCode = Literal["auth_error", "validation_error", "project_state_error", "run_conflict_error", "provider_error", "filesystem_error", "system_error"]
+PipelineStageStatus = Literal["pending", "running", "done", "warning", "failed", "blocked"]
 
 
 class ApiErrorEnvelope(BaseModel):
@@ -114,6 +115,45 @@ class PipelineAction(BaseModel):
     recommended: bool = False
     enabled: bool = True
     reason: str | None = None
+
+
+class PipelineStageView(BaseModel):
+    key: str
+    label: str
+    status: PipelineStageStatus
+    progress_current: int | None = None
+    progress_total: int | None = None
+    duration_sec: float | None = None
+    started_at: str | None = None
+    finished_at: str | None = None
+    message: str | None = None
+    error_message: str | None = None
+    output_label: str | None = None
+
+
+class PipelineProgress(BaseModel):
+    percent: int = Field(default=0, ge=0, le=100)
+    current_stage_key: str | None = None
+    current_stage_label: str | None = None
+    elapsed_sec: float | None = None
+    eta_sec: float | None = None
+    active_run_id: str | None = None
+    is_running: bool = False
+    is_failed: bool = False
+
+
+class ActivityEvent(BaseModel):
+    timestamp: str | None = None
+    message: str
+    tone: Literal["neutral", "info", "success", "warning", "danger"] = "neutral"
+
+
+class CurrentActivity(BaseModel):
+    title: str
+    detail: str = ""
+    status: PipelineStageStatus = "pending"
+    run_id: str | None = None
+    log_tail: list[str] = Field(default_factory=list)
 
 
 class PipelineActionRequest(BaseModel):
@@ -232,6 +272,10 @@ class PipelineState(BaseModel):
     blocked_by_active_run: bool = False
     recent_runs: list[RunSummary] = Field(default_factory=list)
     available_actions: list[PipelineAction] = Field(default_factory=list)
+    stage_groups: list[PipelineStageView] = Field(default_factory=list)
+    progress: PipelineProgress = Field(default_factory=PipelineProgress)
+    current_activity: CurrentActivity | None = None
+    recent_events: list[ActivityEvent] = Field(default_factory=list)
 
 
 class UserRecord(BaseModel):
@@ -304,6 +348,10 @@ class ProjectOverview(BaseModel):
     recent_runs: list[RunSummary] = Field(default_factory=list)
     review_decision_count: int = 0
     active_run: RunSummary | None = None
+    stage_groups: list[PipelineStageView] = Field(default_factory=list)
+    progress: PipelineProgress = Field(default_factory=PipelineProgress)
+    current_activity: CurrentActivity | None = None
+    recent_events: list[ActivityEvent] = Field(default_factory=list)
 
 
 class ReviewDecisionRequest(BaseModel):

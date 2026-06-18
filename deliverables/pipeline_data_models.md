@@ -177,7 +177,7 @@ Suggested fields:
 {
   "status": "completed",
   "engine": "faster-whisper",
-  "model": "large-v3",
+  "model": "base",
   "device": "auto",
   "audio_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\audio\\voiceover.mp3",
   "srt_path": "C:\\Users\\MIKE\\Documents\\Codex\\YT\\projects\\telegram_darknet_001\\transcript\\voiceover.srt",

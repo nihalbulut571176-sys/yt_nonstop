@@ -1,12 +1,14 @@
 import argparse
+import difflib
 import json
 import re
 from pathlib import Path
 
 from project_pipeline_utils import load_json, load_project, save_json, save_project
+from yt_nonstop.utils.text_repair import repair_mojibake_text
 
 
-SENTENCE_END_RE = re.compile(r"[.!?…]$|[.!?…][\"'»”)]$")
+SENTENCE_END_RE = re.compile(r"[.!?\u2026]$|[.!?\u2026][\"'\u00bb\u201d)]$")
 
 
 def parse_srt_timestamp(tc: str) -> float:
@@ -31,14 +33,14 @@ def parse_srt(text: str) -> list[dict]:
         if len(lines) < 3:
             continue
         start_tc, end_tc = lines[1].split(" --> ")
-        content = " ".join(line.strip() for line in lines[2:])
+        content = normalize_text(" ".join(line.strip() for line in lines[2:]))
         segments.append(
             {
                 "start_tc": start_tc,
                 "end_tc": end_tc,
                 "start": parse_srt_timestamp(start_tc),
                 "end": parse_srt_timestamp(end_tc),
-                "text": re.sub(r"\s+", " ", content).strip(),
+                "text": content,
             }
         )
     return segments
@@ -57,7 +59,7 @@ def merge_into_sentence_blocks(segments: list[dict]) -> list[dict]:
                     "end": current[-1]["end"],
                     "start_tc": current[0]["start_tc"],
                     "end_tc": current[-1]["end_tc"],
-                    "text": re.sub(r"\s+", " ", " ".join(item["text"] for item in current)).strip(),
+                    "text": normalize_text(" ".join(item["text"] for item in current)),
                 }
             )
             current = []
@@ -69,14 +71,37 @@ def merge_into_sentence_blocks(segments: list[dict]) -> list[dict]:
                 "end": current[-1]["end"],
                 "start_tc": current[0]["start_tc"],
                 "end_tc": current[-1]["end_tc"],
-                "text": re.sub(r"\s+", " ", " ".join(item["text"] for item in current)).strip(),
+                "text": normalize_text(" ".join(item["text"] for item in current)),
             }
         )
     return sentence_blocks
 
 
+def clamp_blocks_to_audio_duration(blocks: list[dict], project: dict) -> list[dict]:
+    audio_duration = project.get("inputs", {}).get("audio_duration_seconds")
+    if not audio_duration:
+        return blocks
+    duration = float(audio_duration)
+    clamped = []
+    for block in blocks:
+        if float(block["start"]) >= duration:
+            continue
+        item = dict(block)
+        if float(item["end"]) > duration:
+            item["end"] = duration
+            item["end_tc"] = format_srt_timestamp(duration)
+        clamped.append(item)
+    return clamped
+
+
 def normalize_text(text: str) -> str:
-    return re.sub(r"\s+", " ", text.strip())
+    return re.sub(r"\s+", " ", repair_mojibake_text(str(text or "")).strip())
+
+
+def normalize_for_match(text: str) -> str:
+    text = normalize_text(text).lower().replace("\u0451", "\u0435")
+    text = re.sub(r"[^0-9a-z\u0430-\u044f]+", " ", text, flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def resolve_source_text(project: dict) -> tuple[Path | None, str]:
@@ -100,9 +125,111 @@ def resolve_source_text(project: dict) -> tuple[Path | None, str]:
 
 def split_source_text_into_sentences(text: str) -> list[str]:
     text = text.replace("\r", "\n")
-    chunks = re.split(r"(?<=[.!?…])\s+|\n+", text)
+    chunks = re.split(r"(?<=[.!?\u2026])\s+|\n+", text)
     sentences = [normalize_text(chunk) for chunk in chunks if normalize_text(chunk)]
     return sentences
+
+
+def score_text_window(whisper_norm: str, candidate_norm: str) -> float:
+    if not whisper_norm or not candidate_norm:
+        return 0.0
+    ratio = difflib.SequenceMatcher(None, whisper_norm, candidate_norm).ratio()
+    head = whisper_norm[: min(220, len(whisper_norm))]
+    head_ratio = difflib.SequenceMatcher(None, head, candidate_norm[: max(220, len(head) * 3)]).ratio()
+    length_balance = min(len(whisper_norm), len(candidate_norm)) / max(len(whisper_norm), len(candidate_norm))
+    return ratio * 0.65 + head_ratio * 0.25 + length_balance * 0.10
+
+
+def select_source_window(
+    source_text: str,
+    whisper_blocks: list[dict],
+    project: dict,
+) -> tuple[str, dict]:
+    """Find the source-script span that matches pre-trimmed audio."""
+    time_range = project.get("runtime", {}).get("time_range", {})
+    source_sentences = split_source_text_into_sentences(source_text)
+    whisper_text = normalize_text(" ".join(block["text"] for block in whisper_blocks))
+    whisper_norm = normalize_for_match(whisper_text)
+
+    report = {
+        "enabled": bool(time_range.get("enabled") and time_range.get("audio_pretrimmed")),
+        "reason": "not_pretrimmed_range",
+        "score": None,
+        "source_sentence_start": None,
+        "source_sentence_end": None,
+        "source_sentence_count": len(source_sentences),
+        "whisper_chars": len(whisper_text),
+    }
+    if not report["enabled"] or not source_sentences or not whisper_norm:
+        return source_text, report
+
+    normalized_sentences = [normalize_for_match(sentence) for sentence in source_sentences]
+    source_norm_joined = normalize_text(" ".join(normalized_sentences))
+    whisper_tokens = whisper_norm.split()
+    anchor_index = -1
+    anchor_phrase = ""
+    for phrase_len in range(min(14, len(whisper_tokens)), 4, -1):
+        phrase = " ".join(whisper_tokens[:phrase_len])
+        anchor_index = source_norm_joined.find(phrase)
+        if anchor_index >= 0:
+            anchor_phrase = phrase
+            break
+
+    candidate_starts: list[int] = []
+    if anchor_index >= 0:
+        cursor = 0
+        for index, sentence in enumerate(normalized_sentences):
+            sentence_len = len(sentence) + 1
+            if cursor <= anchor_index < cursor + sentence_len:
+                candidate_starts.extend(range(max(0, index - 2), min(len(source_sentences), index + 3)))
+                break
+            cursor += sentence_len
+    else:
+        report["reason"] = "anchor_phrase_not_found"
+        candidate_starts = list(range(len(source_sentences)))
+
+    target_len = max(1, len(whisper_norm))
+    min_len = max(80, int(target_len * 0.45))
+    max_len = max(400, int(target_len * 1.90))
+    best: tuple[float, int, int, str] | None = None
+    for start in candidate_starts:
+        chunks: list[str] = []
+        normalized_chunks: list[str] = []
+        for end in range(start, len(source_sentences)):
+            chunks.append(source_sentences[end])
+            normalized_chunks.append(normalized_sentences[end])
+            candidate_norm = normalize_text(" ".join(normalized_chunks))
+            if len(candidate_norm) < min_len:
+                continue
+            if len(candidate_norm) > max_len:
+                break
+            score = score_text_window(whisper_norm, candidate_norm)
+            if best is None or score > best[0]:
+                best = (score, start, end + 1, normalize_text(" ".join(chunks)))
+
+    if best is None:
+        report["reason"] = "no_candidate_window"
+        return source_text, report
+
+    score, start, end, selected_text = best
+    report.update(
+        {
+            "reason": "selected_matching_source_window",
+            "score": round(score, 6),
+            "source_sentence_start": start,
+            "source_sentence_end": end,
+            "selected_sentence_count": end - start,
+            "selected_chars": len(selected_text),
+            "accepted": score >= 0.28,
+            "anchor_phrase": anchor_phrase,
+            "preview": selected_text[:500],
+        }
+    )
+    if score < 0.28:
+        report["reason"] = "low_confidence_window_kept_full_source"
+        return source_text, report
+
+    return selected_text, report
 
 
 def split_sentence_by_words(text: str, parts: int) -> list[str]:
@@ -226,7 +353,7 @@ def main() -> None:
     cleaned_md_path = Path(project["transcript_cleanup"]["cleaned_timed_transcript_md_path"])
 
     whisper_segments = parse_srt(srt_path.read_text(encoding="utf-8-sig"))
-    whisper_blocks = merge_into_sentence_blocks(whisper_segments)
+    whisper_blocks = clamp_blocks_to_audio_duration(merge_into_sentence_blocks(whisper_segments), project)
     meta_path = Path(project["transcription"]["meta_json_path"])
     meta = load_json(meta_path) if meta_path.exists() else {}
 
@@ -255,7 +382,14 @@ def main() -> None:
         print(cleanup_report_path)
         return
 
-    source_sentences = split_source_text_into_sentences(source_text)
+    selected_source_text, window_report = select_source_window(source_text, whisper_blocks, project)
+    used_source_path = source_path
+    window_path = cleaned_srt_path.parent / "source_text_window.md"
+    if window_report.get("accepted"):
+        window_path.write_text(selected_source_text + "\n", encoding="utf-8")
+        used_source_path = window_path
+
+    source_sentences = split_source_text_into_sentences(selected_source_text)
     rebalanced_sentences, warnings = rebalance_sentences(source_sentences, len(whisper_blocks))
     cleaned_segments = build_cleaned_segments(whisper_blocks, rebalanced_sentences)
 
@@ -263,6 +397,9 @@ def main() -> None:
     write_cleaned_srt(cleaned_srt_path, cleaned_segments)
     save_json(cleaned_segments_json_path, cleaned_segments)
     write_cleaned_transcript_md(cleaned_md_path, cleaned_segments)
+
+    if window_report.get("enabled") and not window_report.get("accepted"):
+        warnings.append("Unable to confidently select source text window for trimmed audio; full source text was used.")
 
     status = "passed" if not warnings and len(source_sentences) == len(whisper_blocks) else "warning"
     report = {
@@ -272,6 +409,7 @@ def main() -> None:
         "source_sentence_count": len(source_sentences),
         "whisper_segment_count": len(whisper_blocks),
         "aligned_segment_count": len(cleaned_segments),
+        "source_window": window_report,
         "status": status,
         "warnings": warnings,
     }
@@ -285,6 +423,8 @@ def main() -> None:
                 f"Source sentence count: {len(source_sentences)}",
                 f"Whisper segment count: {len(whisper_blocks)}",
                 f"Aligned segment count: {len(cleaned_segments)}",
+                f"Source window: {window_report.get('reason')}",
+                f"Source window score: {window_report.get('score')}",
                 "",
                 "Warnings:",
                 *(warnings or ["- none"]),
@@ -295,7 +435,8 @@ def main() -> None:
     )
 
     project["transcript_cleanup"]["status"] = "completed" if status == "passed" else "warning"
-    project["transcript_cleanup"]["used_source_path"] = str(source_path) if source_path else None
+    project["transcript_cleanup"]["used_source_path"] = str(used_source_path) if used_source_path else None
+    project["transcript_cleanup"]["source_window_report"] = window_report
     project["scene_plan"]["source_srt_path"] = str(cleaned_srt_path)
     project["current_stage"] = "scene_plan"
     save_project(project_json, project)

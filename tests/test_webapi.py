@@ -167,8 +167,11 @@ def test_job_store_rejects_conflicting_write_jobs(tmp_path):
     )
     assert accepted.accepted is True
     assert rejected.accepted is False
-    time.sleep(0.8)
+    deadline = time.time() + 4
     finished = store.get_job(accepted.job.run_id)
+    while finished.status in {"queued", "running"} and time.time() < deadline:
+        time.sleep(0.1)
+        finished = store.get_job(accepted.job.run_id)
     assert finished.status == "completed"
 
 
@@ -253,6 +256,8 @@ def test_webapi_pipeline_state_marks_limited_support_actions(tmp_path, monkeypat
     payload = pipeline_state.json()
     assert payload["support"] == "limited"
     assert payload["lifecycle_status"] == "blocked"
+    assert [item["key"] for item in payload["stage_groups"]] == ["upload", "transcribe", "clean_srt", "scene_plan", "prompts", "images", "qc", "render", "done"]
+    assert payload["progress"]["current_stage_key"] == "upload"
     assert payload["available_actions"]
     assert all(item["enabled"] is False for item in payload["available_actions"])
     assert all("project.json" in item["reason"] for item in payload["available_actions"])
@@ -282,6 +287,8 @@ def test_webapi_pipeline_state_marks_active_run_lock(tmp_path, monkeypatch):
     payload = pipeline_state.json()
     assert payload["blocked_by_active_run"] is True
     assert payload["active_run"]["run_id"] == active_job.job.run_id
+    assert payload["progress"]["is_running"] is True
+    assert any(item["status"] == "running" for item in payload["stage_groups"])
     assert all(item["enabled"] is False for item in payload["available_actions"])
     assert any(active_job.job.run_id in item["reason"] for item in payload["available_actions"])
 
@@ -367,6 +374,9 @@ def test_webapi_pipeline_runs_review_and_settings(tmp_path, monkeypatch):
     state_payload = pipeline_state.json()
     assert state_payload["project_id"] == "demo-project"
     assert "available_actions" in state_payload
+    assert state_payload["stage_groups"]
+    assert "progress" in state_payload
+    assert state_payload["progress"]["percent"] >= 0
 
     action = client.post(
         f"/api/projects/{project_id}/pipeline/actions",
@@ -434,6 +444,27 @@ def test_webapi_pipeline_runs_review_and_settings(tmp_path, monkeypatch):
         params={"path": str(source_project / "reports" / "notes.md"), "token": headers["Authorization"].split(" ", 1)[1]},
     )
     assert preview_media.status_code == 200
+
+
+def test_webapi_settings_accepts_fast_gen_alias(tmp_path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    _make_repo_native_project(workspace)
+    monkeypatch.setenv("YT_NONSTOP_WORKSPACE_ROOT", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_ALLOWED_PROJECT_ROOTS", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_WEB_RUNTIME_DIR", str(tmp_path / "runtime"))
+    monkeypatch.delenv("FASTGEN_API_KEY", raising=False)
+    monkeypatch.setenv("FAST_GEN_API_KEY", "super-secret-fast-gen-key")
+
+    app = create_app()
+    client = TestClient(app)
+    headers = _login(client)
+
+    settings = client.get("/api/settings", headers=headers)
+    assert settings.status_code == 200
+    settings_text = json.dumps(settings.json())
+    assert "super-secret-fast-gen-key" not in settings_text
+    provider_settings = next(item for item in settings.json() if item["category"] == "provider_metadata" and item["provider"] == "fastgen")
+    assert provider_settings["value"]["api_key_configured"] is True
 
 
 def test_webapi_can_bootstrap_project(tmp_path, monkeypatch):
@@ -549,13 +580,29 @@ def test_webapi_audio_text_intake_creates_project_and_starts_render_run(tmp_path
 
     monkeypatch.setattr(JobStore, "start_job", fake_start_job)
 
+    def fake_trim(source_audio, _intake_dir, time_range):
+        time_range["audio_pretrimmed"] = True
+        time_range["original_audio_path"] = str(source_audio)
+        time_range["trimmed_audio_path"] = str(source_audio)
+        return source_audio
+
+    monkeypatch.setattr("yt_nonstop.webapi.app._trim_audio_for_time_range", fake_trim)
+
     app = create_app()
     client = TestClient(app)
     headers = _login(client)
 
     response = client.post(
         "/api/projects/intake/audio-text",
-        data={"project_name": "Audio Text Project", "profile": "no_vlm_production", "to_stage": "render", "real_generation": "true", "concurrency": "10"},
+        data={
+            "project_name": "Audio Text Project",
+            "profile": "no_vlm_production",
+            "to_stage": "render",
+            "real_generation": "true",
+            "concurrency": "10",
+            "start_sec": "120",
+            "end_sec": "180",
+        },
         files={
             "source_audio": ("source_audio.mp3", b"fake audio", "audio/mpeg"),
             "raw_text": ("raw_text.md", b"# raw script\nhello\n", "text/markdown"),
@@ -579,6 +626,7 @@ def test_webapi_audio_text_intake_creates_project_and_starts_render_run(tmp_path
     assert (project_root / "input" / "project_setup_notes.md").read_text(encoding="utf-8").startswith("# style")
     assert project_config["current_stage"] == "transcription"
     assert project_config["transcription"]["status"] == "pending"
+    assert project_config["transcription"]["model"] == "base"
     assert Path(project_config["transcription"]["audio_path"]).parts[-2:] == ("input", "source_audio.mp3")
     assert Path(project_config["transcription"]["raw_srt_path"]).parts[-2:] == ("transcript", "source_audio.srt")
     assert Path(project_config["transcription"]["segments_json_path"]).parts[-2:] == ("transcript", "source_audio.segments.json")
@@ -586,14 +634,48 @@ def test_webapi_audio_text_intake_creates_project_and_starts_render_run(tmp_path
     assert project_config["workflow"]["render_dry_run"] is False
     assert project_config["workflow"]["image_generation_enabled"] is True
     assert project_config["render"]["render_mode"] == "full"
+    assert project_config["runtime"]["time_range"]["enabled"] is True
+    assert project_config["runtime"]["time_range"]["start_sec"] == 120.0
+    assert project_config["runtime"]["time_range"]["end_sec"] == 180.0
+    assert project_config["runtime"]["time_range"]["duration_sec"] == 60.0
+    assert project_config["runtime"]["time_range"]["audio_pretrimmed"] is True
+    assert project_config["runtime"]["web_intake_flow"]["mode"] == "audio_text"
+    assert "matching source text window" in project_config["runtime"]["web_intake_flow"]["semantic_source"]
+    assert any("Whisper SRT" in note for note in payload["notes"])
 
     command = captured["command"]
     assert "run" in command
     assert "--from" in command and command[command.index("--from") + 1] == "transcription"
     assert "--to" in command and command[command.index("--to") + 1] == "render"
+    assert "--start-sec" not in command
+    assert "--end-sec" not in command
     assert "--real-generation" in command
     assert "--resume" in command
     assert "--concurrency" in command and command[command.index("--concurrency") + 1] == "10"
+
+
+def test_webapi_audio_text_intake_rejects_invalid_time_range(tmp_path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("YT_NONSTOP_WORKSPACE_ROOT", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_ALLOWED_PROJECT_ROOTS", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_WEB_RUNTIME_DIR", str(tmp_path / "runtime"))
+
+    app = create_app()
+    client = TestClient(app)
+    headers = _login(client)
+
+    response = client.post(
+        "/api/projects/intake/audio-text",
+        data={"project_name": "Bad Range", "profile": "no_vlm_production", "start_sec": "180", "end_sec": "120"},
+        files={
+            "source_audio": ("source_audio.mp3", b"fake audio", "audio/mpeg"),
+            "raw_text": ("raw_text.md", b"# raw\n", "text/markdown"),
+        },
+        headers=headers,
+    )
+    assert response.status_code == 400
+    assert response.json()["code"] == "validation_error"
 
 
 def test_webapi_audio_text_intake_requires_audio_and_text(tmp_path, monkeypatch):
@@ -636,6 +718,7 @@ def test_prompt_authoring_stage_env_overrides_project_disabled_llm(monkeypatch, 
     monkeypatch.delenv("YT_NONSTOP_PROMPT_AUTHORING_MODEL", raising=False)
     monkeypatch.setenv("YT_NONSTOP_PROMPT_AUTHORING_MODE", "gemini")
     monkeypatch.setenv("GOOGLE_API_KEY", "google-key")
+    monkeypatch.setenv("GOOGLE_GEMINI_MODEL", "gemini-stage")
     monkeypatch.setenv("GEMINI_MODEL", "gemini-stage")
     project = {
         "meta": {"project_root": str(tmp_path)},

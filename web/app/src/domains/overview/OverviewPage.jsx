@@ -3,9 +3,12 @@ import {MetricCard} from '../../shared/ui/MetricCard.jsx';
 import {SectionTitle} from '../../shared/ui/SectionTitle.jsx';
 import {useProjectStore} from '../../state/StudioProvider.jsx';
 import {formatCommand, formatTime} from '../../shared/types/contracts.js';
+import {PipelineStageRail} from '../../shared/ui/PipelineStageRail.jsx';
+import {RunMonitorCard} from '../../shared/ui/RunMonitorCard.jsx';
+import {ActivityFeed} from '../../shared/ui/ActivityFeed.jsx';
 
 export function OverviewPage() {
-  const {overview} = useProjectStore();
+  const {overview, pipelineState} = useProjectStore();
 
   if (!overview) {
     return <section className="panel"><p className="muted">Select a project to see its overview.</p></section>;
@@ -13,11 +16,13 @@ export function OverviewPage() {
 
   return (
     <section className="stack wide-gap">
+      <PipelineStageRail pipelineState={pipelineState} compact />
+      <RunMonitorCard pipelineState={pipelineState || overview} title="Current activity" />
       <div className="metric-grid">
         <MetricCard label="Lifecycle" value={overview.lifecycle_status} tone="accent" />
-        <MetricCard label="Current stage" value={overview.current_stage || 'n/a'} />
+        <MetricCard label="Progress" value={`${overview.progress?.percent ?? pipelineState?.progress?.percent ?? 0}%`} tone="success" />
+        <MetricCard label="Current step" value={overview.progress?.current_stage_label || overview.current_stage || 'n/a'} />
         <MetricCard label="Next stage" value={overview.next_stage || 'n/a'} tone="success" />
-        <MetricCard label="Review decisions" value={overview.review_decision_count} tone="warn" />
       </div>
 
       <div className="grid-two">
@@ -39,6 +44,11 @@ export function OverviewPage() {
             </dl>
           ) : <p className="muted">No persisted run history yet.</p>}
         </div>
+      </div>
+
+      <div className="panel">
+        <SectionTitle title="Recent Events" meta={`${overview.recent_events?.length || 0} events`} />
+        <ActivityFeed events={overview.recent_events || pipelineState?.recent_events || []} />
       </div>
 
       <div className="grid-two">
