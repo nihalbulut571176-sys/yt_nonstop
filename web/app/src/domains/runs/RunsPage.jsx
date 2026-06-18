@@ -1,12 +1,19 @@
 import {SectionTitle} from '../../shared/ui/SectionTitle.jsx';
 import {RunsTable} from '../../shared/ui/RunsTable.jsx';
+import {PageHeader} from '../../shared/ui/PageHeader.jsx';
 import {useRunsStore} from '../../state/StudioProvider.jsx';
 
 export function RunsPage() {
   const {projectRuns, globalRuns, activeRunDetails} = useRunsStore();
 
   return (
-    <section className="stack">
+    <section className="stack wide-gap">
+      <PageHeader
+        eyebrow="Runs"
+        title="Run history"
+        description="Audit global and project-scoped CLI-backed jobs, events, commands, and outcomes."
+        meta={`${globalRuns.length + projectRuns.length} rows`}
+      />
       <div className="panel">
         <SectionTitle title="Active Run Event Stream" meta={activeRunDetails?.run_id || 'idle'} />
         {activeRunDetails ? (

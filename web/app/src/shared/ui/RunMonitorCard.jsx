@@ -1,5 +1,7 @@
 import {Badge} from './Badge.jsx';
 import {ActivityFeed} from './ActivityFeed.jsx';
+import {LogPanel} from './LogPanel.jsx';
+import {ProgressBar} from './ProgressBar.jsx';
 
 function toneForStatus(status) {
   if (status === 'running' || status === 'done') return 'success';
@@ -22,9 +24,7 @@ export function RunMonitorCard({pipelineState, title = 'Live progress', showLogs
         </div>
         <Badge tone={toneForStatus(status)}>{status}</Badge>
       </div>
-      <div className="monitor-progress">
-        <span style={{width: `${percent}%`}} />
-      </div>
+      <ProgressBar value={percent} />
       <div className="monitor-meta">
         <span>{percent}% complete</span>
         <span>{progress.active_run_id ? `run ${progress.active_run_id}` : 'no active run'}</span>
@@ -32,7 +32,7 @@ export function RunMonitorCard({pipelineState, title = 'Live progress', showLogs
       </div>
       <ActivityFeed events={pipelineState?.recent_events || []} empty="No recent events yet. When the worker writes logs, they appear here." />
       {showLogs && activity?.log_tail?.length ? (
-        <pre className="mono-box log-preview">{activity.log_tail.join('\n')}</pre>
+        <LogPanel lines={activity.log_tail} />
       ) : null}
     </section>
   );

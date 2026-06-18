@@ -88,7 +88,7 @@ export function PipelineStageRail({pipelineState, compact = false}) {
       <div className="stage-track">
         {stages.map((stage, index) => (
           <div className={`stage-node stage-${stage.status || 'pending'}`} key={stage.key} title={`${stage.label}: ${stage.message || stage.error_message || statusLabel(stage.status)}`}>
-            <span className="stage-number">{stage.status === 'done' ? 'OK' : index + 1}</span>
+            <span className="stage-number">{stage.status === 'done' ? 'OK' : stage.status === 'failed' ? '!' : stage.status === 'blocked' ? 'X' : index + 1}</span>
             <span className="stage-label">{stage.label}</span>
             <span className="stage-state">{statusLabel(stage.status)}</span>
             {stage.output_label ? <span className="stage-output">{stage.output_label}</span> : null}

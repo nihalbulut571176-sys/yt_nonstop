@@ -6,6 +6,7 @@ import {formatCommand, formatTime} from '../../shared/types/contracts.js';
 import {PipelineStageRail} from '../../shared/ui/PipelineStageRail.jsx';
 import {RunMonitorCard} from '../../shared/ui/RunMonitorCard.jsx';
 import {ActivityFeed} from '../../shared/ui/ActivityFeed.jsx';
+import {PageHeader} from '../../shared/ui/PageHeader.jsx';
 
 export function OverviewPage() {
   const {overview, pipelineState} = useProjectStore();
@@ -16,6 +17,12 @@ export function OverviewPage() {
 
   return (
     <section className="stack wide-gap">
+      <PageHeader
+        eyebrow="Control room"
+        title={overview.project_name}
+        description="The fastest read on what is happening, what is blocked, and what output is ready."
+        meta={overview.lifecycle_status}
+      />
       <PipelineStageRail pipelineState={pipelineState} compact />
       <RunMonitorCard pipelineState={pipelineState || overview} title="Current activity" />
       <div className="metric-grid">
@@ -27,7 +34,7 @@ export function OverviewPage() {
 
       <div className="grid-two">
         <div className="panel">
-          <SectionTitle title="Recommended Next Command" />
+          <SectionTitle title="Recommended next action" />
           <div className="hero-action">
             <h3>{overview.next_command || 'No next command available'}</h3>
             <p className="muted">This command reflects the product-facing pipeline recommendation for the selected project.</p>

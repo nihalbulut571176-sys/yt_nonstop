@@ -1,6 +1,7 @@
 import {useEffect, useMemo, useState} from 'react';
 import {Badge} from '../../shared/ui/Badge.jsx';
 import {SectionTitle} from '../../shared/ui/SectionTitle.jsx';
+import {PageHeader} from '../../shared/ui/PageHeader.jsx';
 import {reviewDecisionOptions} from '../../shared/types/contracts.js';
 import {useReviewStore} from '../../state/StudioProvider.jsx';
 
@@ -60,7 +61,13 @@ export function ReviewPage() {
   }
 
   return (
-    <section className="stack">
+    <section className="stack wide-gap">
+      <PageHeader
+        eyebrow="Review"
+        title="Scene and shot review"
+        description="Inspect review artifacts, filter operator decisions, and persist lightweight decisions without editing source files."
+        meta={`${items.length} items`}
+      />
       <div className="panel">
         <SectionTitle title="Review Queue" meta={`${visibleItems.length}/${items.length} items`} />
         <div className="meta-row">
@@ -80,7 +87,7 @@ export function ReviewPage() {
           </label>
         </div>
       </div>
-      <div className="grid-two">
+      <div className="review-workbench">
         <div className="panel">
           <div className="table-wrap">
             <table>

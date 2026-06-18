@@ -5,6 +5,8 @@ import {ListBlock} from '../../shared/ui/ListBlock.jsx';
 import {PipelineStageRail} from '../../shared/ui/PipelineStageRail.jsx';
 import {RunMonitorCard} from '../../shared/ui/RunMonitorCard.jsx';
 import {SectionTitle} from '../../shared/ui/SectionTitle.jsx';
+import {FileInputCard} from '../../shared/ui/FileInputCard.jsx';
+import {PageHeader} from '../../shared/ui/PageHeader.jsx';
 import {useProjectStore, useSettingsStore, useStudioShell} from '../../state/StudioProvider.jsx';
 
 const intakeSteps = [
@@ -165,10 +167,16 @@ export function SetupPage() {
   };
 
   return (
-    <section className="new-project-layout">
-      <div className="panel">
-        <SectionTitle title="New Project" meta={mode === 'audio_text' ? 'Audio + script' : mode === 'srt_upload' ? 'Advanced SRT timing' : 'Local paths'} />
-        <p className="muted">Create a project and start the local production pipeline from one place.</p>
+    <section className="stack wide-gap">
+      <PageHeader
+        eyebrow="Launch pipeline"
+        title="Create a new video project"
+        description="Upload sources, choose an optional range, and keep the live monitor visible from the first second."
+        meta={mode === 'audio_text' ? 'Audio + script' : mode === 'srt_upload' ? 'Advanced SRT timing' : 'Local paths'}
+      />
+      <div className="new-project-layout">
+      <div className="panel launch-form-panel">
+        <SectionTitle title="1. Source package" meta={mode === 'audio_text' ? 'default' : 'advanced'} />
         <div className="mode-switch">
           <button type="button" className={mode === 'audio_text' ? 'active' : ''} onClick={() => setMode('audio_text')}>Upload audio + script</button>
           <button type="button" className={mode === 'srt_upload' ? 'active' : ''} onClick={() => setMode('srt_upload')}>Advanced: I already have SRT timing</button>
@@ -180,18 +188,18 @@ export function SetupPage() {
 
           {mode === 'audio_text' ? (
             <div className="stack compact">
-              <FileInput label="Source audio" file={files.source_audio} accept="audio/*,.mp3,.wav,.m4a" onChange={(file) => setFile('source_audio', file)} />
-              <FileInput label="Raw narration text" file={files.raw_text} accept=".txt,.md,text/plain" onChange={(file) => setFile('raw_text', file)} />
-              <FileInput label="Creative brief" file={files.setup_notes} accept=".txt,.md,text/plain" optional onChange={(file) => setFile('setup_notes', file)} />
+              <FileInputCard label="Source audio" file={files.source_audio} accept="audio/*,.mp3,.wav,.m4a" helper="MP3, WAV, M4A" onChange={(file) => setFile('source_audio', file)} />
+              <FileInputCard label="Raw narration text" file={files.raw_text} accept=".txt,.md,text/plain" helper="TXT or Markdown script" onChange={(file) => setFile('raw_text', file)} />
+              <FileInputCard label="Creative brief" file={files.setup_notes} accept=".txt,.md,text/plain" optional helper="Optional style notes or references" onChange={(file) => setFile('setup_notes', file)} />
               <TimingRangePicker form={form} setField={setField} />
               <p className="muted">Default flow: audio range, Whisper Base SRT, cleaned timing against the script, scene plan, prompts, images, QC, render.</p>
             </div>
           ) : mode === 'srt_upload' ? (
             <div className="stack compact">
-              <FileInput label="Source SRT" file={files.source_srt} accept=".srt,text/plain" onChange={(file) => setFile('source_srt', file)} />
-              <FileInput label="Source audio" file={files.source_audio} accept="audio/*,.mp3,.wav,.m4a" onChange={(file) => setFile('source_audio', file)} />
-              <FileInput label="Raw narration text" file={files.raw_text} accept=".txt,.md,text/plain" onChange={(file) => setFile('raw_text', file)} />
-              <FileInput label="Creative brief" file={files.setup_notes} accept=".txt,.md,text/plain" optional onChange={(file) => setFile('setup_notes', file)} />
+              <FileInputCard label="Source SRT" file={files.source_srt} accept=".srt,text/plain" onChange={(file) => setFile('source_srt', file)} />
+              <FileInputCard label="Source audio" file={files.source_audio} accept="audio/*,.mp3,.wav,.m4a" onChange={(file) => setFile('source_audio', file)} />
+              <FileInputCard label="Raw narration text" file={files.raw_text} accept=".txt,.md,text/plain" onChange={(file) => setFile('raw_text', file)} />
+              <FileInputCard label="Creative brief" file={files.setup_notes} accept=".txt,.md,text/plain" optional onChange={(file) => setFile('setup_notes', file)} />
             </div>
           ) : (
             <div className="stack compact">
@@ -210,8 +218,8 @@ export function SetupPage() {
           </div>
         </form>
       </div>
-      <div className="panel sticky-panel">
-        <SectionTitle title={result ? 'Live Run Monitor' : 'Pipeline Preview'} />
+      <div className="panel sticky-panel launch-monitor-panel">
+        <SectionTitle title={result ? 'Live Run Monitor' : '2. Pipeline preview'} />
         {result ? (
           <LaunchMonitor result={result} pipelineState={pipelineState} onOpen={(route) => navigate(route)} />
         ) : (
@@ -233,6 +241,7 @@ export function SetupPage() {
             <div><dt>project.json</dt><dd>{result.project_json_path}</dd></div>
           </dl>
         ) : null}
+      </div>
       </div>
     </section>
   );
@@ -283,15 +292,5 @@ function TimingRangePicker({form, setField}) {
       ) : null}
       <p className="muted small">Use this for test renders, for example 2:00 to 3:00. The generated video starts at 0:00 but uses that original audio window.</p>
     </fieldset>
-  );
-}
-
-function FileInput({label, file, accept, optional = false, onChange}) {
-  return (
-    <label className="file-drop">
-      <span>{label}{optional ? ' (optional)' : ''}</span>
-      <input type="file" accept={accept} onChange={(event) => onChange(event.target.files?.[0] || null)} />
-      <strong>{file?.name || 'Choose file'}</strong>
-    </label>
   );
 }

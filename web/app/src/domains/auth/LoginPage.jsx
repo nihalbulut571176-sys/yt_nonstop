@@ -12,6 +12,23 @@ export function LoginPage() {
 
   return (
     <div className="auth-shell">
+      <aside className="auth-product-panel">
+        <div className="sidebar-brand">
+          <div className="brand-mark">yt</div>
+          <div>
+            <strong>yt_nonstop</strong>
+            <span>Studio</span>
+          </div>
+        </div>
+        <h2>AI-powered video production pipeline</h2>
+        <ul>
+          <li>Local and private workspace</li>
+          <li>Audio + script to full render</li>
+          <li>Live stage monitoring</li>
+          <li>Review, assets, and run history</li>
+        </ul>
+        <p>Local engine: online</p>
+      </aside>
       <form className="auth-card" onSubmit={onSubmit}>
         <p className="eyebrow">Production SaaS Shell</p>
         <h1>Sign in to yt_nonstop</h1>

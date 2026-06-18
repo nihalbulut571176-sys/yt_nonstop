@@ -1,4 +1,5 @@
 import {SectionTitle} from '../../shared/ui/SectionTitle.jsx';
+import {PageHeader} from '../../shared/ui/PageHeader.jsx';
 import {useEffect, useState} from 'react';
 import {useSettingsStore} from '../../state/StudioProvider.jsx';
 
@@ -30,7 +31,14 @@ export function SettingsPage() {
   };
 
   return (
-    <section className="grid-two">
+    <section className="stack wide-gap">
+      <PageHeader
+        eyebrow="Settings"
+        title="Local studio settings"
+        description="Store non-secret preferences, inspect provider metadata, and verify local workspace configuration."
+        meta="local-first"
+      />
+      <div className="settings-grid">
       <div className="panel">
         <SectionTitle title="Operator Preferences" />
         <form className="stack compact" onSubmit={onSubmit}>
@@ -60,6 +68,7 @@ export function SettingsPage() {
           <div><dt>Session TTL</dt><dd>{auth.session_ttl_hours || 12} hours</dd></div>
           <div><dt>Default credentials</dt><dd>{auth.default_credentials_active ? 'Active locally' : 'Changed'}</dd></div>
         </dl>
+      </div>
       </div>
     </section>
   );

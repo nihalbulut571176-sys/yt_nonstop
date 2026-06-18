@@ -233,7 +233,7 @@ test('renders production shell and overview for authenticated user', async () =>
   );
 
   expect(await screen.findByText('yt_nonstop')).toBeInTheDocument();
-  expect(await screen.findByText('Recommended Next Command')).toBeInTheDocument();
+  expect(await screen.findByText('Recommended next action')).toBeInTheDocument();
   expect((await screen.findAllByText((content) => content.includes('yt-nonstop run --resume'))).length).toBeGreaterThan(0);
   expect(await screen.findByText('Warning signals')).toBeInTheDocument();
   expect(await screen.findByText('1 frame still in manual review')).toBeInTheDocument();

@@ -7,6 +7,8 @@ import {useState} from 'react';
 import {RunsTable} from '../../shared/ui/RunsTable.jsx';
 import {PipelineStageRail} from '../../shared/ui/PipelineStageRail.jsx';
 import {RunMonitorCard} from '../../shared/ui/RunMonitorCard.jsx';
+import {PageHeader} from '../../shared/ui/PageHeader.jsx';
+import {LogPanel} from '../../shared/ui/LogPanel.jsx';
 
 function QuickActionButton({label, actionKey, pipelineState, busyAction, onRun}) {
   const descriptor = (pipelineState?.available_actions || []).find((item) => item.key === actionKey);
@@ -54,10 +56,16 @@ export function PipelinePage() {
 
   return (
     <section className="stack wide-gap">
+      <PageHeader
+        eyebrow="Pipeline"
+        title={pipelineState.project_name}
+        description="Detailed operator controls, stage table, active run state, and logs."
+        meta={pipelineState.lifecycle_status}
+      />
       <PipelineStageRail pipelineState={pipelineState} />
       <div className="grid-two">
         <div className="panel">
-          <SectionTitle title="Primary Action Rail" meta={pipelineState.next_stage || 'n/a'} />
+          <SectionTitle title="Quick actions" meta={pipelineState.next_stage || 'n/a'} />
           <div className="hero-action">
             <h3>{pipelineState.next_command || 'No next command detected'}</h3>
             <p className="muted">Current stage: {pipelineState.current_stage || 'n/a'}. Lifecycle: {pipelineState.lifecycle_status}.</p>
@@ -148,7 +156,7 @@ export function PipelinePage() {
                 <div><dt>Finished</dt><dd>{formatTime(activeRunDetails.finished_at)}</dd></div>
                 <div><dt>Command</dt><dd><code>{formatCommand(activeRunDetails.command)}</code></dd></div>
               </dl>
-              <pre className="mono-box tall">{(activeRunDetails.log_tail || []).join('\n') || 'Waiting for log output…'}</pre>
+              <LogPanel lines={activeRunDetails.log_tail || []} empty="Waiting for log output..." />
             </div>
           ) : (
             <p className="muted">No write-heavy run is currently active for this project.</p>

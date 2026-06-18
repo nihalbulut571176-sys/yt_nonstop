@@ -1,6 +1,7 @@
 import {api} from '../../api.js';
 import {Badge} from '../../shared/ui/Badge.jsx';
 import {SectionTitle} from '../../shared/ui/SectionTitle.jsx';
+import {PageHeader} from '../../shared/ui/PageHeader.jsx';
 import {useProjectStore} from '../../state/StudioProvider.jsx';
 import {useStudioShell} from '../../state/StudioProvider.jsx';
 
@@ -25,7 +26,14 @@ export function AssetsPage() {
   const hasAssets = assets.groups.some((group) => group.entries.length > 0);
 
   return (
-    <section className="grid-two">
+    <section className="stack wide-gap">
+      <PageHeader
+        eyebrow="Assets"
+        title="Project artifact browser"
+        description="Browse grouped project outputs while preserving local paths and controlled previews."
+        meta={`${assets.total_count} assets`}
+      />
+      <div className="assets-workbench">
       <div className="panel">
         <SectionTitle title="Asset Collections" meta={`${assets.total_count} assets`} />
         {!hasAssets ? (
@@ -64,6 +72,7 @@ export function AssetsPage() {
         {preview?.preview_kind === 'video' ? <video className="asset-preview-video" controls src={api.mediaUrl(selectedProjectId, preview.path)} /> : null}
         {preview?.preview_kind === 'text' ? <pre className="mono-box tall">{preview.content || 'No text preview available.'}</pre> : null}
         {preview?.preview_kind === 'binary' ? <p className="muted">{preview.path}</p> : null}
+      </div>
       </div>
     </section>
   );
