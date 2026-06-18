@@ -84,6 +84,18 @@ USER_STAGE_GROUPS: tuple[dict, ...] = (
     {"key": "done", "label": "Done", "stages": {"done", "completed"}},
 )
 
+USER_STAGE_PRIMARY_INTERNAL: dict[str, str] = {
+    "upload": "transcription",
+    "transcribe": "transcription",
+    "clean_srt": "cleanup_transcript_from_source",
+    "scene_plan": "build_scene_map",
+    "prompts": "build_frame_briefs",
+    "images": "generate_images",
+    "qc": "image_qc",
+    "render": "timeline",
+    "done": "render",
+}
+
 
 def _stage_group_for(stage_name: str | None) -> dict:
     normalized = str(stage_name or "").strip()
@@ -98,6 +110,20 @@ def _group_index(group_key: str | None) -> int:
         if group["key"] == group_key:
             return index
     return 0
+
+
+def _primary_internal_stage(group_key: str | None) -> str:
+    return USER_STAGE_PRIMARY_INTERNAL.get(str(group_key or ""), "transcription")
+
+
+def _command_arg(command: list[str], flag: str) -> str | None:
+    try:
+        index = command.index(flag)
+    except ValueError:
+        return None
+    if index + 1 >= len(command):
+        return None
+    return command[index + 1]
 
 
 def _run_elapsed_sec(run: RunSummary | None) -> float | None:
@@ -274,6 +300,72 @@ def _available_pipeline_actions(project, state: PipelineState) -> list[PipelineA
     ]
 
 
+def _failed_stage_from_project(project_json_path: str | None) -> str | None:
+    if not project_json_path:
+        return None
+    try:
+        project_payload = load_project(Path(project_json_path))
+    except Exception:
+        return None
+    for key in ("current_stage", "status"):
+        value = str(project_payload.get(key) or "").strip()
+        if value and value not in {"failed", "running", "completed"}:
+            return value
+    section_stage_map = {
+        "transcription": "transcription",
+        "transcript_cleanup": "cleanup_transcript_from_source",
+        "scene_plan": "build_scene_map",
+        "prompts": "build_frame_briefs",
+        "images": "generate_images",
+        "qc": "image_qc",
+        "render": "render",
+    }
+    for section_key, stage_name in section_stage_map.items():
+        section = project_payload.get(section_key)
+        if isinstance(section, dict) and str(section.get("status") or "").lower() in {"failed", "error", "partial", "pending"}:
+            return stage_name
+    return None
+
+
+def _stage_from_failed_run(run: RunSummary | None, *, project_json_path: str | None, dashboard) -> tuple[str | None, str | None, str | None, str | None]:
+    if not run or run.status != "failed":
+        return None, None, None, None
+    stage = _command_arg(run.command, "--from")
+    if not stage:
+        stage = _failed_stage_from_project(project_json_path)
+    if not stage:
+        stage = dashboard.current_stage or dashboard.next_stage
+    group = _stage_group_for(stage)
+    internal = stage or _primary_internal_stage(group["key"])
+    return group["key"], group["label"], internal, _failed_run_blocker(run)
+
+
+def _recovery_actions(project, state: PipelineState) -> list[PipelineAction]:
+    if not project.project_json_path:
+        reason = "Recovery actions need project.json so Studio can run the CLI safely."
+        return [
+            PipelineAction(key="continue_from_last_success", label="Continue pipeline", enabled=False, reason=reason),
+            PipelineAction(key="retry_failed_step", label="Retry failed step", enabled=False, reason=reason),
+            PipelineAction(key="retry_failed_only", label="Retry failed images only", enabled=False, reason=reason),
+            PipelineAction(key="restart_from_stage", label="Restart from selected stage", enabled=False, reason=reason),
+        ]
+    if state.active_run:
+        reason = f"Active run {state.active_run.run_id} is already running for this project."
+        return [
+            PipelineAction(key="continue_from_last_success", label="Continue pipeline", enabled=False, reason=reason),
+            PipelineAction(key="retry_failed_step", label=f"Retry from {state.failed_stage_label or 'failed step'}", enabled=False, reason=reason),
+            PipelineAction(key="retry_failed_only", label="Retry failed images only", enabled=False, reason=reason),
+            PipelineAction(key="restart_from_stage", label="Restart from selected stage", enabled=False, reason=reason),
+        ]
+    failed = bool(state.failed_run_id or state.lifecycle_status == "failed")
+    return [
+        PipelineAction(key="continue_from_last_success", label="Continue pipeline", recommended=not failed, enabled=True, reason=None),
+        PipelineAction(key="retry_failed_step", label=f"Retry from {state.failed_stage_label or 'failed step'}", recommended=failed, enabled=failed, reason=None if failed else "No failed run has been detected."),
+        PipelineAction(key="retry_failed_only", label="Retry failed images only", recommended=state.failed_stage_key == "images", enabled=True, reason=None),
+        PipelineAction(key="restart_from_stage", label="Restart from selected stage", recommended=False, enabled=True, reason=None),
+    ]
+
+
 def _discover_projects(config: WebConfig, app_state: AppStateStore):
     projects = discover_projects(config)
     app_state.sync_projects(projects)
@@ -358,10 +450,17 @@ def _build_pipeline_state(project, jobs: JobStore, app_state: AppStateStore) -> 
             recent_events=[ActivityEvent(message=blocked_reason, tone="warning")],
         )
         state.available_actions = _available_pipeline_actions(project, state)
+        state.recovery_actions = _recovery_actions(project, state)
         return state
 
     dashboard = build_project_status(Path(project.project_json_path))
-    failed_blocker = _failed_run_blocker(recent_runs[0] if recent_runs and not active_run else None)
+    latest_failed_run = next((run for run in recent_runs if run.status == "failed"), None) if not active_run else None
+    failed_stage_key, failed_stage_label, resume_from_stage, failed_error_summary = _stage_from_failed_run(
+        latest_failed_run,
+        project_json_path=project.project_json_path,
+        dashboard=dashboard,
+    )
+    failed_blocker = failed_error_summary
     blocked = ([failed_blocker] if failed_blocker else []) + list(dashboard.blocked)
     warnings = list(dashboard.warnings)
     lifecycle_status = lifecycle_status_for(
@@ -405,6 +504,12 @@ def _build_pipeline_state(project, jobs: JobStore, app_state: AppStateStore) -> 
         active_run=active_run,
         blocked_by_active_run=active_run is not None,
         recent_runs=recent_runs,
+        failed_stage_key=failed_stage_key,
+        failed_stage_label=failed_stage_label,
+        failed_run_id=latest_failed_run.run_id if latest_failed_run else None,
+        failed_error_summary=failed_error_summary,
+        resume_from_stage=resume_from_stage or dashboard.next_stage or dashboard.current_stage,
+        resume_to_stage="render",
     )
     stage_groups, progress, activity, recent_events = _build_progress_contract(
         dashboard=dashboard,
@@ -420,16 +525,31 @@ def _build_pipeline_state(project, jobs: JobStore, app_state: AppStateStore) -> 
     state.current_activity = activity
     state.recent_events = recent_events
     state.available_actions = _available_pipeline_actions(project, state)
+    state.recovery_actions = _recovery_actions(project, state)
     return state
 
 
-def _pipeline_action_command(project_json_path: str, request: PipelineActionRequest) -> list[str]:
+def _pipeline_action_command(project_json_path: str, request: PipelineActionRequest, state: PipelineState | None = None) -> list[str]:
+    recovery_from_stage = request.from_stage or (state.resume_from_stage if state else None)
     if request.action == "validate":
         return build_cli_command(project_json_path=project_json_path, action="validate", stage="all")
-    if request.action == "resume":
+    if request.action in {"resume", "continue_from_last_success"}:
         return build_cli_command(
             project_json_path=project_json_path,
             action="run",
+            to_stage=request.to_stage or "render",
+            profile=request.profile,
+            limit_frames=request.limit_frames,
+            real_generation=request.real_generation,
+            concurrency=request.concurrency,
+            resume=True,
+            dry_run=request.dry_run,
+        )
+    if request.action == "retry_failed_step":
+        return build_cli_command(
+            project_json_path=project_json_path,
+            action="run",
+            from_stage=recovery_from_stage,
             to_stage=request.to_stage or "render",
             profile=request.profile,
             limit_frames=request.limit_frames,
@@ -457,6 +577,19 @@ def _pipeline_action_command(project_json_path: str, request: PipelineActionRequ
             from_stage=request.from_stage or "timeline",
             to_stage=request.to_stage or "render",
             render_dry_run=True,
+            dry_run=request.dry_run,
+        )
+    if request.action == "restart_from_stage":
+        return build_cli_command(
+            project_json_path=project_json_path,
+            action="run",
+            from_stage=recovery_from_stage,
+            to_stage=request.to_stage or "render",
+            profile=request.profile,
+            limit_frames=request.limit_frames,
+            real_generation=request.real_generation,
+            concurrency=request.concurrency,
+            resume=True,
             dry_run=request.dry_run,
         )
     return build_cli_command(
@@ -1004,9 +1137,10 @@ def create_app() -> FastAPI:
         project, _path = resolve_project(project_id)
         if not project.project_json_path:
             raise ProductApiError(status_code=400, code="project_state_error", message="Limited-support project has no project.json for pipeline actions")
+        state = _build_pipeline_state(project, jobs, app_state)
         result = jobs.start_job(
             project_id=project_id,
-            command=_pipeline_action_command(project.project_json_path, request),
+            command=_pipeline_action_command(project.project_json_path, request, state),
             read_only=request.action == "validate",
             user_id=current.user.id,
         )

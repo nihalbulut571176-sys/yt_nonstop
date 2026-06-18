@@ -41,7 +41,7 @@ export function ProjectTable({projects = [], onOpen, onPipeline}) {
                 <td>
                   <div className="table-actions">
                     <button type="button" onClick={() => onOpen(item.id)}>Open</button>
-                    <button type="button" className="ghost-button" onClick={() => onPipeline(item.id)}>{item.lifecycle_status === 'failed' ? 'Fix' : 'Pipeline'}</button>
+                    <button type="button" className="ghost-button" onClick={() => onPipeline(item.id)}>{item.lifecycle_status === 'failed' || item.lifecycle_status === 'blocked' ? 'Fix' : item.lifecycle_status === 'running' ? 'Watch' : 'Pipeline'}</button>
                   </div>
                 </td>
               </tr>

@@ -99,12 +99,40 @@ const pipelineState = {
   active_run: null,
   blocked_by_active_run: false,
   recent_runs: [],
+  progress: {percent: 42, current_stage_key: 'images', current_stage_label: 'Images', is_running: false, is_failed: false},
+  recovery_actions: [
+    {key: 'continue_from_last_success', label: 'Continue pipeline', recommended: true, enabled: true, reason: null},
+    {key: 'retry_failed_step', label: 'Retry from failed step', recommended: false, enabled: false, reason: 'No failed run has been detected.'},
+    {key: 'retry_failed_only', label: 'Retry failed images only', recommended: false, enabled: true, reason: null},
+    {key: 'restart_from_stage', label: 'Restart from selected stage', recommended: false, enabled: true, reason: null}
+  ],
   available_actions: [
     {key: 'validate', label: 'Validate', recommended: true, enabled: true, reason: null},
     {key: 'resume', label: 'Resume', recommended: true, enabled: true, reason: null},
     {key: 'retry_failed_only', label: 'Retry failed only', recommended: false, enabled: true, reason: null},
     {key: 'render_dry_run', label: 'Render dry run', recommended: false, enabled: true, reason: null},
     {key: 'run_range', label: 'Run stage range', recommended: false, enabled: true, reason: null}
+  ]
+};
+
+const failedRecoveryState = {
+  ...pipelineState,
+  lifecycle_status: 'failed',
+  blocked: ['Last run failed during Images: CalledProcessError: generation failed'],
+  progress: {percent: 42, current_stage_key: 'images', current_stage_label: 'Images', is_running: false, is_failed: true},
+  current_activity: {title: 'Images', detail: 'generate_images', status: 'failed', run_id: 'run-failed', log_tail: ['CalledProcessError: generation failed']},
+  recent_runs: [{run_id: 'run-failed', project_id: 'demo-project', action_type: 'render', command: ['yt-nonstop', 'run', '--from', 'generate_images', '--to', 'render'], status: 'failed', started_at: '2026-01-01T00:00:00Z', finished_at: '2026-01-01T00:01:00Z', exit_code: 1, log_path: 'logs/run-failed.log'}],
+  failed_stage_key: 'images',
+  failed_stage_label: 'Images',
+  failed_run_id: 'run-failed',
+  failed_error_summary: 'Last run failed during Images: CalledProcessError: generation failed',
+  resume_from_stage: 'generate_images',
+  resume_to_stage: 'render',
+  recovery_actions: [
+    {key: 'continue_from_last_success', label: 'Continue pipeline', recommended: false, enabled: true, reason: null},
+    {key: 'retry_failed_step', label: 'Retry from Images', recommended: true, enabled: true, reason: null},
+    {key: 'retry_failed_only', label: 'Retry failed images only', recommended: true, enabled: true, reason: null},
+    {key: 'restart_from_stage', label: 'Restart from selected stage', recommended: false, enabled: true, reason: null}
   ]
 };
 
@@ -123,6 +151,11 @@ const activeRunState = {
     log_path: 'logs/run-active.log'
   },
   blocked_by_active_run: true,
+  recovery_actions: pipelineState.recovery_actions.map((item) => ({
+    ...item,
+    enabled: false,
+    reason: 'Active run run-active is already running for this project.'
+  })),
   available_actions: pipelineState.available_actions.map((item) => ({
     ...item,
     enabled: false,
@@ -270,6 +303,49 @@ test('pipeline quick action calls product api action endpoint', async () => {
 
   await waitFor(() => {
     expect(mockApi.pipelineAction).toHaveBeenCalledWith('demo-project', expect.objectContaining({action: 'validate'}));
+  });
+});
+
+test('pipeline recovery controls continue and retry failed step', async () => {
+  const user = userEvent.setup();
+  mockApi.getPipelineState.mockResolvedValue(failedRecoveryState);
+  render(
+    <MemoryRouter initialEntries={['/projects/demo-project/pipeline']}>
+      <App />
+    </MemoryRouter>
+  );
+
+  expect(await screen.findByText('Recovery controls')).toBeInTheDocument();
+  await user.click(await screen.findByRole('button', {name: /continue pipeline/i}));
+  await waitFor(() => {
+    expect(mockApi.pipelineAction).toHaveBeenCalledWith('demo-project', expect.objectContaining({action: 'continue_from_last_success'}));
+  });
+
+  mockApi.pipelineAction.mockClear();
+  await user.click(await screen.findByRole('button', {name: /retry from images/i}));
+  await waitFor(() => {
+    expect(mockApi.pipelineAction).toHaveBeenCalledWith('demo-project', expect.objectContaining({action: 'retry_failed_step'}));
+  });
+});
+
+test('pipeline recovery controls restart from selected stage', async () => {
+  const user = userEvent.setup();
+  mockApi.getPipelineState.mockResolvedValue(failedRecoveryState);
+  render(
+    <MemoryRouter initialEntries={['/projects/demo-project/pipeline']}>
+      <App />
+    </MemoryRouter>
+  );
+
+  await screen.findByText('Recovery controls');
+  await user.selectOptions(screen.getByLabelText(/restart from selected stage/i), 'build_frame_briefs');
+  await user.click(screen.getByRole('button', {name: /^restart from stage$/i}));
+
+  await waitFor(() => {
+    expect(mockApi.pipelineAction).toHaveBeenCalledWith('demo-project', expect.objectContaining({
+      action: 'restart_from_stage',
+      from_stage: 'build_frame_briefs'
+    }));
   });
 });
 

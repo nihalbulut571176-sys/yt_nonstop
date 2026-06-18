@@ -7,9 +7,12 @@ import {PipelineStageRail} from '../../shared/ui/PipelineStageRail.jsx';
 import {RunMonitorCard} from '../../shared/ui/RunMonitorCard.jsx';
 import {ActivityFeed} from '../../shared/ui/ActivityFeed.jsx';
 import {PageHeader} from '../../shared/ui/PageHeader.jsx';
+import {RecoveryPanel} from '../../shared/ui/RecoveryPanel.jsx';
+import {useStudioShell} from '../../state/StudioProvider.jsx';
 
 export function OverviewPage() {
   const {overview, pipelineState} = useProjectStore();
+  const {busyAction, runPipelineAction} = useStudioShell();
 
   if (!overview) {
     return <section className="panel"><p className="muted">Select a project to see its overview.</p></section>;
@@ -24,7 +27,10 @@ export function OverviewPage() {
         meta={overview.lifecycle_status}
       />
       <PipelineStageRail pipelineState={pipelineState} compact />
-      <RunMonitorCard pipelineState={pipelineState || overview} title="Current activity" />
+      <div className="grid-two">
+        <RunMonitorCard pipelineState={pipelineState || overview} title="Current activity" />
+        <RecoveryPanel pipelineState={pipelineState} busyAction={busyAction} onRun={runPipelineAction} compact />
+      </div>
       <div className="metric-grid">
         <MetricCard label="Lifecycle" value={overview.lifecycle_status} tone="accent" />
         <MetricCard label="Progress" value={`${overview.progress?.percent ?? pipelineState?.progress?.percent ?? 0}%`} tone="success" />

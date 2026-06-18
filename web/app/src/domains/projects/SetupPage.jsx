@@ -7,6 +7,7 @@ import {RunMonitorCard} from '../../shared/ui/RunMonitorCard.jsx';
 import {SectionTitle} from '../../shared/ui/SectionTitle.jsx';
 import {FileInputCard} from '../../shared/ui/FileInputCard.jsx';
 import {PageHeader} from '../../shared/ui/PageHeader.jsx';
+import {RecoveryPanel} from '../../shared/ui/RecoveryPanel.jsx';
 import {useProjectStore, useSettingsStore, useStudioShell} from '../../state/StudioProvider.jsx';
 
 const intakeSteps = [
@@ -33,7 +34,7 @@ const emptyPreviewState = {
 export function SetupPage() {
   const navigate = useNavigate();
   const {createProject, intakeProject, intakeAudioTextProject} = useSettingsStore();
-  const {busyAction} = useStudioShell();
+  const {busyAction, runPipelineAction} = useStudioShell();
   const {pipelineState, refreshProject} = useProjectStore();
   const [mode, setMode] = useState('audio_text');
   const [result, setResult] = useState(null);
@@ -221,7 +222,7 @@ export function SetupPage() {
       <div className="panel sticky-panel launch-monitor-panel">
         <SectionTitle title={result ? 'Live Run Monitor' : '2. Pipeline preview'} />
         {result ? (
-          <LaunchMonitor result={result} pipelineState={pipelineState} onOpen={(route) => navigate(route)} />
+          <LaunchMonitor result={result} pipelineState={pipelineState} busyAction={busyAction} onRun={runPipelineAction} onOpen={(route) => navigate(route)} />
         ) : (
           <div className="stack compact">
             <PipelineStageRail pipelineState={emptyPreviewState} compact />
@@ -247,7 +248,7 @@ export function SetupPage() {
   );
 }
 
-function LaunchMonitor({result, pipelineState, onOpen}) {
+function LaunchMonitor({result, pipelineState, busyAction, onRun, onOpen}) {
   const active = Boolean(pipelineState?.active_run?.run_id);
   const failed = pipelineState?.lifecycle_status === 'failed' || pipelineState?.recent_runs?.[0]?.status === 'failed';
   const tone = active ? 'success' : failed ? 'warn' : 'accent';
@@ -263,6 +264,7 @@ function LaunchMonitor({result, pipelineState, onOpen}) {
       </div>
       <PipelineStageRail pipelineState={pipelineState} compact />
       <RunMonitorCard pipelineState={pipelineState} title="Worker status" showLogs={false} />
+      <RecoveryPanel pipelineState={pipelineState} busyAction={busyAction} onRun={onRun} compact />
       <ListBlock title="Problems" rows={pipelineState?.blocked || []} empty="No blockers yet. Green means the process is moving." tone="warn" />
       <ListBlock title="Warnings" rows={pipelineState?.warnings || []} empty="No warnings yet." tone="accent" />
       <div className="action-row">

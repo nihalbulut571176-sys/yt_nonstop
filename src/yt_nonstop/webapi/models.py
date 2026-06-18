@@ -157,7 +157,7 @@ class CurrentActivity(BaseModel):
 
 
 class PipelineActionRequest(BaseModel):
-    action: Literal["validate", "resume", "retry_failed_only", "render_dry_run", "run_range"]
+    action: Literal["validate", "resume", "retry_failed_only", "render_dry_run", "run_range", "continue_from_last_success", "retry_failed_step", "restart_from_stage"]
     from_stage: str | None = None
     to_stage: str | None = None
     profile: str | None = None
@@ -276,6 +276,13 @@ class PipelineState(BaseModel):
     progress: PipelineProgress = Field(default_factory=PipelineProgress)
     current_activity: CurrentActivity | None = None
     recent_events: list[ActivityEvent] = Field(default_factory=list)
+    failed_stage_key: str | None = None
+    failed_stage_label: str | None = None
+    failed_run_id: str | None = None
+    failed_error_summary: str | None = None
+    resume_from_stage: str | None = None
+    resume_to_stage: str = "render"
+    recovery_actions: list[PipelineAction] = Field(default_factory=list)
 
 
 class UserRecord(BaseModel):

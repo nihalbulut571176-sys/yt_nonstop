@@ -827,6 +827,67 @@ button[type="submit"]:hover,
   letter-spacing: -0.05em;
 }
 
+.recovery-panel {
+  background: linear-gradient(135deg, #f8fbff, #ffffff);
+  border: 1px solid #dbeafe;
+  border-radius: 22px;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.recovery-failed {
+  background: linear-gradient(135deg, #fff7ed, #ffffff);
+  border-color: #fecaca;
+}
+
+.recovery-copy strong,
+.recovery-copy p {
+  display: block;
+  margin: 0;
+}
+
+.recovery-copy strong {
+  color: var(--ink);
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.recovery-copy p {
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+.recovery-actions,
+.restart-row {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.restart-row {
+  grid-template-columns: minmax(220px, 1fr) auto;
+}
+
+.recovery-actions button {
+  min-height: 46px;
+}
+
+.recovery-hints {
+  color: var(--muted);
+  display: grid;
+  gap: 4px;
+}
+
+.recovery-compact .recovery-actions {
+  grid-template-columns: 1fr;
+}
+
+.recovery-compact .restart-row {
+  grid-template-columns: 1fr;
+}
+
 .info-cluster {
   display: grid;
   gap: 12px;
@@ -1145,7 +1206,9 @@ button[type="submit"]:hover,
 
   .metric-grid,
   .time-grid,
-  .form-grid {
+  .form-grid,
+  .recovery-actions,
+  .restart-row {
     grid-template-columns: 1fr;
   }
 

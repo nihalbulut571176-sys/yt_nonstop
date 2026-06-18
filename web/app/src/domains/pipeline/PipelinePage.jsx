@@ -9,6 +9,7 @@ import {PipelineStageRail} from '../../shared/ui/PipelineStageRail.jsx';
 import {RunMonitorCard} from '../../shared/ui/RunMonitorCard.jsx';
 import {PageHeader} from '../../shared/ui/PageHeader.jsx';
 import {LogPanel} from '../../shared/ui/LogPanel.jsx';
+import {RecoveryPanel} from '../../shared/ui/RecoveryPanel.jsx';
 
 function QuickActionButton({label, actionKey, pipelineState, busyAction, onRun}) {
   const descriptor = (pipelineState?.available_actions || []).find((item) => item.key === actionKey);
@@ -63,6 +64,7 @@ export function PipelinePage() {
         meta={pipelineState.lifecycle_status}
       />
       <PipelineStageRail pipelineState={pipelineState} />
+      <RecoveryPanel pipelineState={pipelineState} busyAction={busyAction} onRun={runPipelineAction} />
       <div className="grid-two">
         <div className="panel">
           <SectionTitle title="Quick actions" meta={pipelineState.next_stage || 'n/a'} />

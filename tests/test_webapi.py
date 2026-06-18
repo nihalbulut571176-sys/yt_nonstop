@@ -7,10 +7,10 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from yt_nonstop.webapi.app import create_app
+from yt_nonstop.webapi.app import _pipeline_action_command, create_app
 from yt_nonstop.webapi.config import WebConfig
 from yt_nonstop.webapi.jobs import JobStartResult, JobStore
-from yt_nonstop.webapi.models import RunSummary
+from yt_nonstop.webapi.models import PipelineActionRequest, PipelineState, RunSummary
 from yt_nonstop.webapi.project_discovery import discover_projects
 from yt_nonstop.providers.provider_config import provider_from_environment, provider_from_project
 
@@ -291,6 +291,74 @@ def test_webapi_pipeline_state_marks_active_run_lock(tmp_path, monkeypatch):
     assert any(item["status"] == "running" for item in payload["stage_groups"])
     assert all(item["enabled"] is False for item in payload["available_actions"])
     assert any(active_job.job.run_id in item["reason"] for item in payload["available_actions"])
+
+
+def test_webapi_pipeline_state_exposes_failed_stage_recovery(tmp_path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    _make_repo_native_project(workspace)
+    monkeypatch.setenv("YT_NONSTOP_WORKSPACE_ROOT", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_ALLOWED_PROJECT_ROOTS", str(workspace))
+    monkeypatch.setenv("YT_NONSTOP_WEB_RUNTIME_DIR", str(tmp_path / "runtime"))
+
+    app = create_app()
+    client = TestClient(app)
+    headers = _login(client)
+    project_id = client.get("/api/projects", headers=headers).json()[0]["id"]
+
+    failed_job = app.state.jobs.start_job(
+        project_id=project_id,
+        command=[sys.executable, "-c", "print('RuntimeError: transcription exploded'); raise SystemExit(1)", "--from", "transcription"],
+        read_only=False,
+    )
+    assert failed_job.accepted is True
+    deadline = time.time() + 4
+    finished = app.state.jobs.get_job(failed_job.job.run_id)
+    while finished.status in {"queued", "running"} and time.time() < deadline:
+        time.sleep(0.1)
+        finished = app.state.jobs.get_job(failed_job.job.run_id)
+    assert finished.status == "failed"
+
+    pipeline_state = client.get(f"/api/projects/{project_id}/pipeline", headers=headers)
+    assert pipeline_state.status_code == 200
+    payload = pipeline_state.json()
+    assert payload["lifecycle_status"] == "failed"
+    assert payload["failed_stage_key"] == "transcribe"
+    assert payload["failed_stage_label"] == "Transcribe"
+    assert payload["failed_run_id"] == failed_job.job.run_id
+    assert payload["resume_from_stage"] == "transcription"
+    assert any(item["key"] == "retry_failed_step" and item["enabled"] is True for item in payload["recovery_actions"])
+
+
+def test_pipeline_recovery_action_commands_use_resume_and_failed_stage():
+    state = PipelineState(
+        project_id="demo",
+        project_name="Demo",
+        support="full",
+        lifecycle_status="failed",
+        failed_stage_key="transcribe",
+        failed_stage_label="Transcribe",
+        failed_run_id="run-failed",
+        failed_error_summary="failed",
+        resume_from_stage="transcription",
+    )
+    project_json = "C:\\project\\project.json"
+
+    continue_command = _pipeline_action_command(project_json, PipelineActionRequest(action="continue_from_last_success", to_stage="render"), state)
+    assert "--resume" in continue_command
+    assert "--to" in continue_command and continue_command[continue_command.index("--to") + 1] == "render"
+    assert "--from" not in continue_command
+
+    retry_command = _pipeline_action_command(project_json, PipelineActionRequest(action="retry_failed_step", to_stage="render"), state)
+    assert "--resume" in retry_command
+    assert "--from" in retry_command and retry_command[retry_command.index("--from") + 1] == "transcription"
+    assert "--to" in retry_command and retry_command[retry_command.index("--to") + 1] == "render"
+
+    images_command = _pipeline_action_command(project_json, PipelineActionRequest(action="retry_failed_only", to_stage="render"), state)
+    assert "--retry-failed-only" in images_command
+
+    restart_command = _pipeline_action_command(project_json, PipelineActionRequest(action="restart_from_stage", from_stage="generate_images", to_stage="render"), state)
+    assert "--resume" in restart_command
+    assert "--from" in restart_command and restart_command[restart_command.index("--from") + 1] == "generate_images"
 
 
 def test_webapi_runs_record_events_logs_and_rejected_conflicts(tmp_path, monkeypatch):
